@@ -1,0 +1,22 @@
+{
+  "name": "Go23WalletFoundation",
+  "version": "0.1.0",
+  "summary": "A short description of Go23WalletFoundation.",
+  "description": "TODO: Add long description of the pod here.",
+  "homepage": "https://github.com/TaranWu/Go23WalletFoundation",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE"
+  },
+  "authors": {
+    "TaranWu": "NA"
+  },
+  "source": {
+    "git": "https://github.com/TaranWu/Go23WalletFoundation.git",
+    "tag": "0.1.0"
+  },
+  "platforms": {
+    "ios": "10.0"
+  },
+  "source_files": "Go23WalletFoundation/Classes/**/*"
+}

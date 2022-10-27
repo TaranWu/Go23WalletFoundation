@@ -1,0 +1,6 @@
+framework module Go23WalletFoundation {
+  umbrella header "Go23WalletFoundation-umbrella.h"
+
+  export *
+  module * { export * }
+}

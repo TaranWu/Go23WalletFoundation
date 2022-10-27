@@ -1,0 +1,16 @@
+PODS:
+  - Go23WalletFoundation (0.1.0)
+
+DEPENDENCIES:
+  - Go23WalletFoundation (from `../`)
+
+EXTERNAL SOURCES:
+  Go23WalletFoundation:
+    :path: "../"
+
+SPEC CHECKSUMS:
+  Go23WalletFoundation: 062f5c6e999ad6ccd6ae16ac7407e60331b7196c
+
+PODFILE CHECKSUM: 045e8ab00e6a68e40ef7adf4a6b847dbc6c7012d
+
+COCOAPODS: 1.11.3

@@ -1,0 +1,6 @@
+framework module Pods_Go23WalletFoundation_Tests {
+  umbrella header "Pods-Go23WalletFoundation_Tests-umbrella.h"
+
+  export *
+  module * { export * }
+}
