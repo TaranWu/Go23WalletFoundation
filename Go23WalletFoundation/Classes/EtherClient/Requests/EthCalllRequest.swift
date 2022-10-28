@@ -1,9 +1,9 @@
 // Copyright © 2021 Stormbird PTE. LTD.
 
 import Foundation
-import JSONRPCKit
+import Go23JSONRPCKit
 
-public struct EthCallRequest: JSONRPCKit.Request {
+public struct EthCallRequest: Go23JSONRPCKit.Request {
     public typealias Response = String
 
     let from: DerbyWallet.Address?

@@ -2,8 +2,8 @@
 
 import Foundation
 import BigInt
-import DerbyWalletCore
-import DerbyWalletOpenSea
+import Go23WalletCore
+import Go23WalletOpenSea
 
 public protocol BalanceViewModelType {
     var currencyAmount: String? { get }

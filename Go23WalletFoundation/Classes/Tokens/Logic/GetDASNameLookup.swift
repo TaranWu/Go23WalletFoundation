@@ -5,7 +5,7 @@
 //  Created by Vladyslav Shepitko on 08.10.2021.
 //
 
-import JSONRPCKit
+import Go23JSONRPCKit
 import APIKit
 import PromiseKit
 

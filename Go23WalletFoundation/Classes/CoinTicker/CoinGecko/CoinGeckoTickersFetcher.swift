@@ -7,7 +7,7 @@
 
 import Combine
 import Foundation
-import DerbyWalletCore
+import Go23WalletCore
 
 public final class CoinGeckoTickersFetcher: CoinTickersFetcher {
     private let pricesCacheLifetime: TimeInterval = 60 * 60

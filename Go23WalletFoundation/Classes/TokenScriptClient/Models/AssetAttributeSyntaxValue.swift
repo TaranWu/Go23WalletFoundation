@@ -1,7 +1,7 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
 import Foundation
-import DerbyWalletOpenSea
+import Go23WalletOpenSea
 import BigInt
 
 public struct AssetAttributeSyntaxValue: Hashable {
@@ -350,10 +350,10 @@ extension Dictionary where Key == AttributeId, Value == AssetAttributeSyntaxValu
         self["slug"]?.stringValue
     }
 
-    public var collectionValue: DerbyWalletOpenSea.Collection? {
-        return self["collection"]?.stringValue.flatMap { rawValue -> DerbyWalletOpenSea.Collection? in
+    public var collectionValue: Go23WalletOpenSea.Collection? {
+        return self["collection"]?.stringValue.flatMap { rawValue -> Go23WalletOpenSea.Collection? in
             guard let data = rawValue.data(using: .utf8) else { return nil }
-            return try? JSONDecoder().decode(DerbyWalletOpenSea.Collection.self, from: data)
+            return try? JSONDecoder().decode(Go23WalletOpenSea.Collection.self, from: data)
         }
     }
 
@@ -432,7 +432,7 @@ extension Dictionary where Key == AttributeId, Value == AssetAttributeSyntaxValu
         self["transferFee"] = string.flatMap { .init(directoryString: $0) }
     }
 
-    public mutating func setCollection(collection: DerbyWalletOpenSea.Collection?) {
+    public mutating func setCollection(collection: Go23WalletOpenSea.Collection?) {
         self["collection"] = collection.flatMap { collection -> String? in
             let data = try? JSONEncoder().encode(collection)
             return data.flatMap { data in

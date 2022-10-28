@@ -7,7 +7,7 @@
 
 import Foundation
 import Combine
-import DerbyWalletCore
+import Go23WalletCore
 
 protocol SchedulerProvider: AnyObject {
     var name: String { get }

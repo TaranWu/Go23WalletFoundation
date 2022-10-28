@@ -10,7 +10,7 @@ import Combine
 import SwiftyJSON
 import Alamofire
 import BigInt
-import DerbyWalletCore
+import Go23WalletCore
 
 public protocol TokenSwapperNetworkProvider {
     func fetchSupportedChains() -> AnyPublisher<[RPCServer], PromiseError>

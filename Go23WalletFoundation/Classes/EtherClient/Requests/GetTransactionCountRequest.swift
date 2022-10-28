@@ -2,9 +2,9 @@
 
 import BigInt
 import Foundation
-import JSONRPCKit
+import Go23JSONRPCKit
 
-struct GetTransactionCountRequest: JSONRPCKit.Request {
+struct GetTransactionCountRequest: Go23JSONRPCKit.Request {
     typealias Response = Int
 
     let address: DerbyWallet.Address

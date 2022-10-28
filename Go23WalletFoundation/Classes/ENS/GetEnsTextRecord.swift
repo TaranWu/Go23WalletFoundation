@@ -5,7 +5,7 @@
 //
 
 import Foundation
-import DerbyWalletENS
+import Go23WalletENS
 import PromiseKit
 import Combine
 

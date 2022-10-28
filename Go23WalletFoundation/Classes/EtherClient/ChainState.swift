@@ -1,7 +1,7 @@
 // Copyright SIX DAY LLC. All rights reserved.
 
 import Foundation
-import DerbyWalletCore
+import Go23WalletCore
 
 public final class ChainState {
     private let server: RPCServer

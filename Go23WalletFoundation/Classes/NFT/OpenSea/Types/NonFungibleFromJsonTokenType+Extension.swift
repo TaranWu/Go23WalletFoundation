@@ -1,7 +1,7 @@
 // Copyright © 2021 Stormbird PTE. LTD.
 
 import Foundation
-import DerbyWalletOpenSea
+import Go23WalletOpenSea
 
 extension NonFungibleFromJsonTokenType {
     var asTokenType: TokenType {

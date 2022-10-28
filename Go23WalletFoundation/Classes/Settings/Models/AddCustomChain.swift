@@ -2,7 +2,7 @@
 
 import Foundation
 import APIKit
-import JSONRPCKit
+import Go23JSONRPCKit
 import PromiseKit
 
 public enum AddCustomChainError: LocalizedError {

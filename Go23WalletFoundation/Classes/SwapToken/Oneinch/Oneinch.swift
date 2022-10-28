@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 import Alamofire
-import DerbyWalletCore
+import Go23WalletCore
 
 public class Oneinch: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
     private var assets: [DerbyWallet.Address: Oneinch.Asset] = .init()

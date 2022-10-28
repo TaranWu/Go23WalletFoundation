@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import DerbyWalletENS
+import Go23WalletENS
 
 public struct EnsLookupKey: Hashable, CustomStringConvertible {
     public let nameOrAddress: String

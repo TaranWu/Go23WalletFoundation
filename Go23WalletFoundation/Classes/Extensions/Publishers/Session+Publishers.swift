@@ -7,7 +7,7 @@
 
 import Foundation
 import APIKit
-import JSONRPCKit
+import Go23JSONRPCKit
 import Combine
 
 extension APIKitSession {

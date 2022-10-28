@@ -1,7 +1,7 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
 import Foundation
-import DerbyWalletOpenSea
+import Go23WalletOpenSea
 import BigInt
 import SwiftyJSON
 

@@ -6,8 +6,8 @@
 //
 
 import Foundation
-import DerbyWalletCore
-import DerbyWalletOpenSea
+import Go23WalletCore
+import Go23WalletOpenSea
 import Apollo
 import PromiseKit
 

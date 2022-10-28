@@ -6,22 +6,22 @@
 //
 
 import Foundation
-import web3swift
+import Go23Web3Swift
 import BigInt
 
-fileprivate typealias Web3swiftWeb3 = web3swift.Web3
+fileprivate typealias Web3swiftWeb3 = Go23Web3Swift.Web3
 
 public enum Web3 {
-    public typealias Web3Error = web3swift.Web3Error
-    public typealias EthereumAddress = web3swift.EthereumAddress
-    public typealias Eth = web3swift.web3.Eth
-    public typealias EventFilterable = web3swift.EventFilterable
-    public typealias EventParserResultProtocol = web3swift.EventParserResultProtocol
-    public typealias EventFilter = web3swift.EventFilter
-    public typealias TransactionReceipt = web3swift.TransactionReceipt
-    public typealias Networks = web3swift.Networks
-    public typealias RPCNodeHTTPHeaders = web3swift.RPCNodeHTTPHeaders
-    public typealias JSONRPCrequestDispatcher = web3swift.JSONRPCrequestDispatcher
+    public typealias Web3Error = Go23Web3Swift.Web3Error
+    public typealias EthereumAddress = Go23Web3Swift.EthereumAddress
+    public typealias Eth = Go23Web3Swift.web3.Eth
+    public typealias EventFilterable = Go23Web3Swift.EventFilterable
+    public typealias EventParserResultProtocol = Go23Web3Swift.EventParserResultProtocol
+    public typealias EventFilter = Go23Web3Swift.EventFilter
+    public typealias TransactionReceipt = Go23Web3Swift.TransactionReceipt
+    public typealias Networks = Go23Web3Swift.Networks
+    public typealias RPCNodeHTTPHeaders = Go23Web3Swift.RPCNodeHTTPHeaders
+    public typealias JSONRPCrequestDispatcher = Go23Web3Swift.JSONRPCrequestDispatcher
     
     public enum Utils {
         static var erc20ABI = Web3swiftWeb3.Utils.erc20ABI

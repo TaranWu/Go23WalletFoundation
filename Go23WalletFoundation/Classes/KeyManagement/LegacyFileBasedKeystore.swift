@@ -3,12 +3,12 @@
 import BigInt
 import Foundation
 import CryptoSwift
-import TrustKeystore
+import Go23TrustKeystore
 
 public enum FileBasedKeystoreError: LocalizedError {
     case protectionDisabled
 }
-fileprivate typealias LegacyKeyStore = TrustKeystore.KeyStore
+fileprivate typealias LegacyKeyStore = Go23TrustKeystore.KeyStore
 
 public class LegacyFileBasedKeystore {
     private let securedStorage: SecuredStorage

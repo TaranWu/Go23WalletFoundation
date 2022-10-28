@@ -9,7 +9,7 @@ import Alamofire
 import SwiftyJSON 
 import Combine
 import APIKit
-import DerbyWalletCore
+import Go23WalletCore
 
 public extension Covalent {
     public enum CovalentError: Error {

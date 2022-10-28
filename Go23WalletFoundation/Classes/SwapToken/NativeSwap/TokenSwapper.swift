@@ -3,8 +3,8 @@
 import Foundation
 import BigInt
 import Combine
-import DerbyWalletAddress
-import DerbyWalletCore
+import Go23WalletAddress
+import Go23WalletCore
 
 public struct SwapSupportState {
     let server: RPCServer

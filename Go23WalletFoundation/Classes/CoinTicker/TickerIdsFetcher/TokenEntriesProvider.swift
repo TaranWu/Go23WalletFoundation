@@ -7,7 +7,7 @@
 
 import Foundation
 import Combine
-import DerbyWalletCore
+import Go23WalletCore
 
 /// Provides tokens groups
 public protocol TokenEntriesProvider {

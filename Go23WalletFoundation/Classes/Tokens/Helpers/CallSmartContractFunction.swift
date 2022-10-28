@@ -2,15 +2,10 @@
 
 import Foundation
 import PromiseKit
-import web3swift
+import Go23Web3Swift
 
-//TODO time to wrap `callSmartContract` with a class
-
-//TODO wrap callSmartContract() and cache into a type
-// swiftlint:disable private_over_fileprivate
 fileprivate var smartContractCallsCache = AtomicDictionary<String, (promise: Promise<[String: Any]>, timestamp: Date)>()
 fileprivate var web3s = AtomicDictionary<RPCServer, [TimeInterval: web3]>()
-// swiftlint:enable private_over_fileprivate
 
 private let web3Queue: OperationQueue = {
     let queue = OperationQueue()
@@ -22,7 +17,7 @@ private let web3Queue: OperationQueue = {
 
 private func createWeb3(webProvider: Web3HttpProvider, forServer server: RPCServer) -> web3 {
     let requestDispatcher = JSONRPCrequestDispatcher(provider: webProvider, queue: web3Queue.underlyingQueue!, policy: server.web3SwiftRpcNodeBatchSupportPolicy)
-    return web3swift.web3(provider: webProvider, queue: web3Queue, requestDispatcher: requestDispatcher)
+    return Go23Web3Swift.web3(provider: webProvider, queue: web3Queue, requestDispatcher: requestDispatcher)
 }
 
 public func getCachedWeb3(forServer server: RPCServer, timeout: TimeInterval) throws -> web3 {
@@ -86,7 +81,7 @@ public func callSmartContract(withServer server: RPCServer, contract: DerbyWalle
 
             let contractAddress = EthereumAddress(address: contract)
 
-            guard let contractInstance = web3swift.web3.web3contract(web3: web3, abiString: abiString, at: contractAddress, options: web3.options) else {
+            guard let contractInstance = Go23Web3Swift.web3.web3contract(web3: web3, abiString: abiString, at: contractAddress, options: web3.options) else {
                 seal.reject(Web3Error(description: "Error creating web3swift contract instance to call \(functionName)()"))
                 return
             }
@@ -103,7 +98,7 @@ public func callSmartContract(withServer server: RPCServer, contract: DerbyWalle
             }.done(on: queue ?? .main, { data in
                 seal.fulfill(data)
             }).catch(on: queue ?? .main, { returnError in
-                if let error = returnError as? web3swift.Web3Error {
+                if let error = returnError as? Go23Web3Swift.Web3Error {
                     switch error {
                     case .rateLimited:
                         warnLog("[API] Rate limited by RPC node server: \(server)")
@@ -128,7 +123,7 @@ public func getSmartContractCallData(withServer server: RPCServer, contract: Der
     let timeout: TimeInterval = 60
     guard let web3 = try? getCachedWeb3(forServer: server, timeout: timeout) else { return nil }
     let contractAddress = EthereumAddress(address: contract)
-    guard let contractInstance = web3swift.web3.web3contract(web3: web3, abiString: abiString, at: contractAddress, options: web3.options) else { return nil }
+    guard let contractInstance = Go23Web3Swift.web3.web3contract(web3: web3, abiString: abiString, at: contractAddress, options: web3.options) else { return nil }
     guard let promiseCreator = contractInstance.method(functionName, parameters: parameters, options: nil) else { return nil }
     return promiseCreator.transaction.data
 }
@@ -147,7 +142,7 @@ public func getEventLogs(
         return Promise(error: Web3Error(description: "Error creating web3 for: \(server.rpcURL) + \(server.web3Network)"))
     }
 
-    guard let contractInstance = web3swift.web3.web3contract(web3: web3, abiString: abiString, at: contractAddress, options: web3.options) else {
+    guard let contractInstance = Go23Web3Swift.web3.web3contract(web3: web3, abiString: abiString, at: contractAddress, options: web3.options) else {
         return Promise(error: Web3Error(description: "Error creating web3swift contract instance to call \(eventName)()"))
     }
 

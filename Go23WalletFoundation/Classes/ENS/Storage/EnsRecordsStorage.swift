@@ -6,9 +6,9 @@
 //
 
 import Foundation
-import DerbyWalletCore
+import Go23WalletCore
 import Combine
-import DerbyWalletENS
+import Go23WalletENS
 
 public protocol EnsRecordsStorage: AnyObject {
     var allRecords: [EnsRecord] { get }

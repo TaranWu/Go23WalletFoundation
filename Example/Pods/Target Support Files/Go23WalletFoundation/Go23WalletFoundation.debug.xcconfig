@@ -1,7 +1,10 @@
 CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO
 CONFIGURATION_BUILD_DIR = ${PODS_CONFIGURATION_BUILD_DIR}/Go23WalletFoundation
+FRAMEWORK_SEARCH_PATHS = $(inherited) "${PODS_CONFIGURATION_BUILD_DIR}/APIKit" "${PODS_CONFIGURATION_BUILD_DIR}/Alamofire" "${PODS_CONFIGURATION_BUILD_DIR}/Alamofire-Synchronous" "${PODS_CONFIGURATION_BUILD_DIR}/Apollo" "${PODS_CONFIGURATION_BUILD_DIR}/BigInt" "${PODS_CONFIGURATION_BUILD_DIR}/BlockiesSwift" "${PODS_CONFIGURATION_BUILD_DIR}/CocoaAsyncSocket" "${PODS_CONFIGURATION_BUILD_DIR}/CocoaLumberjack" "${PODS_CONFIGURATION_BUILD_DIR}/CombineExt" "${PODS_CONFIGURATION_BUILD_DIR}/CryptoSwift" "${PODS_CONFIGURATION_BUILD_DIR}/Go23EthereumABI" "${PODS_CONFIGURATION_BUILD_DIR}/Go23EthereumAddress" "${PODS_CONFIGURATION_BUILD_DIR}/Go23JSONRPCKit" "${PODS_CONFIGURATION_BUILD_DIR}/Go23TrustKeystore" "${PODS_CONFIGURATION_BUILD_DIR}/Go23WalletAddress" "${PODS_CONFIGURATION_BUILD_DIR}/Go23WalletCore" "${PODS_CONFIGURATION_BUILD_DIR}/Go23WalletENS" "${PODS_CONFIGURATION_BUILD_DIR}/Go23WalletGoBack" "${PODS_CONFIGURATION_BUILD_DIR}/Go23WalletOpenSea" "${PODS_CONFIGURATION_BUILD_DIR}/Go23Web3Swift" "${PODS_CONFIGURATION_BUILD_DIR}/Kanna" "${PODS_CONFIGURATION_BUILD_DIR}/PaperTrailLumberjack" "${PODS_CONFIGURATION_BUILD_DIR}/PromiseKit" "${PODS_CONFIGURATION_BUILD_DIR}/Realm" "${PODS_CONFIGURATION_BUILD_DIR}/RealmSwift" "${PODS_CONFIGURATION_BUILD_DIR}/Result" "${PODS_CONFIGURATION_BUILD_DIR}/SipHash" "${PODS_CONFIGURATION_BUILD_DIR}/SwiftProtobuf" "${PODS_CONFIGURATION_BUILD_DIR}/SwiftyJSON" "${PODS_CONFIGURATION_BUILD_DIR}/TrezorCrypto" "${PODS_CONFIGURATION_BUILD_DIR}/TrustWalletCore" "${PODS_CONFIGURATION_BUILD_DIR}/libsodium" "${PODS_CONFIGURATION_BUILD_DIR}/secp256k1_ios" "${PODS_ROOT}/Realm/core" "${PODS_ROOT}/TrustWalletCore" "${PODS_XCFRAMEWORKS_BUILD_DIR}/TrustWalletCore/Core"
 GCC_PREPROCESSOR_DEFINITIONS = $(inherited) COCOAPODS=1
+HEADER_SEARCH_PATHS = $(inherited) "${PODS_XCFRAMEWORKS_BUILD_DIR}/Realm/Headers"
 LIBRARY_SEARCH_PATHS = $(inherited) "${DT_TOOLCHAIN_DIR}/usr/lib/swift/${PLATFORM_NAME}" /usr/lib/swift
+OTHER_LDFLAGS = $(inherited) -framework "APIKit" -framework "Apollo" -framework "BigInt" -framework "BlockiesSwift" -framework "CocoaLumberjack" -framework "Combine" -framework "CombineExt" -framework "CryptoSwift" -framework "Foundation" -framework "Go23EthereumABI" -framework "Go23JSONRPCKit" -framework "Go23TrustKeystore" -framework "Go23WalletAddress" -framework "Go23WalletCore" -framework "Go23WalletENS" -framework "Go23WalletGoBack" -framework "Go23WalletOpenSea" -framework "Go23Web3Swift" -framework "Kanna" -framework "PaperTrailLumberjack" -framework "PromiseKit" -framework "RealmSwift" -framework "SwiftProtobuf" -framework "SwiftyJSON" -framework "TrezorCrypto" -framework "UIKit" -framework "WalletCore" -weak_framework "SwiftUI"
 OTHER_SWIFT_FLAGS = $(inherited) -D COCOAPODS
 PODS_BUILD_DIR = ${BUILD_DIR}
 PODS_CONFIGURATION_BUILD_DIR = ${PODS_BUILD_DIR}/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)
@@ -10,4 +13,6 @@ PODS_TARGET_SRCROOT = ${PODS_ROOT}/../..
 PODS_XCFRAMEWORKS_BUILD_DIR = $(PODS_CONFIGURATION_BUILD_DIR)/XCFrameworkIntermediates
 PRODUCT_BUNDLE_IDENTIFIER = org.cocoapods.${PRODUCT_NAME:rfc1034identifier}
 SKIP_INSTALL = YES
+SWIFT_INCLUDE_PATHS = $(inherited) "${PODS_XCFRAMEWORKS_BUILD_DIR}/Realm"
+SWIFT_OPTIMIZATION_LEVEL = -Owholemodule
 USE_RECURSIVE_SCRIPT_INPUTS_IN_SCRIPT_PHASES = YES

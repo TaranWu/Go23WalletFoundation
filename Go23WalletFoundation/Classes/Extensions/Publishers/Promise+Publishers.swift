@@ -7,7 +7,7 @@
 
 import PromiseKit
 import Combine
-import DerbyWalletCore
+import Go23WalletCore
 
 extension Promise {
     public var publisher: AnyPublisher<T, PromiseError> {

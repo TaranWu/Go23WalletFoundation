@@ -6,7 +6,7 @@
 //
 
 import Foundation 
-import DerbyWalletCore
+import Go23WalletCore
 
 public enum AddressOrEnsResolution {
     case invalidInput

@@ -5,10 +5,10 @@
 //  Created by Vladyslav Shepitko on 08.10.2021.
 //
 
-import JSONRPCKit
+import Go23JSONRPCKit
 import Foundation
 
-struct DASLookupRequest: JSONRPCKit.Request {
+struct DASLookupRequest: Go23JSONRPCKit.Request {
     typealias Response = DASLookupResponse
 
     let value: String
@@ -47,8 +47,8 @@ struct DASLookupResponse: Decodable {
         errno = try container.decode(Int.self, forKey: .errno)
         errmsg = try container.decode(String.self, forKey: .errmsg)
         if let value = try? container.decodeIfPresent(DataClass.self, forKey: .data) {
-            records = value?.accountData.records ?? []
-            if value?.accountData.ownerAddressChain == "ETH", let address = value?.accountData.ownerAddress {
+            records = value.accountData.records ?? []
+            if value.accountData.ownerAddressChain == "ETH", let address = value.accountData.ownerAddress {
                 ownerAddress = DerbyWallet.Address(string: address)
             } else {
                 ownerAddress = nil

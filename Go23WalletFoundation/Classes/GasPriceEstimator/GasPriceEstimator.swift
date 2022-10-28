@@ -9,7 +9,7 @@ import Foundation
 import PromiseKit
 import BigInt
 import APIKit
-import JSONRPCKit
+import Go23JSONRPCKit
 
 public final class GasPriceEstimator {
     private let analytics: AnalyticsLogger

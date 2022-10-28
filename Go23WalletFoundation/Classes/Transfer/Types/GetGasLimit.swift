@@ -8,7 +8,7 @@
 import Foundation
 import APIKit
 import BigInt
-import JSONRPCKit
+import Go23JSONRPCKit
 import PromiseKit
 
 public final class GetGasLimit {

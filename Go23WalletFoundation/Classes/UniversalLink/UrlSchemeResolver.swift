@@ -6,7 +6,7 @@
 //
 
 import UIKit
-import DerbyWalletFoundation
+import Go23WalletFoundation
 
 public enum UrlSource {
     case deeplink

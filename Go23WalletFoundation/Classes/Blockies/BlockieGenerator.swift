@@ -9,8 +9,8 @@ import Foundation
 import BlockiesSwift 
 import UIKit.UIImage
 import Combine
-import DerbyWalletENS
-import DerbyWalletCore
+import Go23WalletENS
+import Go23WalletCore
 
 public protocol NftAssetImageProvider: AnyObject {
     func assetImageUrl(for url: Eip155URL) -> AnyPublisher<URL, PromiseError>

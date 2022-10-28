@@ -2,11 +2,11 @@
 
 import UIKit
 import PromiseKit
-import DerbyWalletCore
-import DerbyWalletOpenSea
+import Go23WalletCore
+import Go23WalletOpenSea
 
-public typealias GoogleContentSize = DerbyWalletCore.GoogleContentSize
-public typealias WebImageURL = DerbyWalletCore.WebImageURL
+public typealias GoogleContentSize = Go23WalletCore.GoogleContentSize
+public typealias WebImageURL = Go23WalletCore.WebImageURL
 public typealias TokenImage = (image: ImageOrWebImageUrl, symbol: String, isFinal: Bool, overlayServerIcon: UIImage?)
 public typealias Image = UIImage
 

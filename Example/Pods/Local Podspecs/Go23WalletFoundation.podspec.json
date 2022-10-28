@@ -1,22 +1,104 @@
 {
   "name": "Go23WalletFoundation",
-  "version": "0.1.0",
-  "summary": "A short description of Go23WalletFoundation.",
-  "description": "TODO: Add long description of the pod here.",
+  "version": "1.0.0",
+  "summary": "Go23Wallet functionality",
+  "description": "Core wallet functionality",
   "homepage": "https://github.com/TaranWu/Go23WalletFoundation",
   "license": {
     "type": "MIT",
     "file": "LICENSE"
   },
   "authors": {
-    "TaranWu": "NA"
+    "Taran": "NA"
   },
   "source": {
     "git": "https://github.com/TaranWu/Go23WalletFoundation.git",
-    "tag": "0.1.0"
+    "tag": "1.0.0"
   },
   "platforms": {
-    "ios": "10.0"
+    "ios": "13.0"
   },
-  "source_files": "Go23WalletFoundation/Classes/**/*"
+  "swift_versions": "5.0",
+  "source_files": "Go23WalletFoundation/Classes/**/*.{h,m,swift}",
+  "pod_target_xcconfig": {
+    "SWIFT_OPTIMIZATION_LEVEL": "-Owholemodule"
+  },
+  "dependencies": {
+    "BigInt": [
+      "~> 3.1"
+    ],
+    "Go23JSONRPCKit": [
+
+    ],
+    "APIKit": [
+      "5.1.0"
+    ],
+    "RealmSwift": [
+      "10.27.0"
+    ],
+    "CryptoSwift": [
+      "~> 1.4"
+    ],
+    "TrezorCrypto": [
+
+    ],
+    "Go23TrustKeystore": [
+
+    ],
+    "SwiftyJSON": [
+      "5.0.0"
+    ],
+    "Go23Web3Swift": [
+
+    ],
+    "PromiseKit/CorePromise": [
+
+    ],
+    "PromiseKit/Alamofire": [
+
+    ],
+    "Kanna": [
+
+    ],
+    "TrustWalletCore": [
+      "2.6.34"
+    ],
+    "Go23EthereumABI": [
+
+    ],
+    "BlockiesSwift": [
+
+    ],
+    "CocoaLumberjack": [
+      "3.7.0"
+    ],
+    "PaperTrailLumberjack/Swift": [
+
+    ],
+    "Go23WalletAddress": [
+
+    ],
+    "Go23WalletCore": [
+
+    ],
+    "Go23WalletGoBack": [
+
+    ],
+    "Go23WalletENS": [
+
+    ],
+    "Go23WalletOpenSea": [
+
+    ],
+    "Apollo": [
+      "0.53.0"
+    ],
+    "CombineExt": [
+      "1.8.0"
+    ],
+    "SwiftProtobuf": [
+      "~> 1.18.0"
+    ]
+  },
+  "swift_version": "5.0"
 }

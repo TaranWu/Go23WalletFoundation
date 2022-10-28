@@ -9,8 +9,8 @@ import Foundation
 import Combine
 import Alamofire
 import SwiftyJSON
-import DerbyWalletENS
-import DerbyWalletCore
+import Go23WalletENS
+import Go23WalletCore
 
 struct UnstoppableDomainsV2ApiError: Error {
     var localizedDescription: String

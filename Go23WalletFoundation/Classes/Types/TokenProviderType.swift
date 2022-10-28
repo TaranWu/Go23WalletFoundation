@@ -5,7 +5,7 @@
 //  Created by Vladyslav Shepitko on 27.08.2021.
 //
 
-import DerbyWalletCore
+import Go23WalletCore
 import PromiseKit
 import BigInt
 

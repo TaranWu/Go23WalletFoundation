@@ -6,7 +6,7 @@
 //
 
 import BigInt
-import EthereumABI
+import Go23EthereumABI
 
 extension FunctionCall.Argument {
     init(type: ABIType, anyValue: Any?) {

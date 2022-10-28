@@ -2,9 +2,9 @@
 
 import Foundation
 import APIKit
-import JSONRPCKit
+import Go23JSONRPCKit
 
-public struct EtherServiceRequest<Batch: JSONRPCKit.Batch>: APIKit.Request {
+public struct EtherServiceRequest<Batch: Go23JSONRPCKit.Batch>: APIKit.Request {
     private let rpcURL: URL
     private let rpcHeaders: [String: String]
     private let batch: Batch

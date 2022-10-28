@@ -1,7 +1,7 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
 import UIKit
-import DerbyWalletFoundation
+import Go23WalletFoundation
 
 public protocol UniversalLinkInPasteboardServiceDelegate: AnyObject {
     func importUniversalLink(url: DeepLink, for service: UniversalLinkInPasteboardService)

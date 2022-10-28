@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 import Alamofire
-import DerbyWalletCore
+import Go23WalletCore
 
 public final class Ramp: SupportedTokenActionsProvider, BuyTokenURLProviderType {
     private var objectWillChangeSubject = PassthroughSubject<Void, Never>()

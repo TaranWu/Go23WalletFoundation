@@ -7,7 +7,7 @@
 
 import Foundation
 import BigInt
-import JSONRPCKit
+import Go23JSONRPCKit
 import PromiseKit
 import Combine
 

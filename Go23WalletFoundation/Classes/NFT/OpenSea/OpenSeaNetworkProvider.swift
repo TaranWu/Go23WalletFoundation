@@ -5,18 +5,18 @@
 //  Created by Vladyslav Shepitko on 23.03.2022.
 //
 
-import DerbyWalletOpenSea
+import Go23WalletOpenSea
 import PromiseKit
 
 final class OpenSeaNetworkProvider {
     private let analytics: AnalyticsLogger
-    private let openSea: DerbyWalletOpenSea.OpenSea
+    private let openSea: Go23WalletOpenSea.OpenSea
     //TODO should pass in instead
     private let config: Config = Config()
 
     init(analytics: AnalyticsLogger, queue: DispatchQueue) {
         self.analytics = analytics
-        self.openSea = DerbyWalletOpenSea.OpenSea(apiKeys: Self.openSeaApiKeys(), queue: queue)
+        self.openSea = Go23WalletOpenSea.OpenSea(apiKeys: Self.openSeaApiKeys(), queue: queue)
         openSea.delegate = self
     }
 

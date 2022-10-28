@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import JSONRPCKit
+import Go23JSONRPCKit
 import APIKit
 import PromiseKit
 

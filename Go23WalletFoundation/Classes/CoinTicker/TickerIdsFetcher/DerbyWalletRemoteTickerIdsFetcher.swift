@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 import CombineExt
-import DerbyWalletCore
+import Go23WalletCore
 
 /// Looks up for tokens groups, and searches for each token matched in group to resolve ticker id. We know that tokens in group relate to same coin, on different chaing.
 /// - Loads tokens groups

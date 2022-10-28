@@ -6,7 +6,7 @@
 
 import BigInt
 import Foundation
-import TrustKeystore
+import Go23TrustKeystore
 
 /// Encodes fields according to Ethereum's Application Binary Interface Specification
 ///

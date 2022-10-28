@@ -9,11 +9,11 @@ import Foundation
 import PromiseKit
 import BigInt
 import APIKit
-import JSONRPCKit
+import Go23JSONRPCKit
 
 public typealias APIKitSession = APIKit.Session
 public typealias SessionTaskError = APIKit.SessionTaskError
-public typealias JSONRPCError = JSONRPCKit.JSONRPCError
+public typealias JSONRPCError = Go23JSONRPCKit.JSONRPCError
 
 public final class GetGasPrice {
     private let analytics: AnalyticsLogger

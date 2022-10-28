@@ -7,7 +7,7 @@
 
 import Foundation
 import Combine
-import DerbyWalletCore
+import Go23WalletCore
 
 public enum PriceAlertUpdates {
     case enabled(Bool)

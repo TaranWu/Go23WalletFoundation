@@ -7,7 +7,7 @@
 
 import Combine
 import Foundation
-import DerbyWalletCore
+import Go23WalletCore
 import CombineExt
 
 /// Ticker ids are havy objects, that don't change often, keep them cached and in separate fetcher to extract logic

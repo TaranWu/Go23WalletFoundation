@@ -7,7 +7,7 @@
 
 import Foundation
 import Combine
-import DerbyWalletCore
+import Go23WalletCore
 
 public struct JsonWalletAddressesStore: WalletAddressesStore {
     private static let walletsFolderForTests = "testSuiteWalletsForWalletAddresses"

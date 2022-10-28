@@ -1,10 +1,10 @@
 // Copyright SIX DAY LLC. All rights reserved.
 
 import Foundation
-import JSONRPCKit
+import Go23JSONRPCKit
 import BigInt
 
-struct EstimateGasRequest: JSONRPCKit.Request {
+struct EstimateGasRequest: Go23JSONRPCKit.Request {
     typealias Response = String
 
     enum TransactionType {

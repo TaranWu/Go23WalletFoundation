@@ -7,8 +7,8 @@
 
 import Foundation
 import Combine
-import DerbyWalletENS
-import DerbyWalletCore
+import Go23WalletENS
+import Go23WalletCore
 
 public class DomainResolutionService {
     private let storage: EnsRecordsStorage

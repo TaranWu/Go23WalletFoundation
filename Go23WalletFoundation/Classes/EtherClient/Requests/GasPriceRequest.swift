@@ -1,9 +1,9 @@
 // Copyright SIX DAY LLC. All rights reserved.
 
 import Foundation
-import JSONRPCKit
+import Go23JSONRPCKit
 
-struct GasPriceRequest: JSONRPCKit.Request {
+struct GasPriceRequest: Go23JSONRPCKit.Request {
     typealias Response = String
 
     var method: String {

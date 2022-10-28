@@ -1,9 +1,9 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
-import DerbyWalletAddress
+import Go23WalletAddress
 
 ///Use an enum as a namespace until Swift has proper namespaces
-public typealias DerbyWallet = DerbyWalletAddress.DerbyWallet
+public typealias DerbyWallet = Go23WalletAddress.DerbyWallet
 
 extension DerbyWallet.Address {
     public var isLegacy875Contract: Bool {

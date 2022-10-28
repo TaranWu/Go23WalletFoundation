@@ -2,7 +2,7 @@
 // Created by James Sangalli on 8/11/18.
 //
 import Foundation
-import DerbyWalletENS
+import Go23WalletENS
 import Combine
 
 public class EnsResolver: ENSDelegateImpl {

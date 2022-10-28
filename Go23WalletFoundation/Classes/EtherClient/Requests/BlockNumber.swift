@@ -2,9 +2,9 @@
 
 import BigInt
 import Foundation
-import JSONRPCKit
+import Go23JSONRPCKit
 
-struct BlockNumberRequest: JSONRPCKit.Request {
+struct BlockNumberRequest: Go23JSONRPCKit.Request {
     typealias Response = Int
 
     var method: String {

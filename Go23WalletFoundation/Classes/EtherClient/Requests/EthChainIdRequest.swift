@@ -1,9 +1,9 @@
 // Copyright © 2021 Stormbird PTE. LTD.
 
 import Foundation
-import JSONRPCKit
+import Go23JSONRPCKit
 
-struct EthChainIdRequest: JSONRPCKit.Request {
+struct EthChainIdRequest: Go23JSONRPCKit.Request {
     typealias Response = String
     var method: String {
         return "eth_chainId"

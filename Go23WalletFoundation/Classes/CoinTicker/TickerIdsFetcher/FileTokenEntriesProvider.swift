@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 import CombineExt
-import DerbyWalletCore
+import Go23WalletCore
 
 public final class FileTokenEntriesProvider: TokenEntriesProvider {
     private let absoluteFilename: String

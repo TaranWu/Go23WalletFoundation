@@ -7,7 +7,7 @@
 
 import Combine
 import RealmSwift
-import DerbyWalletCore
+import Go23WalletCore
 import CombineExt
 
 public typealias TickerIdString = String

@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import DerbyWalletOpenSea
+import Go23WalletOpenSea
 import BigInt
 
 public struct TokenSelection: Equatable, Hashable {

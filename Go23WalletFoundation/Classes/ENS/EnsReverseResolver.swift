@@ -1,7 +1,7 @@
 // Copyright © 2019 Stormbird PTE. LTD.
 
 import Foundation
-import DerbyWalletENS
+import Go23WalletENS
 import Combine
 
 class EnsReverseResolver: ENSDelegateImpl {

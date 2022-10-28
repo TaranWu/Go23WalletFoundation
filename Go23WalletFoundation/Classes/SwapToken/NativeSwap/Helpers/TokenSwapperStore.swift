@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import DerbyWalletCore
+import Go23WalletCore
 
 protocol TokenSwapperStore {
     mutating func addOrUpdate(swapSupportStates: [SwapSupportState])

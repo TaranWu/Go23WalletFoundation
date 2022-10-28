@@ -7,8 +7,8 @@
 
 import Foundation
 import Combine
-import DerbyWalletCore
-import DerbyWalletOpenSea
+import Go23WalletCore
+import Go23WalletOpenSea
 import BigInt
 import PromiseKit
 import SwiftyJSON

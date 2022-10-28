@@ -2,7 +2,7 @@
 
 import Foundation
 import BigInt
-import TrustKeystore 
+import Go23TrustKeystore 
 
 public enum AssetAttributeValueUsableAsFunctionArguments {
     case address(DerbyWallet.Address)

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import DerbyWalletCore
+import Go23WalletCore
 
 public protocol WalletStorage {
     func name(for address: DerbyWallet.Address) -> String?

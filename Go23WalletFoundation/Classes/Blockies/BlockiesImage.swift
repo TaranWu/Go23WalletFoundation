@@ -6,7 +6,7 @@
 //
 
 import UIKit
-import DerbyWalletCore
+import Go23WalletCore
 
 public enum BlockiesImage {
     case image(image: UIImage, isEnsAvatar: Bool)

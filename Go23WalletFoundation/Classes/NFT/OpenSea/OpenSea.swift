@@ -2,10 +2,10 @@
 
 import Foundation
 import PromiseKit
-import DerbyWalletCore
-import DerbyWalletOpenSea
+import Go23WalletCore
+import Go23WalletOpenSea
 
-public typealias Stats = DerbyWalletOpenSea.Stats
+public typealias Stats = Go23WalletOpenSea.Stats
 
 public final class OpenSea {
     private let analytics: AnalyticsLogger

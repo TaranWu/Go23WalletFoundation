@@ -1,6 +1,9 @@
+source "https://github.com/TaranWu/Go23WalletSpec.git"
+source 'https://github.com/CocoaPods/Specs.git'
+
 use_frameworks!
 
-platform :ios, '10.0'
+platform :ios, '13.0'
 
 target 'Go23WalletFoundation_Example' do
   pod 'Go23WalletFoundation', :path => '../'
@@ -9,5 +12,33 @@ target 'Go23WalletFoundation_Example' do
     inherit! :search_paths
 
     
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+          config.build_settings['LD_NO_PIE'] = 'NO'
+          config.build_settings['CLANG_ENABLE_CODE_COVERAGE'] = 'NO'
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+
+          if ['Result'].include? target.name
+            target.build_configurations.each do |config|
+              config.build_settings['SWIFT_VERSION'] = '4.2'
+            end
+          end
+
+          target.build_configurations
+            .filter {|e| e.debug?}
+            .each do |config|
+              config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-Onone'
+            end
+            
+          target.build_configurations.each do |config|
+            config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ""
+            config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
+            config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+           end
+      end
   end
 end

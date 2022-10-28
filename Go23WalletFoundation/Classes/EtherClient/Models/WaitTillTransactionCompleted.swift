@@ -7,9 +7,9 @@
 
 import Foundation
 import APIKit
-import JSONRPCKit
+import Go23JSONRPCKit
 import PromiseKit
-import DerbyWalletCore
+import Go23WalletCore
 
 public final class WaitTillTransactionCompleted {
     private let server: RPCServer

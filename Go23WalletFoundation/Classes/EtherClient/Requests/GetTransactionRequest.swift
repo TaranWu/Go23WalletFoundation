@@ -1,9 +1,9 @@
 // Copyright SIX DAY LLC. All rights reserved.
 
 import Foundation
-import JSONRPCKit
+import Go23JSONRPCKit
 
-struct GetTransactionRequest: JSONRPCKit.Request {
+struct GetTransactionRequest: Go23JSONRPCKit.Request {
     typealias Response = PendingTransaction?
 
     let hash: String

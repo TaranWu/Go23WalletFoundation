@@ -6,13 +6,13 @@
 //
 
 import Foundation
-import DerbyWalletOpenSea
-import DerbyWalletENS
+import Go23WalletOpenSea
+import Go23WalletENS
 
 public class ConfigureApp: Initializer {
     public init() {}
     public func perform() {
         ENS.isLoggingEnabled = true
-        DerbyWalletOpenSea.OpenSea.isLoggingEnabled = true
+        Go23WalletOpenSea.OpenSea.isLoggingEnabled = true
     }
 }

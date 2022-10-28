@@ -1,7 +1,7 @@
 // Copyright © 2021 Stormbird PTE. LTD.
 
 import Foundation
-import DerbyWalletOpenSea
+import Go23WalletOpenSea
 import BigInt
 
 //To store the output from ERC721's `tokenURI()`. The output has to be massaged to fit here as the properties was designed for OpenSea
@@ -14,7 +14,7 @@ public struct NonFungibleFromTokenUri: Codable, NonFungibleFromJson {
         return nil
     }
 
-    public var collection: DerbyWalletOpenSea.Collection? {
+    public var collection: Go23WalletOpenSea.Collection? {
         return nil
     }
 

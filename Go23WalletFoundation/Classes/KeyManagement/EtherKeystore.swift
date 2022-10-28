@@ -4,7 +4,7 @@ import Foundation
 import LocalAuthentication
 import BigInt
 import WalletCore 
-import TrustKeystore
+import Go23TrustKeystore
 
 public enum EtherKeystoreError: LocalizedError {
     case protectionDisabled

@@ -7,7 +7,7 @@
 
 import Foundation
 import Combine
-import DerbyWalletCore
+import Go23WalletCore
 import CombineExt
 
 public protocol ChainStateSchedulerProviderDelegate: AnyObject {

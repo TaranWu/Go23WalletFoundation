@@ -1,7 +1,7 @@
 // Copyright © 2019 Stormbird PTE. LTD.
 
 import Foundation
-import TrustKeystore
+import Go23TrustKeystore
 
 public struct EthereumSigner {
     static var vitaliklizeConstant: UInt8 {

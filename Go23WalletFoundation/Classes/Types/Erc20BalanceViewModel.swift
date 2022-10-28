@@ -7,7 +7,7 @@
 
 import Foundation
 import BigInt
-import DerbyWalletOpenSea
+import Go23WalletOpenSea
 
 public protocol BalanceRepresentable {
     var balanceNft: [TokenBalanceValue] { get }

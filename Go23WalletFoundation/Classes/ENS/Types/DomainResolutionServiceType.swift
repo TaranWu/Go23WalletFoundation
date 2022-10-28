@@ -7,7 +7,7 @@
 
 import Foundation 
 import Combine
-import DerbyWalletCore
+import Go23WalletCore
 
 public protocol DomainResolutionServiceType {
     func resolveAddress(string value: String) -> AnyPublisher<DerbyWallet.Address, PromiseError>

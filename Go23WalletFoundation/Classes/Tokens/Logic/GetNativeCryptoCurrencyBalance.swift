@@ -1,7 +1,7 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
 import Foundation
-import JSONRPCKit
+import Go23JSONRPCKit
 import APIKit
 import PromiseKit
 
