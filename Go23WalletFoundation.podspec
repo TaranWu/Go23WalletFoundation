@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'Go23WalletFoundation'
-  s.version          = '1.0.0'
+  s.version          = '1.0.1'
   s.summary          = 'Go23Wallet functionality'
 
   s.description      = <<-DESC
@@ -25,7 +25,7 @@ Pod::Spec.new do |s|
   s.platform         = :ios, "13.0"
   
   s.source_files = 'Go23WalletFoundation/Classes/**/*.{h,m,swift}'
-#  s.resource_bundles = {'Go23WalletFoundation' => ['Go23WalletFoundation/Class/**/*.{graphql,json}'] }
+  s.resource_bundles = {'Go23WalletFoundation' => ['Go23WalletFoundation/Classes/**/*.{graphql,json}'] }
   s.pod_target_xcconfig = { 'SWIFT_OPTIMIZATION_LEVEL' => '-Owholemodule' }
   
   # s.resource_bundles = {
