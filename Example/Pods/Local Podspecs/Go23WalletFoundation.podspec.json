@@ -1,6 +1,6 @@
 {
   "name": "Go23WalletFoundation",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "summary": "Go23Wallet functionality",
   "description": "Core wallet functionality",
   "homepage": "https://github.com/TaranWu/Go23WalletFoundation",
@@ -13,7 +13,7 @@
   },
   "source": {
     "git": "https://github.com/TaranWu/Go23WalletFoundation.git",
-    "tag": "1.0.2"
+    "tag": "1.0.4"
   },
   "platforms": {
     "ios": "13.0"

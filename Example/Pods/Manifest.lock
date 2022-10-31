@@ -44,7 +44,7 @@ PODS:
     - Go23WalletCore
     - Go23Web3Swift
     - PromiseKit
-  - Go23WalletFoundation (1.0.2):
+  - Go23WalletFoundation (1.0.4):
     - APIKit (= 5.1.0)
     - Apollo (= 0.53.0)
     - BigInt (~> 3.1)
@@ -187,7 +187,7 @@ SPEC CHECKSUMS:
   Go23WalletAddress: 57f0cff209863b7d76ef90696db5e7c154f38c1f
   Go23WalletCore: 781450fed122b9d02d26cb161a4eb991e4b4faea
   Go23WalletENS: 9da8d22adbf41fe8573ddff9ea260098f6e33f67
-  Go23WalletFoundation: 5f934cf58c50814ecf00be1b0ada3772d1fca946
+  Go23WalletFoundation: 89e6c85e00117dd125df966c3894e14c76d53fde
   Go23WalletGoBack: e039a83f128a88e4e94d18edf98520223eb3a081
   Go23WalletOpenSea: a468c7017d9dfbefdc20f00190e537f841251bd7
   Go23Web3Swift: af20afd526445afa1a8056ef21695d6cb03082fd
