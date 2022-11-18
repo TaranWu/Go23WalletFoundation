@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'Go23WalletFoundation'
-  s.version          = '1.0.4'
+  s.version          = '1.0.5'
   s.summary          = 'Go23Wallet functionality'
 
   s.description      = <<-DESC
@@ -40,8 +40,7 @@ Pod::Spec.new do |s|
   s.dependency 'APIKit', '5.1.0'
   s.dependency 'RealmSwift', '10.27.0'
   s.dependency 'CryptoSwift', '~> 1.4'
-#  s.dependency 'AlphaWalletWeb3Provider'
-  s.dependency 'TrezorCrypto'
+  s.dependency 'TrezorFirmwareCrypto'
   s.dependency 'Go23TrustKeystore'
   s.dependency 'SwiftyJSON', '5.0.0'
   s.dependency 'Go23Web3Swift'

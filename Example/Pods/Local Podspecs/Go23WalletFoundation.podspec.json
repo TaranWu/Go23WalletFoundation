@@ -44,7 +44,7 @@
     "CryptoSwift": [
       "~> 1.4"
     ],
-    "TrezorCrypto": [
+    "TrezorFirmwareCrypto": [
 
     ],
     "Go23TrustKeystore": [

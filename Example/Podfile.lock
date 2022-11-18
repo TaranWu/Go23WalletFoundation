@@ -25,10 +25,9 @@ PODS:
     - CryptoSwift (~> 1.0)
   - Go23JSONRPCKit (0.1.0):
     - Result
-  - Go23TrustKeystore (0.2.0):
+  - Go23TrustKeystore (0.3.0):
     - CryptoSwift (~> 1.0)
     - secp256k1_ios (~> 0.1.0)
-    - TrezorCrypto
   - Go23WalletAddress (1.0.0):
     - Alamofire
     - Go23EthereumAddress
@@ -68,7 +67,7 @@ PODS:
     - RealmSwift (= 10.27.0)
     - SwiftProtobuf (~> 1.18.0)
     - SwiftyJSON (= 5.0.0)
-    - TrezorCrypto
+    - TrezorFirmwareCrypto
     - TrustWalletCore (= 2.6.34)
   - Go23WalletGoBack (1.0.0)
   - Go23WalletOpenSea (1.0.0):
@@ -117,7 +116,7 @@ PODS:
   - SipHash (1.2.2)
   - SwiftProtobuf (1.18.0)
   - SwiftyJSON (5.0.0)
-  - TrezorCrypto (0.0.9)
+  - TrezorFirmwareCrypto (0.1.0)
   - TrustWalletCore (2.6.34):
     - TrustWalletCore/Core (= 2.6.34)
   - TrustWalletCore/Core (2.6.34):
@@ -151,7 +150,7 @@ SPEC REPOS:
     - SipHash
     - SwiftProtobuf
     - SwiftyJSON
-    - TrezorCrypto
+    - TrezorFirmwareCrypto
     - TrustWalletCore
   https://github.com/TaranWu/Go23WalletSpec.git:
     - Go23EthereumABI
@@ -183,11 +182,11 @@ SPEC CHECKSUMS:
   Go23EthereumABI: 4b797baa72fb3d83620280a723ea6818e86af4ac
   Go23EthereumAddress: 020aef86a999274abb99331c49ad085c0a2c1b46
   Go23JSONRPCKit: 8135796b7e3b193d27a19fbd8a34653106ca993a
-  Go23TrustKeystore: 5e84bd25006a8b153cf0eaf3d14009d8de8d51bb
+  Go23TrustKeystore: f1d1678671e0617337720ceec1b6697f56d2fbdc
   Go23WalletAddress: 57f0cff209863b7d76ef90696db5e7c154f38c1f
   Go23WalletCore: 781450fed122b9d02d26cb161a4eb991e4b4faea
   Go23WalletENS: 9da8d22adbf41fe8573ddff9ea260098f6e33f67
-  Go23WalletFoundation: 89e6c85e00117dd125df966c3894e14c76d53fde
+  Go23WalletFoundation: 2d2a7d2d7e713ea289ce473eb0e8369537d0e782
   Go23WalletGoBack: e039a83f128a88e4e94d18edf98520223eb3a081
   Go23WalletOpenSea: a468c7017d9dfbefdc20f00190e537f841251bd7
   Go23Web3Swift: af20afd526445afa1a8056ef21695d6cb03082fd
@@ -202,7 +201,7 @@ SPEC CHECKSUMS:
   SipHash: fad90a4683e420c52ef28063063dbbce248ea6d4
   SwiftProtobuf: c3c12645230d9b09c72267e0de89468c5543bd86
   SwiftyJSON: 36413e04c44ee145039d332b4f4e2d3e8d6c4db7
-  TrezorCrypto: bfeea47a052dca2c77d4a39e1e183865e52de14d
+  TrezorFirmwareCrypto: e60c796c61d1b51ed7dddd65470f9ce8fb1b50d3
   TrustWalletCore: a92d85baa15932279cce925559e93695558cafdd
 
 PODFILE CHECKSUM: 1a8eddf2604937c5b2723dc070a57e37a22155c8
