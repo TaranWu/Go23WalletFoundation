@@ -43,7 +43,7 @@ PODS:
     - Go23WalletCore
     - Go23Web3Swift
     - PromiseKit
-  - Go23WalletFoundation (1.0.4):
+  - Go23WalletFoundation (1.0.5):
     - APIKit (= 5.1.0)
     - Apollo (= 0.53.0)
     - BigInt (~> 3.1)
@@ -64,7 +64,7 @@ PODS:
     - PaperTrailLumberjack/Swift
     - PromiseKit/Alamofire
     - PromiseKit/CorePromise
-    - RealmSwift (= 10.27.0)
+    - RealmSwift
     - SwiftProtobuf (~> 1.18.0)
     - SwiftyJSON (= 5.0.0)
     - TrezorFirmwareCrypto
@@ -106,11 +106,11 @@ PODS:
     - PromiseKit/CorePromise
   - PromiseKit/UIKit (6.3.5):
     - PromiseKit/CorePromise
-  - Realm (10.27.0):
-    - Realm/Headers (= 10.27.0)
-  - Realm/Headers (10.27.0)
-  - RealmSwift (10.27.0):
-    - Realm (= 10.27.0)
+  - Realm (10.32.3):
+    - Realm/Headers (= 10.32.3)
+  - Realm/Headers (10.32.3)
+  - RealmSwift (10.32.3):
+    - Realm (= 10.32.3)
   - Result (5.0.0)
   - secp256k1_ios (0.1.3)
   - SipHash (1.2.2)
@@ -186,7 +186,7 @@ SPEC CHECKSUMS:
   Go23WalletAddress: 57f0cff209863b7d76ef90696db5e7c154f38c1f
   Go23WalletCore: 781450fed122b9d02d26cb161a4eb991e4b4faea
   Go23WalletENS: 9da8d22adbf41fe8573ddff9ea260098f6e33f67
-  Go23WalletFoundation: 2d2a7d2d7e713ea289ce473eb0e8369537d0e782
+  Go23WalletFoundation: 3d56cea83add1f7c8d2dd28ade85179108f685f4
   Go23WalletGoBack: e039a83f128a88e4e94d18edf98520223eb3a081
   Go23WalletOpenSea: a468c7017d9dfbefdc20f00190e537f841251bd7
   Go23Web3Swift: af20afd526445afa1a8056ef21695d6cb03082fd
@@ -194,8 +194,8 @@ SPEC CHECKSUMS:
   libsodium: 9a8faa5ef2fa0d2d57bd7f7d79bf8fb7c1a9f0ea
   PaperTrailLumberjack: 449587968d5aeb3eab2d4de041ffc61ee2d49f25
   PromiseKit: 32c36425387e9cfc7f1206f27bfd906d0b53c0d6
-  Realm: 9ca328bd7e700cc19703799785e37f77d1a130f2
-  RealmSwift: 271de77b09a73c5e46ee3252283878153bd5d288
+  Realm: fdf6732924dc5e69e30e0db2c11e869f92b53f3d
+  RealmSwift: 7c181da8fa1c2fe613656a77c198d6a3dc3879a1
   Result: ed341d2f236af425b803e690e9bd8fd0a0cb7c5a
   secp256k1_ios: ac9ef04e761f43c58012b28548afa91493761f17
   SipHash: fad90a4683e420c52ef28063063dbbce248ea6d4

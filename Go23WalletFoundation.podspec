@@ -38,7 +38,7 @@ Pod::Spec.new do |s|
   s.dependency 'BigInt', '~> 3.1'
   s.dependency 'Go23JSONRPCKit'
   s.dependency 'APIKit', '5.1.0'
-  s.dependency 'RealmSwift', '10.27.0'
+  s.dependency 'RealmSwift'
   s.dependency 'CryptoSwift', '~> 1.4'
   s.dependency 'TrezorFirmwareCrypto'
   s.dependency 'Go23TrustKeystore'
