@@ -20,7 +20,6 @@ public class Features {
             self.fileUrl = url
             self.readFromFileUrl()
         } catch {
-            verboseLog("[Features] init Exception: \(error)")
             return nil
         }
     }
@@ -32,7 +31,6 @@ public class Features {
             let jsonData = try decoder.decode([FeaturesAvailable: Bool].self, from: data)
             featuresDictionary.set(value: jsonData)
         } catch {
-            verboseLog("[Features] readFromFileUrl error: \(error)")
             featuresDictionary.set(value: [:])
         }
     }
@@ -44,7 +42,6 @@ public class Features {
                 try jsonString.write(to: fileUrl, atomically: true, encoding: .utf8)
             }
         } catch {
-            verboseLog("[Features] writeToFileUrl error: \(error)")
         }
     }
 

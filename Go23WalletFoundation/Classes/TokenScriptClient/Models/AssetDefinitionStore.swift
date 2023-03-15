@@ -202,8 +202,6 @@ public class AssetDefinitionStore: NSObject {
             guard let url = url else { return }
             self.fetchXML(forContract: contract, server: server, withUrl: url, useCacheAndFetch: useCacheAndFetch, completionHandler: completionHandler)
         }.catch { error in
-            //no-op
-            warnLog("[TokenScript] unexpected error while fetching TokenScript file for contract: \(contract.eip55String) error: \(error)")
         }
     }
 

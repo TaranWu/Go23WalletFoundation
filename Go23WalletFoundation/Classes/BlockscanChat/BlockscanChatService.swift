@@ -4,7 +4,7 @@ import Combine
 import Foundation
 import PromiseKit
 
-public protocol BlockscanChatServiceDelegate: class {
+public protocol BlockscanChatServiceDelegate: AnyObject {
     func openBlockscanChat(url: URL, for: BlockscanChatService)
     func showBlockscanUnreadCount(_ count: Int?, for: BlockscanChatService)
 }
@@ -44,7 +44,6 @@ public class BlockscanChatService {
         }
     }
     deinit {
-        verboseLog("[BlockscanChat] BlockscanChatService deinit")
         periodicRefreshTimer?.invalidate()
     }
 

@@ -207,9 +207,6 @@ extension DatabaseMigration {
     public func oneTimeCreationOfOneDatabaseToHoldAllChains(assetDefinitionStore: AssetDefinitionStore) {
         let migration = self
 
-        debugLog("Database filepath: \(migration.config.fileURL!)")
-        debugLog("Database directory: \(migration.config.fileURL!.deletingLastPathComponent())")
-
         let exists: Bool
         if let path = migration.config.fileURL?.path {
             exists = FileManager.default.fileExists(atPath: path)

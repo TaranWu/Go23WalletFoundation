@@ -161,9 +161,7 @@ extension EventSource.Functional {
             }
 
             eventsDataStore.addOrUpdate(events: events)
-        }).recover(on: queue, { e in
-            logError(e, rpcServer: token.server, address: token.contractAddress)
-        })
+        }).recover(on: queue, { e in })
     }
 
     static func convertToImplicitAttribute(string: String) -> AssetImplicitAttributes? {

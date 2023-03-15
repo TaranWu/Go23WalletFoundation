@@ -304,9 +304,7 @@ open class TransactionDataStore {
         do {
             let data = try Functional.generateJsonForTransactions(transactionStorage: self, server: server, toUrl: url)
             try data.write(to: url)
-            verboseLog("Written transactions for \(server) to JSON to: \(url.absoluteString)")
         } catch {
-            warnLog("Error writing transactions for \(server) to JSON: \(url.absoluteString) error: \(error)")
         }
     }
 }

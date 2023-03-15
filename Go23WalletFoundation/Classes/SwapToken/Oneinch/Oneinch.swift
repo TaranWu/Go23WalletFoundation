@@ -77,9 +77,6 @@ public class Oneinch: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
                 self.retrieveAssets(request)
             }.sink { [objectWillChangeSubject] result in
                 objectWillChangeSubject.send(())
-
-                guard case .failure(let error) = result else { return }
-                RemoteLogger.instance.logRpcOrOtherWebError("Oneinch error | \(error)", url: request.urlRequest?.url?.absoluteString ?? "")
             } receiveValue: { assets in
                 for asset in self.predefinedAssets + assets {
                     self.assets[asset.address] = asset

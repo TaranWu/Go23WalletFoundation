@@ -195,7 +195,6 @@ public class TokenImageFetcher {
         struct AnyError: Error { }
         let urlString = githubAssetsSource.url(forContract: contractAddress)
         guard let url = URL(string: urlString) else {
-            verboseLog("Loading token icon URL: \(urlString) error")
             return .init(error: AnyError())
         }
 

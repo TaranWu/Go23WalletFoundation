@@ -58,19 +58,14 @@ extension APIKitSession {
         case .connectionError(let err):
             let message = err.localizedDescription
             if message.hasPrefix("The network connection was lost") {
-                RemoteLogger.instance.logRpcOrOtherWebError("Connection Error | \(err.localizedDescription) | as: NetworkConnectionWasLostError()", url: baseUrl.absoluteString)
                 return RpcNodeRetryableRequestError.networkConnectionWasLost
             } else if message.hasPrefix("The certificate for this server is invalid") {
-                RemoteLogger.instance.logRpcOrOtherWebError("Connection Error | \(err.localizedDescription) | as: InvalidCertificateError()", url: baseUrl.absoluteString)
                 return RpcNodeRetryableRequestError.invalidCertificate
             } else if message.hasPrefix("The request timed out") {
-                RemoteLogger.instance.logRpcOrOtherWebError("Connection Error | \(err.localizedDescription) | as: RequestTimedOutError()", url: baseUrl.absoluteString)
                 return RpcNodeRetryableRequestError.requestTimedOut
             }
-            RemoteLogger.instance.logRpcOrOtherWebError("Connection Error | \(err.localizedDescription)", url: baseUrl.absoluteString)
             return nil
         case .requestError(let err):
-            RemoteLogger.instance.logRpcOrOtherWebError("Request Error | \(err.localizedDescription)", url: baseUrl.absoluteString)
             return nil
         case .responseError(let err):
             if let jsonRpcError = err as? JSONRPCError {
@@ -95,53 +90,36 @@ extension APIKitSession {
                         //Spotted for Palm chain (mainnet)
                         return SendTransactionNotRetryableError.insufficientFunds(message: message)
                     } else {
-                        RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.responseError | code: \(code) | message: \(message)", url: baseUrl.absoluteString)
                     }
-                case .responseNotFound(_, let object):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.responseNotFound | object: \(object)", url: baseUrl.absoluteString)
-                case .resultObjectParseError(let err):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.resultObjectParseError | error: \(err.localizedDescription)", url: baseUrl.absoluteString)
-                case .errorObjectParseError(let err):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.errorObjectParseError | error: \(err.localizedDescription)", url: baseUrl.absoluteString)
-                case .unsupportedVersion(let str):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.unsupportedVersion | str: \(String(describing: str))", url: baseUrl.absoluteString)
-                case .unexpectedTypeObject(let obj):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.unexpectedTypeObject | obj: \(obj)", url: baseUrl.absoluteString)
-                case .missingBothResultAndError(let obj):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.missingBothResultAndError | obj: \(obj)", url: baseUrl.absoluteString)
-                case .nonArrayResponse(let obj):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.nonArrayResponse | obj: \(obj)", url: baseUrl.absoluteString)
+                case .responseNotFound(_, let object): break
+                case .resultObjectParseError(let err): break
+                case .errorObjectParseError(let err): break
+                case .unsupportedVersion(let str): break
+                case .unexpectedTypeObject(let obj): break
+                case .missingBothResultAndError(let obj): break
+                case .nonArrayResponse(let obj): break
                 }
                 return nil
             }
 
             if let apiKitError = err as? APIKit.ResponseError {
                 switch apiKitError {
-                case .nonHTTPURLResponse:
-                    RemoteLogger.instance.logRpcOrOtherWebError("APIKit.ResponseError.nonHTTPURLResponse", url: baseUrl.absoluteString)
+                case .nonHTTPURLResponse: break
                 case .unacceptableStatusCode(let statusCode):
                     if statusCode == 401 {
-                        warnLog("[API] Invalid API key with baseURL: \(baseUrl.absoluteString)")
                         return RpcNodeRetryableRequestError.invalidApiKey(server: server, domainName: baseUrl.host ?? "")
                     } else if statusCode == 429 {
-                        warnLog("[API] Rate limited by baseURL: \(baseUrl.absoluteString)")
                         return RpcNodeRetryableRequestError.rateLimited(server: server, domainName: baseUrl.host ?? "")
                     } else {
-                        RemoteLogger.instance.logRpcOrOtherWebError("APIKit.ResponseError.unacceptableStatusCode | status: \(statusCode)", url: baseUrl.absoluteString)
                     }
-                case .unexpectedObject(let obj):
-                    RemoteLogger.instance.logRpcOrOtherWebError("APIKit.ResponseError.unexpectedObject | obj: \(obj)", url: baseUrl.absoluteString)
+                case .unexpectedObject(let obj): break
                 }
                 return nil
             }
 
             if RPCServer.binance_smart_chain_testnet.rpcURL.absoluteString == baseUrl.absoluteString, err.localizedDescription == "The data couldn’t be read because it isn’t in the correct format." {
-                RemoteLogger.instance.logRpcOrOtherWebError("\(err.localizedDescription) -> PossibleBinanceTestnetTimeoutError()", url: baseUrl.absoluteString)
-                //This is potentially Binance testnet timing out
                 return RpcNodeRetryableRequestError.possibleBinanceTestnetTimeout
             }
-
-            RemoteLogger.instance.logRpcOrOtherWebError("Other Error: \(err) | \(err.localizedDescription)", url: baseUrl.absoluteString)
             return nil
         }
     }

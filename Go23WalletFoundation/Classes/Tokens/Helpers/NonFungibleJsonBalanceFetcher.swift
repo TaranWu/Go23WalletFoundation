@@ -63,21 +63,15 @@ public class NonFungibleJsonBalanceFetcher {
         struct Error: Swift.Error {
         }
         let uri = originalUri.rewrittenIfIpfs
-        //TODO check this doesn't print duplicates, including unnecessary fetches
-        verboseLog("Fetching token URI: \(originalUri.absoluteString)… with: \(uri.absoluteString)")
         let server = server
         return firstly {
             //Must not use `SessionManager.default.request` or `Alamofire.request` which uses the former. See comment in var
             sessionManagerWithDefaultHttpHeaders.request(uri, method: .get).responseData(queue: queue)
         }.map(on: queue, { [tokensService] (data, _) -> NonFungibleBalanceAndItsSource in
             if let json = try? JSON(data: data) {
-                if let errorMessage = json["error"].string {
-                    warnLog("Fetched token URI: \(originalUri.absoluteString) error: \(errorMessage)")
-                }
                 if json["error"] == "Internal Server Error" {
                     throw Error()
                 } else {
-                    verboseLog("Fetched token URI: \(originalUri.absoluteString)")
                     var jsonDictionary = json
                     if let token = tokensService.token(for: address, server: server) {
                         jsonDictionary["tokenType"] = JSON(tokenType.rawValue)
@@ -104,13 +98,9 @@ public class NonFungibleJsonBalanceFetcher {
                     }
                 }
             } else {
-                //TODO lots of this so not using `warnLog()`. Check
-                verboseLog("Fetched token URI: \(originalUri.absoluteString) failed")
                 throw Error()
             }
         }).recover { error -> Promise<NonFungibleBalanceAndItsSource> in
-            //TODO lots of this so not using `warnLog()`. Check
-            verboseLog("Fetching token URI: \(originalUri) error: \(error)")
             throw error
         }
     }

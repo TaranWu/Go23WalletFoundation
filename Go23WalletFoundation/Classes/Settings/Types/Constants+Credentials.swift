@@ -7,12 +7,10 @@ extension Constants {
 
         private static func readDevelopmentCredentialsFile() -> [String: String]? {
             guard let sourceRoot = ProcessInfo.processInfo.environment["SOURCE_ROOT"] else {
-                debugLog("[Credentials] No .credentials file found for development because SOURCE_ROOT is not set")
                 return nil
             }
             let fileName = "\(sourceRoot)/.credentials"
             guard let fileContents = try? String(contentsOfFile: fileName) else {
-                debugLog("[Credentials] No .credentials file found for development at \(fileName)")
                 return nil
             }
             let lines = fileContents.components(separatedBy: .newlines)
@@ -20,7 +18,6 @@ extension Constants {
                 Constants.Credentials.Functional.extractKeyValueCredentials(line)
             }
             let dict = Dictionary(uniqueKeysWithValues: keyValues)
-            debugLog("[Credentials] Loaded .credentials file found for development with key count: \(dict.count)")
             return dict
         }
 

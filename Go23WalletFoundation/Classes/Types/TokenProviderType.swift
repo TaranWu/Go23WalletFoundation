@@ -10,7 +10,7 @@ import PromiseKit
 import BigInt
 
 // NOTE: Think about the name, more fittable name is needed
-public protocol TokenProviderType: class {
+public protocol TokenProviderType: AnyObject {
     func getContractName(for address: DerbyWallet.Address) -> Promise<String>
     func getContractSymbol(for address: DerbyWallet.Address) -> Promise<String>
     func getDecimals(for address: DerbyWallet.Address) -> Promise<UInt8>
@@ -211,7 +211,7 @@ public class TokenProvider: TokenProviderType {
                 break
             }
         }.catch({ err in
-            logError(err, pref: "isErc721Promise", address: address)
+            
         })
 
         firstly {
@@ -223,7 +223,7 @@ public class TokenProvider: TokenProviderType {
                 //no-op
             }
         }.catch({ err in
-            logError(err, pref: "isErc875Promise", address: address)
+            
         })
 
         firstly {
@@ -235,7 +235,7 @@ public class TokenProvider: TokenProviderType {
                 //no-op
             }
         }.catch({ err in
-            logError(err, pref: "isErc1155Promise", address: address)
+           
         })
 
         firstly {
@@ -247,7 +247,7 @@ public class TokenProvider: TokenProviderType {
                 //no-op
             }
         }.catch({ err in
-            logError(err, pref: "isErc20Promise", address: address)
+           
         })
     }
 }

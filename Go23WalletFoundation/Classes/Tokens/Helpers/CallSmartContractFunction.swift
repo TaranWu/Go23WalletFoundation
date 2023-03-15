@@ -101,7 +101,7 @@ public func callSmartContract(withServer server: RPCServer, contract: DerbyWalle
                 if let error = returnError as? Go23Web3Swift.Web3Error {
                     switch error {
                     case .rateLimited:
-                        warnLog("[API] Rate limited by RPC node server: \(server)")
+                        break
                     case .transactionSerializationError, .connectionError, .dataError, .walletError, .inputError, .nodeError, .processingError, .keystoreError, .generalError, .unknownError:
                         //no-op. We only want to log rate limit errors above
                         break
@@ -148,7 +148,6 @@ public func getEventLogs(
 
     return contractInstance.getIndexedEventsPromise(eventName: eventName, filter: filter)
         .recover { error -> Promise<[EventParserResultProtocol]> in
-            warnLog("[eth_getLogs] failure for server: \(server) with error: \(error)")
             return .init(error: error)
         }
 }

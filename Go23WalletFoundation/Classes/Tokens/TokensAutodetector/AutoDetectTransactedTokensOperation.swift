@@ -8,7 +8,7 @@
 import Foundation
 import PromiseKit
 
-public protocol AutoDetectTransactedTokensOperationDelegate: class {
+public protocol AutoDetectTransactedTokensOperationDelegate: AnyObject {
     var isAutoDetectingTransactedTokens: Bool { get set }
 
     func didDetect(tokensOrContracts: [TokenOrContract])
@@ -52,7 +52,6 @@ public final class AutoDetectTransactedTokensOperation: Operation {
             guard !strongSelf.isCancelled else { return }
             strongSelf.delegate?.didDetect(tokensOrContracts: values)
         }.catch { error in
-            warnLog("Error while detecting tokens wallet: \(self.session.account.address.eip55String) error: \(error)")
         }
     }
 }

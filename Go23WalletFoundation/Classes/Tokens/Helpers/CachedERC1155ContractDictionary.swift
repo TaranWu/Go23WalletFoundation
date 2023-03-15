@@ -40,7 +40,6 @@ public class CachedERC1155ContractDictionary {
             try FileManager.default.removeItem(at: fileUrl)
         } catch {
             // Do nothing
-            verboseLog("CachedERC1155ContractDictionary::remove Exception: \(error)")
         }
     }
 
@@ -52,7 +51,6 @@ public class CachedERC1155ContractDictionary {
             }
         } catch {
             // Do nothing
-            warnLog("[CachedERC1155ContractDictionary] writeToFileUrl error: \(error)")
         }
     }
 

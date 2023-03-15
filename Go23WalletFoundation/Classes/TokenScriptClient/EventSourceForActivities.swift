@@ -170,7 +170,7 @@ extension EventSourceForActivities.Functional {
         }).map(on: queue, { events -> Void in
             eventsDataStore.addOrUpdate(events: events)
         }).recover(on: queue, { err in
-            logError(err, rpcServer: server, address: tokenContract)
+           
         })
     }
 

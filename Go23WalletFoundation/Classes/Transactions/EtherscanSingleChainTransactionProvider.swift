@@ -100,7 +100,7 @@ public class EtherscanSingleChainTransactionProvider: SingleChainTransactionProv
             }
             strongSelf.addOrUpdate(transactions: backFilledTransactions)
         }).catch({ err in
-            logError(err, function: #function, rpcServer: server, address: wallet)
+            
         })
         .finally { [weak self] in
             self?.isAutoDetectingERC20Transactions = false
@@ -128,7 +128,7 @@ public class EtherscanSingleChainTransactionProvider: SingleChainTransactionProv
             }
             strongSelf.addOrUpdate(transactions: backFilledTransactions)
         }).catch({ error in
-            logError(error, rpcServer: server, address: wallet)
+            
         })
         .finally { [weak self] in
             self?.isAutoDetectingErc721Transactions = false
@@ -295,8 +295,6 @@ public class EtherscanSingleChainTransactionProvider: SingleChainTransactionProv
             }).catch(on: queue, { e in
                 if e is GetTransactions.NoBlockchainExplorerApi {
                     //no-op, since this is expected for some chains
-                } else {
-                    logError(e, rpcServer: provider.session.server, address: self.session.account.address)
                 }
             }).finally(on: queue, { [weak self] in
                 guard let strongSelf = self else { return }

@@ -9,12 +9,6 @@ PODS:
   - BigInt (3.1.0):
     - SipHash (~> 1.2)
   - BlockiesSwift (0.1.2)
-  - CocoaAsyncSocket (7.6.5)
-  - CocoaLumberjack (3.7.0):
-    - CocoaLumberjack/Core (= 3.7.0)
-  - CocoaLumberjack/Core (3.7.0)
-  - CocoaLumberjack/Swift (3.7.0):
-    - CocoaLumberjack/Core
   - CombineExt (1.8.0)
   - CryptoSwift (1.6.0)
   - Go23EthereumABI (0.1.0):
@@ -43,12 +37,11 @@ PODS:
     - Go23WalletCore
     - Go23Web3Swift
     - PromiseKit
-  - Go23WalletFoundation (1.0.5):
+  - Go23WalletFoundation (1.0.7):
     - APIKit (= 5.1.0)
     - Apollo (= 0.53.0)
     - BigInt (~> 3.1)
     - BlockiesSwift
-    - CocoaLumberjack (= 3.7.0)
     - CombineExt (= 1.8.0)
     - CryptoSwift (~> 1.4)
     - Go23EthereumABI
@@ -61,13 +54,11 @@ PODS:
     - Go23WalletOpenSea
     - Go23Web3Swift
     - Kanna
-    - PaperTrailLumberjack/Swift
     - PromiseKit/Alamofire
     - PromiseKit/CorePromise
     - RealmSwift
     - SwiftProtobuf (~> 1.18.0)
     - SwiftyJSON (= 5.0.0)
-    - TrezorFirmwareCrypto
     - TrustWalletCore (= 2.6.34)
   - Go23WalletGoBack (1.0.0)
   - Go23WalletOpenSea (1.0.0):
@@ -88,12 +79,6 @@ PODS:
     - secp256k1_ios (~> 0.1.3)
   - Kanna (5.2.7)
   - libsodium (1.0.12)
-  - PaperTrailLumberjack/Core (0.1.9):
-    - CocoaAsyncSocket (~> 7.6)
-    - CocoaLumberjack (~> 3.4)
-  - PaperTrailLumberjack/Swift (0.1.9):
-    - CocoaLumberjack/Swift (~> 3.4)
-    - PaperTrailLumberjack/Core
   - PromiseKit (6.3.5):
     - PromiseKit/CorePromise (= 6.3.5)
     - PromiseKit/Foundation (= 6.3.5)
@@ -116,7 +101,6 @@ PODS:
   - SipHash (1.2.2)
   - SwiftProtobuf (1.18.0)
   - SwiftyJSON (5.0.0)
-  - TrezorFirmwareCrypto (0.1.0)
   - TrustWalletCore (2.6.34):
     - TrustWalletCore/Core (= 2.6.34)
   - TrustWalletCore/Core (2.6.34):
@@ -135,13 +119,10 @@ SPEC REPOS:
     - Apollo
     - BigInt
     - BlockiesSwift
-    - CocoaAsyncSocket
-    - CocoaLumberjack
     - CombineExt
     - CryptoSwift
     - Kanna
     - libsodium
-    - PaperTrailLumberjack
     - PromiseKit
     - Realm
     - RealmSwift
@@ -150,7 +131,6 @@ SPEC REPOS:
     - SipHash
     - SwiftProtobuf
     - SwiftyJSON
-    - TrezorFirmwareCrypto
     - TrustWalletCore
   https://github.com/TaranWu/Go23WalletSpec.git:
     - Go23EthereumABI
@@ -175,8 +155,6 @@ SPEC CHECKSUMS:
   Apollo: 204819ea82022fbc59ad05056820df867f19bd02
   BigInt: 76b5dfdfa3e2e478d4ffdf161aeede5502e2742f
   BlockiesSwift: 22d8d56dd187e6bfd16cb8c8fbd4fd4896c3e65d
-  CocoaAsyncSocket: 065fd1e645c7abab64f7a6a2007a48038fdc6a99
-  CocoaLumberjack: e8955b9d337ac307103b0a34fd141c32f27e53c5
   CombineExt: c4daa97ef75754d8ef319bd79edeef82652f3eea
   CryptoSwift: 562f8eceb40e80796fffc668b0cad9313284cfa6
   Go23EthereumABI: 4b797baa72fb3d83620280a723ea6818e86af4ac
@@ -186,13 +164,12 @@ SPEC CHECKSUMS:
   Go23WalletAddress: 57f0cff209863b7d76ef90696db5e7c154f38c1f
   Go23WalletCore: 781450fed122b9d02d26cb161a4eb991e4b4faea
   Go23WalletENS: 9da8d22adbf41fe8573ddff9ea260098f6e33f67
-  Go23WalletFoundation: 3d56cea83add1f7c8d2dd28ade85179108f685f4
+  Go23WalletFoundation: b3d37b28b7e18377491f780ffba53feb8c437a5c
   Go23WalletGoBack: e039a83f128a88e4e94d18edf98520223eb3a081
   Go23WalletOpenSea: a468c7017d9dfbefdc20f00190e537f841251bd7
   Go23Web3Swift: af20afd526445afa1a8056ef21695d6cb03082fd
   Kanna: 01cfbddc127f5ff0963692f285fcbc8a9d62d234
   libsodium: 9a8faa5ef2fa0d2d57bd7f7d79bf8fb7c1a9f0ea
-  PaperTrailLumberjack: 449587968d5aeb3eab2d4de041ffc61ee2d49f25
   PromiseKit: 32c36425387e9cfc7f1206f27bfd906d0b53c0d6
   Realm: fdf6732924dc5e69e30e0db2c11e869f92b53f3d
   RealmSwift: 7c181da8fa1c2fe613656a77c198d6a3dc3879a1
@@ -201,7 +178,6 @@ SPEC CHECKSUMS:
   SipHash: fad90a4683e420c52ef28063063dbbce248ea6d4
   SwiftProtobuf: c3c12645230d9b09c72267e0de89468c5543bd86
   SwiftyJSON: 36413e04c44ee145039d332b4f4e2d3e8d6c4db7
-  TrezorFirmwareCrypto: e60c796c61d1b51ed7dddd65470f9ce8fb1b50d3
   TrustWalletCore: a92d85baa15932279cce925559e93695558cafdd
 
 PODFILE CHECKSUM: 1a8eddf2604937c5b2723dc070a57e37a22155c8

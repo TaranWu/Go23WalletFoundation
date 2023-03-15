@@ -122,7 +122,6 @@ public class TransactionConfigurator {
 
             self.delegate?.gasLimitEstimateUpdated(to: gasLimit, in: self)
         }.catch { e in
-            logError(e, rpcServer: self.session.server)
         }
     }
 
@@ -150,7 +149,6 @@ public class TransactionConfigurator {
 
             self.delegate?.gasPriceEstimateUpdated(to: standard, in: self)
         }.catch({ err in
-            logError(err, rpcServer: self.session.server)
         })
     }
 
