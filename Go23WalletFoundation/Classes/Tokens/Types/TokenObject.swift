@@ -5,7 +5,7 @@ import RealmSwift
 import BigInt
 
 class TokenObject: Object {
-    static func generatePrimaryKey(fromContract contract: DerbyWallet.Address, server: RPCServer) -> String {
+    static func generatePrimaryKey(fromContract contract: Go23Wallet.Address, server: RPCServer) -> String {
         return "\(contract.eip55String)-\(server.chainID)"
     }
 
@@ -42,7 +42,7 @@ class TokenObject: Object {
     }
 
     convenience init(
-            contract: DerbyWallet.Address = Constants.nullAddress,
+            contract: Go23Wallet.Address = Constants.nullAddress,
             server: RPCServer,
             name: String = "",
             symbol: String = "",
@@ -83,8 +83,8 @@ class TokenObject: Object {
         return EtherNumberFormatter.plain.string(from: valueBigInt, decimals: decimals).optionalDecimalValue
     }
 
-    var contractAddress: DerbyWallet.Address {
-        return DerbyWallet.Address(uncheckedAgainstNullAddress: contract)!
+    var contractAddress: Go23Wallet.Address {
+        return Go23Wallet.Address(uncheckedAgainstNullAddress: contract)!
     }
 
     var valueBigInt: BigInt {
@@ -102,8 +102,8 @@ class TokenObject: Object {
     override func isEqual(_ object: Any?) -> Bool {
         guard let object = object as? TokenObject else { return false }
         //NOTE: to improve perfomance seems like we can use check for primary key instead of checking contracts
-        return object.contractAddress.sameContract(as: contractAddress)
-    } 
+        return object.contractAddress == contractAddress
+    }
 
     var server: RPCServer {
         return .init(chainID: chainId)

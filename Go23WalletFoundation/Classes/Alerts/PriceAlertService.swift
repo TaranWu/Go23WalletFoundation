@@ -1,8 +1,8 @@
 //
 //  PriceAlertServiceType.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Tatan.
+//  Created by Taran.
 //
 
 import Foundation
@@ -13,11 +13,11 @@ public enum PriceAlertsFilterStrategy {
     case token(Token)
 }
 
-public protocol PriceAlertServiceType: class {
+public protocol PriceAlertServiceType: AnyObject {
     func alertsPublisher(forStrategy strategy: PriceAlertsFilterStrategy) -> AnyPublisher<[PriceAlert], Never>
     func alerts(forStrategy strategy: PriceAlertsFilterStrategy) -> [PriceAlert]
     func start()
-    func add(alert: PriceAlert)
+    func add(alert: PriceAlert) -> Bool
     func update(alert: PriceAlert, update: PriceAlertUpdates)
     func update(indexPath: IndexPath, update: PriceAlertUpdates)
     func remove(indexPath: IndexPath)
@@ -41,9 +41,9 @@ public class PriceAlertService: PriceAlertServiceType {
         datastore.alertsPublisher.map { alerts -> [PriceAlert] in
             switch strategy {
             case .token(let token):
-                return alerts.filter { $0.addressAndRPCServer == token.addressAndRPCServer }
+                return alerts.filter { $0.addressAndRPCServer == token.addressAndRPCServer }.uniqued()
             case .all:
-                return alerts
+                return alerts.uniqued()
             }
         }.eraseToAnyPublisher()
     }
@@ -51,14 +51,17 @@ public class PriceAlertService: PriceAlertServiceType {
     public func alerts(forStrategy strategy: PriceAlertsFilterStrategy) -> [PriceAlert] {
         switch strategy {
         case .token(let token):
-            return datastore.alerts.filter { $0.addressAndRPCServer == token.addressAndRPCServer }
+            return datastore.alerts.filter { $0.addressAndRPCServer == token.addressAndRPCServer }.uniqued()
         case .all:
-            return datastore.alerts
+            return datastore.alerts.uniqued()
         }
     }
 
-    public func add(alert: PriceAlert) {
+    public func add(alert: PriceAlert) -> Bool {
+        guard !datastore.alerts.contains(where: { $0 == alert }) else { return false }
+
         datastore.add(alert: alert)
+        return true
     }
 
     public func update(alert: PriceAlert, update: PriceAlertUpdates) {
@@ -71,5 +74,15 @@ public class PriceAlertService: PriceAlertServiceType {
 
     public func remove(indexPath: IndexPath) {
         datastore.remove(indexPath: indexPath)
+    }
+}
+
+extension Sequence where Element: Hashable {
+    public func uniqued() -> [Element] {
+        var elements: [Element] = []
+        for value in self where !elements.contains(value) {
+            elements.append(value)
+        }
+        return elements
     }
 }

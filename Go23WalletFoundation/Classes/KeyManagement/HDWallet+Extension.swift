@@ -107,11 +107,11 @@ extension HDWallet {
 }
 
 public extension HDWallet {
-    public static func isWordInWordList(_ word: String) -> Bool {
+    static func isWordInWordList(_ word: String) -> Bool {
         return englishWordList.contains(word)
     }
 
-    public static func getSuggestions(forWord word: String) -> [String] {
+    static func getSuggestions(forWord word: String) -> [String] {
         let word = word.lowercased()
         return englishWordList.filter { $0.hasPrefix(word) }
     }

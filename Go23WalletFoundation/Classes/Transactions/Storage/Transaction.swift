@@ -5,6 +5,9 @@ import BigInt
 import RealmSwift
 
 class Transaction: Object {
+    static func generatePrimaryKey(for id: String, server: RPCServer) -> String {
+        return "\(id)-\(server.chainID)"
+    }
     @objc dynamic var primaryKey: String = ""
     @objc dynamic var chainId: Int = 0
     @objc dynamic var id: String = ""
@@ -21,48 +24,6 @@ class Transaction: Object {
     @objc dynamic var internalState: Int = TransactionState.completed.rawValue
     @objc dynamic var isERC20Interaction: Bool = false
     var localizedOperations = List<LocalizedOperationObject>()
-
-    convenience init(
-        id: String,
-        server: RPCServer,
-        blockNumber: Int,
-        transactionIndex: Int,
-        from: String,
-        to: String,
-        value: String,
-        gas: String,
-        gasPrice: String,
-        gasUsed: String,
-        nonce: String,
-        date: Date,
-        localizedOperations: [LocalizedOperationObject],
-        state: TransactionState,
-        isErc20Interaction: Bool
-    ) {
-        self.init()
-        self.primaryKey = "\(id)-\(server.chainID)"
-        self.id = id
-        self.chainId = server.chainID
-        self.blockNumber = blockNumber
-        self.transactionIndex = transactionIndex
-        self.from = from
-        self.to = to
-        self.value = value
-        self.gas = gas
-        self.gasPrice = gasPrice
-        self.gasUsed = gasUsed
-        self.nonce = nonce
-        self.date = date
-        self.internalState = state.rawValue
-        self.isERC20Interaction = isErc20Interaction
-
-        let list = List<LocalizedOperationObject>()
-        localizedOperations.forEach { element in
-            list.append(element)
-        }
-
-        self.localizedOperations = list
-    }
 
     convenience init(object: TransactionInstance) {
         self.init()
@@ -100,10 +61,6 @@ class Transaction: Object {
         return TransactionState(int: internalState)
     }
 
-    var operation: LocalizedOperationObject? {
-        return localizedOperations.first
-    }
-
     var server: RPCServer {
         return .init(chainID: chainId)
     }
@@ -111,9 +68,9 @@ class Transaction: Object {
 
 extension TransactionInstance {
 
-    static func from(from: DerbyWallet.Address, transaction: SentTransaction, token: Token?) -> TransactionInstance {
+    static func from(from: Go23Wallet.Address, transaction: SentTransaction, token: Token?) -> TransactionInstance {
         let (operations: operations, isErc20Interaction: isErc20Interaction) = decodeOperations(
-            fromData: transaction.original.data,
+            data: transaction.original.data,
             from: transaction.original.account,
             token: token)
 
@@ -132,12 +89,11 @@ extension TransactionInstance {
                 date: Date(),
                 localizedOperations: operations,
                 state: .pending,
-                isErc20Interaction: isErc20Interaction
-        )
+                isErc20Interaction: isErc20Interaction)
     }
 
     //TODO add support for more types of pending transactions
-    fileprivate static func decodeOperations(fromData data: Data, from: DerbyWallet.Address, token: Token?) -> (operations: [LocalizedOperationObjectInstance], isErc20Interaction: Bool) {
+    fileprivate static func decodeOperations(data: Data, from: Go23Wallet.Address, token: Token?) -> (operations: [LocalizedOperationObjectInstance], isErc20Interaction: Bool) {
         if let functionCallMetaData = DecodedFunctionCall(data: data), let token = token {
             switch functionCallMetaData.type {
             case .erc20Approve(let spender, let value):
@@ -155,43 +111,41 @@ extension TransactionInstance {
     }
 }
 
-public struct TransactionInstance: Equatable {
-    public var primaryKey: String = ""
-    public var chainId: Int = 0
-    public var id: String = ""
-    public var blockNumber: Int = 0
-    public var transactionIndex: Int = 0
-    public var from = ""
-    public var to = ""
-    public var value = ""
-    public var gas = ""
-    public var gasPrice = ""
-    public var gasUsed = ""
-    public var nonce: String = ""
-    public var date = Date()
-    public var internalState: Int = TransactionState.completed.rawValue
-    public var isERC20Interaction: Bool = false
-    public var localizedOperations: [LocalizedOperationObjectInstance] = []
+public struct TransactionInstance: Equatable, Hashable {
+    public let primaryKey: String
+    public let chainId: Int
+    public let id: String
+    public let blockNumber: Int
+    public let transactionIndex: Int
+    public let from: String
+    public let to: String
+    public let value: String
+    public let gas: String
+    public let gasPrice: String
+    public let gasUsed: String
+    public let nonce: String
+    public let date: Date
+    public let internalState: Int
+    public var isERC20Interaction: Bool
+    public var localizedOperations: [LocalizedOperationObjectInstance]
 
-    public init(
-        id: String,
-        server: RPCServer,
-        blockNumber: Int,
-        transactionIndex: Int,
-        from: String,
-        to: String,
-        value: String,
-        gas: String,
-        gasPrice: String,
-        gasUsed: String,
-        nonce: String,
-        date: Date,
-        localizedOperations: [LocalizedOperationObjectInstance],
-        state: TransactionState,
-        isErc20Interaction: Bool
-    ) {
-
-        self.primaryKey = "\(id)-\(server.chainID)"
+    public init(id: String,
+                server: RPCServer,
+                blockNumber: Int,
+                transactionIndex: Int,
+                from: String,
+                to: String,
+                value: String,
+                gas: String,
+                gasPrice: String,
+                gasUsed: String,
+                nonce: String,
+                date: Date,
+                localizedOperations: [LocalizedOperationObjectInstance],
+                state: TransactionState,
+                isErc20Interaction: Bool) {
+        
+        self.primaryKey = Transaction.generatePrimaryKey(for: id, server: server)
         self.id = id
         self.chainId = server.chainID
         self.blockNumber = blockNumber
@@ -206,7 +160,7 @@ public struct TransactionInstance: Equatable {
         self.date = date
         self.internalState = state.rawValue
         self.isERC20Interaction = isErc20Interaction
-        self.localizedOperations = localizedOperations
+        self.localizedOperations = localizedOperations.uniqued()
     }
 
     public var state: TransactionState {
@@ -259,8 +213,7 @@ extension TransactionInstance {
         self.date = transaction.date
         self.internalState = transaction.state.rawValue
         self.isERC20Interaction = transaction.isERC20Interaction
-        self.localizedOperations = transaction.localizedOperations.map {
-            LocalizedOperationObjectInstance(object: $0)
-        }
+        //NOTE: removes existing duplications of localized operations, need as `LocalizedOperationObjectInstance` don't have a primaryKey
+        self.localizedOperations = transaction.localizedOperations.map { LocalizedOperationObjectInstance(object: $0) }.uniqued()
     }
 }

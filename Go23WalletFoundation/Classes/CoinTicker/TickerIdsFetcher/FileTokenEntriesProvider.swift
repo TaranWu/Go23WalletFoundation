@@ -1,8 +1,8 @@
 //
 //  FileTokenEntriesProvider.swift
-//  DerbyWalletFoundation
+//  Go23WalletFoundation
 //
-//  Created by Tatan.
+//  Created by Taran.
 //
 
 import Foundation
@@ -20,6 +20,7 @@ public final class FileTokenEntriesProvider: TokenEntriesProvider {
         } else {
             absoluteFilename = Self.defaultFilePath()
         }
+
     }
 
     //Public to make available for testing
@@ -34,14 +35,14 @@ public final class FileTokenEntriesProvider: TokenEntriesProvider {
     public func tokenEntries() -> AnyPublisher<[TokenEntry], PromiseError> {
         if cachedTokenEntries.isEmpty {
             do {
-                guard let jsonData = try String(contentsOfFile: absoluteFilename).data(using: .utf8) else { throw TokenJsonReader.TokenJsonReaderError.fileIsNotUtf8 }
+                guard let jsonData = try String(contentsOfFile: absoluteFilename).data(using: .utf8) else { throw TokenJsonReader.error.fileIsNotUtf8 }
                 do {
                     cachedTokenEntries = try JSONDecoder().decode([TokenEntry].self, from: jsonData)
                     return .just(cachedTokenEntries)
                 } catch DecodingError.dataCorrupted {
-                    throw TokenJsonReader.TokenJsonReaderError.fileCannotBeDecoded
+                    throw TokenJsonReader.error.fileCannotBeDecoded
                 } catch {
-                    throw TokenJsonReader.TokenJsonReaderError.unknown(error)
+                    throw TokenJsonReader.error.unknown(error)
                 }
             } catch {
                 return .fail(.some(error: error))

@@ -1,8 +1,8 @@
 //
 //  Repeat.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Jerome Chan on 14/3/22.
+//  Created by Taran.
 //
 
 import Foundation

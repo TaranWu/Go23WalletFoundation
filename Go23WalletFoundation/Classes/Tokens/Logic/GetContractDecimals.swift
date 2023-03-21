@@ -1,28 +1,41 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
 import Foundation
-import PromiseKit
+import Combine
+import Go23Web3Swift
+import Go23WalletCore
 
-public class GetContractDecimals {
-    private let server: RPCServer
+final class GetContractDecimals {
+    private var inFlightPromises: [String: AnyPublisher<Int, SessionTaskError>] = [:]
+    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.getContractDecimals")
 
-    public init(forServer server: RPCServer) {
-        self.server = server
+    private let blockchainProvider: BlockchainProvider
+
+    init(blockchainProvider: BlockchainProvider) {
+        self.blockchainProvider = blockchainProvider
     }
 
-    public func getDecimals(for contract: DerbyWallet.Address) -> Promise<UInt8> {
-        let functionName = "decimals"
-        return callSmartContract(withServer: server, contract: contract, functionName: functionName, abiString: Web3.Utils.erc20ABI).map { dictionary -> UInt8 in
-            if let decimalsWithUnknownType = dictionary["0"] {
-                let string = String(describing: decimalsWithUnknownType)
-                if let decimals = UInt8(string) {
-                    return decimals
+    func getDecimals(for contract: Go23Wallet.Address) -> AnyPublisher<Int, SessionTaskError> {
+        return Just(contract)
+            .receive(on: queue)
+            .setFailureType(to: SessionTaskError.self)
+            .flatMap { [weak self, queue, blockchainProvider] contract -> AnyPublisher<Int, SessionTaskError> in
+                let key = contract.eip55String
+
+                if let promise = self?.inFlightPromises[key] {
+                    return promise
                 } else {
-                    throw createSmartContractCallError(forContract: contract, functionName: functionName)
+                    let promise = blockchainProvider
+                        .call(Erc20DecimalsMethodCall(contract: contract))
+                        .receive(on: queue)
+                        .handleEvents(receiveCompletion: { _ in self?.inFlightPromises[key] = .none })
+                        .share()
+                        .eraseToAnyPublisher()
+
+                    self?.inFlightPromises[key] = promise
+
+                    return promise
                 }
-            } else {
-                throw createSmartContractCallError(forContract: contract, functionName: functionName)
-            }
-        }
+            }.eraseToAnyPublisher()
     }
 }

@@ -1,8 +1,8 @@
 //
 //  TokenEntriesProvider.swift
-//  DerbyWalletFoundation
+//  Go23WalletFoundation
 //
-//  Created by Tatan.
+//  Created by Taran.
 //
 
 import Foundation

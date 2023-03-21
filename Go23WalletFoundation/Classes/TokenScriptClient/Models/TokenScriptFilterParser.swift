@@ -55,18 +55,18 @@ public struct TokenScriptFilterParser {
                     return string >= value
                 }
             case .bytes(let bytes):
-                guard let biga = BigUInt(bytes.hexEncoded, radix: 16), let bigb = BigUInt(value, radix: 16) else { return false }
+                guard let a = BigUInt(bytes.hexEncoded, radix: 16), let b = BigUInt(value, radix: 16) else { return false }
                 switch self {
                 case .equal:
-                    return biga == bigb
+                    return a == b
                 case .lessThan:
-                    return biga < bigb
+                    return a < b
                 case .greaterThan:
-                    return biga > bigb
+                    return a > b
                 case .lessThanOrEqual:
-                    return biga <= bigb
+                    return a <= b
                 case .greaterThanOrEqual:
-                    return biga >= bigb
+                    return a >= b
                 }
             case .int(let int):
                 guard let rhs = BigInt(value) else { return false }
@@ -190,6 +190,7 @@ public struct TokenScriptFilterParser {
         }()
         public init() {}
 
+        // swiftlint:disable function_body_length
         public func tokenize(expression: String) -> [Token] {
             var result: [Token] = []
             var buffer: [Character] = []
@@ -295,6 +296,7 @@ public struct TokenScriptFilterParser {
             }
             return result
         }
+        // swiftlint:enable function_body_length
 
         private func convertHexToCharacter(_ hex: String) -> Character? {
             let code = Int(strtoul(hex, nil, 16))
@@ -331,7 +333,7 @@ public struct TokenScriptFilterParser {
         private let values: [AttributeId: AssetAttributeSyntaxValue]
         private var tokens: [Lexer.Token]
 
-        public static func valuesWithImplicitValues(_ values: [AttributeId: AssetAttributeSyntaxValue], ownerAddress: DerbyWallet.Address, symbol: String, fungibleBalance: BigInt?) -> [AttributeId: AssetAttributeSyntaxValue] {
+        public static func valuesWithImplicitValues(_ values: [AttributeId: AssetAttributeSyntaxValue], ownerAddress: Go23Wallet.Address, symbol: String, fungibleBalance: BigInt?) -> [AttributeId: AssetAttributeSyntaxValue] {
             let todayString = GeneralisedTime().formatAsGeneralisedTime.substring(to: 8)
             var implicitValues: [AttributeId: AssetAttributeSyntaxValue] = [
                 "symbol": .init(syntax: .directoryString, value: .string(symbol)),
@@ -497,7 +499,7 @@ public struct TokenScriptFilterParser {
 
     let expression: String
 
-    func parse(withValues values: [AttributeId: AssetAttributeSyntaxValue], ownerAddress: DerbyWallet.Address, symbol: String, fungibleBalance: BigInt?) -> Bool {
+    func parse(withValues values: [AttributeId: AssetAttributeSyntaxValue], ownerAddress: Go23Wallet.Address, symbol: String, fungibleBalance: BigInt?) -> Bool {
         let tokens = Lexer().tokenize(expression: expression)
         let values = Parser.valuesWithImplicitValues(values, ownerAddress: ownerAddress, symbol: symbol, fungibleBalance: fungibleBalance)
         return Parser(tokens: tokens, values: values).parse()

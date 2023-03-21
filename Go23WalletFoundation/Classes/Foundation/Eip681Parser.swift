@@ -4,13 +4,25 @@ import Foundation
 import BigInt
 import PromiseKit
 
-//In the future, this can include invoking functions other than for sending of Ether and tokens
+//TODO: In the future, this can include invoking functions other than for sending of Ether and tokens
+//TODO: apply FungibleAmount instead of String
+public enum Eip681Amount {
+    case uint256(String, eNotation: Bool)
+    case ether(String)
+
+    public var rawValue: String {
+        switch self {
+        case .uint256(let string, _): return string
+        case .ether(let string): return string
+        }
+    }
+}
 public enum Eip681Type {
-    case nativeCryptoSend(server: RPCServer?, recipient: AddressOrEnsName, amount: String)
-    case erc20Send(contract: DerbyWallet.Address, server: RPCServer?, recipient: AddressOrEnsName?, amount: String)
+    case nativeCryptoSend(server: RPCServer?, recipient: AddressOrEnsName, amount: Eip681Amount)
+    case erc20Send(contract: Go23Wallet.Address, server: RPCServer?, recipient: AddressOrEnsName?, amount: Eip681Amount)
     case invalidOrNotSupported
 
-    public var parameters: (contract: DerbyWallet.Address, RPCServer?, recipient: AddressOrEnsName?, amount: String)? {
+    public var parameters: (contract: Go23Wallet.Address, RPCServer?, recipient: AddressOrEnsName?, amount: Eip681Amount)? {
         switch self {
         case .nativeCryptoSend(let server, let recipient, let amount):
             return (Constants.nativeCryptoAddressInDatabase, server, recipient, amount)
@@ -38,31 +50,44 @@ public struct Eip681Parser {
         self.params = params
     }
 
+    // NOTE: formatter for get rid of e notations
+    private let formatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.locale = .en_US
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = false
+
+        return formatter
+    }()
+    
+    private let decimalParser = DecimalParser()
+
     //https://github.com/ethereum/EIPs/blob/master/EIPS/eip-681.md
-    public func parse() -> Promise<Eip681Type> {
+    public func parse() -> Eip681Type {
         let chainId = params["chainId"].flatMap { Int($0) }
         if functionName == "transfer", let contract = address.contract {
             let recipient = params["address"].flatMap({ AddressOrEnsName(string: $0) })
-            let optionalAmountBigInt = params["uint256"].flatMap({ Double($0) }).flatMap({ BigInt($0) })
+            let optionalAmountBigInt = params["uint256"].flatMap { decimalParser.parseAnyDecimal(from: $0) }
             let amount: String
+            let eNotation = params["uint256"].flatMap { $0.contains("e") } ?? false
             if let amountBigInt = optionalAmountBigInt {
                 //TODO According to the EIP, check for UNITS (if available), and if that matches the symbol of the specified contract, use the decimals (if available) returned by the contract. Since we are also checking the decimals based on the contract, just make sure symbols (if it is provided) matches
-                amount = amountBigInt.description
+                amount = formatter.string(double: amountBigInt.doubleValue) ?? String(amountBigInt.doubleValue)
             } else {
                 amount = ""
             }
-            return .value(.erc20Send(contract: contract, server: chainId.flatMap { .init(chainID: $0) }, recipient: recipient, amount: amount))
+            return .erc20Send(contract: contract, server: chainId.flatMap { .init(chainID: $0) }, recipient: recipient, amount: .uint256(amount, eNotation: eNotation))
         } else if functionName == nil {
-            //TODO UNITS is either optional or "ETH" for native crypto sends. If it's not provided, we treat it as something like 3.14e18
+            //TODO UNITS is either optional or "ETH" for native crypto sends. If it's not provided, we treat it as something like 3.14e18, but it also can be like 1
             let amount: String
-            if let value = params["value"], let amountToSend = Double(value) {
-                amount = amountToSend.description
+            if let value = params["value"], let amountToSend = decimalParser.parseAnyDecimal(from: value) {
+                amount = formatter.string(double: amountToSend.doubleValue) ?? String(amountToSend.doubleValue)
             } else {
                 amount = ""
             }
-            return .value(.nativeCryptoSend(server: chainId.flatMap { .init(chainID: $0) }, recipient: address, amount: amount))
+            return .nativeCryptoSend(server: chainId.flatMap { .init(chainID: $0) }, recipient: address, amount: .ether(amount))
         } else {
-            return .value(.invalidOrNotSupported)
+            return .invalidOrNotSupported
         }
     }
 

@@ -36,9 +36,9 @@ public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
         }
     }
 
-    public var contractsWithTokenScriptFileFromOfficialRepo: [DerbyWallet.Address] {
+    public var contractsWithTokenScriptFileFromOfficialRepo: [Go23Wallet.Address] {
         guard let urls = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return .init() }
-        return urls.compactMap { DerbyWallet.Address(string: $0.deletingPathExtension().lastPathComponent) }
+        return urls.compactMap { Go23Wallet.Address(string: $0.deletingPathExtension().lastPathComponent) }
     }
 
     public init(directoryName: String = officialDirectoryName) {
@@ -63,8 +63,8 @@ public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
             guard let contents = try? String(contentsOf: eachUrl) else { continue }
             let fileName = eachUrl.lastPathComponent
             //TODO don't use regex. When we finally use XMLHandler to extract entities, we have to be careful not to create AssetDefinitionStore instances within XMLHandler otherwise infinite recursion by calling this func again
-            if let contracts = XMLHandler.Functional.getHoldingContracts(forTokenScript: contents) {
-                let entities = XMLHandler.Functional.getEntities(forTokenScript: contents)
+            if let contracts = XMLHandler.functional.getHoldingContracts(forTokenScript: contents) {
+                let entities = XMLHandler.functional.getEntities(forTokenScript: contents)
                 for (eachContract, _) in contracts {
                     tokenScriptFileIndices.contractsToFileNames[eachContract, default: []] += [fileName]
                 }
@@ -72,25 +72,21 @@ public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
                 tokenScriptFileIndices.trackHash(forFile: fileName, contents: contents)
             } else {
                 var isOldTokenScriptVersion = false
-                for (contract, fileNames) in previousTokenScriptFileIndices.contractsToOldTokenScriptFileNames {
-                    if fileNames.contains(fileName) {
+                for (contract, fileNames) in previousTokenScriptFileIndices.contractsToOldTokenScriptFileNames where fileNames.contains(fileName) {
+                    let newHash = tokenScriptFileIndices.hash(contents: contents)
+                    if newHash == previousTokenScriptFileIndices.fileHashes[fileName] {
+                        tokenScriptFileIndices.contractsToOldTokenScriptFileNames[contract, default: []] += [fileName]
+                        tokenScriptFileIndices.trackHash(forFile: fileName, contents: contents)
+                        isOldTokenScriptVersion = true
+                    }
+                }
+                if !isOldTokenScriptVersion {
+                    for (contract, fileNames) in previousTokenScriptFileIndices.contractsToFileNames where fileNames.contains(fileName) {
                         let newHash = tokenScriptFileIndices.hash(contents: contents)
                         if newHash == previousTokenScriptFileIndices.fileHashes[fileName] {
                             tokenScriptFileIndices.contractsToOldTokenScriptFileNames[contract, default: []] += [fileName]
                             tokenScriptFileIndices.trackHash(forFile: fileName, contents: contents)
                             isOldTokenScriptVersion = true
-                        }
-                    }
-                }
-                if !isOldTokenScriptVersion {
-                    for (contract, fileNames) in previousTokenScriptFileIndices.contractsToFileNames {
-                        if fileNames.contains(fileName) {
-                            let newHash = tokenScriptFileIndices.hash(contents: contents)
-                            if newHash == previousTokenScriptFileIndices.fileHashes[fileName] {
-                                tokenScriptFileIndices.contractsToOldTokenScriptFileNames[contract, default: []] += [fileName]
-                                tokenScriptFileIndices.trackHash(forFile: fileName, contents: contents)
-                                isOldTokenScriptVersion = true
-                            }
                         }
                     }
                 }
@@ -108,23 +104,23 @@ public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
         tokenScriptFileIndices.write(toUrl: indicesFileUrl)
     }
 
-    private func localURLOfXML(for contract: DerbyWallet.Address) -> URL {
+    private func localURLOfXML(for contract: Go23Wallet.Address) -> URL {
         assert(isOfficial)
         return directory.appendingPathComponent(filename(fromContract: contract))
     }
 
     ///Only return XML contents if there is exactly 1 file that matches the contract
-    private func xml(forContract contract: DerbyWallet.Address) -> String? {
+    private func xml(forContract contract: Go23Wallet.Address) -> String? {
         guard let fileName = tokenScriptFileIndices.nonConflictingFileName(forContract: contract) else { return nil }
         let path = directory.appendingPathComponent(fileName)
         return try? String(contentsOf: path)
     }
 
-    private func filename(fromContract contract: DerbyWallet.Address) -> String {
+    private func filename(fromContract contract: Go23Wallet.Address) -> String {
         return "\(contract.eip55String).\(AssetDefinitionDiskBackingStore.fileExtension)"
     }
 
-    public subscript(contract: DerbyWallet.Address) -> String? {
+    public subscript(contract: Go23Wallet.Address) -> String? {
         get {
             guard var xmlContents = xml(forContract: contract) else { return nil }
             guard let fileName = tokenScriptFileIndices.nonConflictingFileName(forContract: contract) else { return xmlContents }
@@ -146,12 +142,12 @@ public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
         }
     }
 
-    public func isOfficial(contract: DerbyWallet.Address) -> Bool {
+    public func isOfficial(contract: Go23Wallet.Address) -> Bool {
         return isOfficial
     }
 
     ///We don't bother to check if there's a conflict inside this function because if there's a conflict, the files should be ignored anyway
-    public func isCanonicalized(contract: DerbyWallet.Address) -> Bool {
+    public func isCanonicalized(contract: Go23Wallet.Address) -> Bool {
         if let filename = tokenScriptFileIndices.contractsToFileNames[contract]?.first {
             return filename.hasSuffix(".\(AssetDefinitionDiskBackingStore.fileExtension)")
         } else {
@@ -160,11 +156,11 @@ public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
         }
     }
 
-    public func hasConflictingFile(forContract contract: DerbyWallet.Address) -> Bool {
+    public func hasConflictingFile(forContract contract: Go23Wallet.Address) -> Bool {
         return tokenScriptFileIndices.hasConflictingFile(forContract: contract)
     }
 
-    public func hasOutdatedTokenScript(forContract contract: DerbyWallet.Address) -> Bool {
+    public func hasOutdatedTokenScript(forContract contract: Go23Wallet.Address) -> Bool {
         return !tokenScriptFileIndices.contractsToOldTokenScriptFileNames[contract].isEmpty
     }
 
@@ -172,13 +168,13 @@ public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
         return tokenScriptFileIndices.signatureVerificationTypes[tokenScriptFileIndices.hash(contents: xmlString)]
     }
 
-    public func writeCacheTokenScriptSignatureVerificationType(_ verificationType: TokenScriptSignatureVerificationType, forContract contract: DerbyWallet.Address, forXmlString xmlString: String) {
+    public func writeCacheTokenScriptSignatureVerificationType(_ verificationType: TokenScriptSignatureVerificationType, forContract contract: Go23Wallet.Address, forXmlString xmlString: String) {
         tokenScriptFileIndices.signatureVerificationTypes[tokenScriptFileIndices.hash(contents: xmlString)] = verificationType
         tokenScriptFileIndices.write(toUrl: indicesFileUrl)
     }
 
     //When we remove a contract from our database, we must remove the TokenScript file (from the standard repo) that is named after it because this file wouldn't be pulled from the server anymore. If the TokenScript file applies to more than 1 contract, having the outdated file around will mean 2 copies of the same file — with 1 outdated, 1 up-to-date, causing TokenScript client to see a conflict
-    public func deleteFileDownloadedFromOfficialRepoFor(contract: DerbyWallet.Address) {
+    public func deleteFileDownloadedFromOfficialRepoFor(contract: Go23Wallet.Address) {
         guard isOfficial else { return }
         let filename = self.filename(fromContract: contract)
         let url = directory.appendingPathComponent(filename)
@@ -186,12 +182,10 @@ public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
         tokenScriptFileIndices.removeHash(forFile: filename)
 
         var contractsToFileNames = tokenScriptFileIndices.contractsToFileNames
-        for (eachContract, eachFilenames) in tokenScriptFileIndices.contractsToFileNames {
-            if eachFilenames.contains(filename) {
-                var updatedFilenames = eachFilenames
-                updatedFilenames.removeAll { $0 == filename }
-                contractsToFileNames[eachContract] = updatedFilenames
-            }
+        for (eachContract, eachFilenames) in tokenScriptFileIndices.contractsToFileNames where eachFilenames.contains(filename) {
+            var updatedFilenames = eachFilenames
+            updatedFilenames.removeAll { $0 == filename }
+            contractsToFileNames[eachContract] = updatedFilenames
         }
         tokenScriptFileIndices.contractsToFileNames = contractsToFileNames
         tokenScriptFileIndices.contractsToEntities[filename] = nil
@@ -201,15 +195,15 @@ public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
     }
 
     //Must only return the last modified date for a file if it's for the current schema version otherwise, a file using the old schema might have a more recent timestamp (because it was recently downloaded) than a newer version on the server (which was not yet made available by the time the user downloaded the version with the old schema)
-    public func lastModifiedDateOfCachedAssetDefinitionFile(forContract contract: DerbyWallet.Address) -> Date? {
+    public func lastModifiedDateOfCachedAssetDefinitionFile(forContract contract: Go23Wallet.Address) -> Date? {
         assert(isOfficial)
         let path = localURLOfXML(for: contract)
         guard let lastModified = try? path.resourceValues(forKeys: [.contentModificationDateKey]) else { return nil }
-        guard XMLHandler.Functional.isTokenScriptSupportedSchemaVersion(path) else { return nil }
+        guard XMLHandler.functional.isTokenScriptSupportedSchemaVersion(path) else { return nil }
         return lastModified.contentModificationDate
     }
 
-    public func forEachContractWithXML(_ body: (DerbyWallet.Address) -> Void) {
+    public func forEachContractWithXML(_ body: (Go23Wallet.Address) -> Void) {
         for (contract, _) in tokenScriptFileIndices.contractsToFileNames {
             body(contract)
         }
@@ -251,9 +245,9 @@ public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
 
             let contractsAndServers: [AddressAndOptionalRPCServer]
             if let contents = try? String(contentsOf: url) {
-                if let holdingContracts: [AddressAndOptionalRPCServer] = XMLHandler.Functional.getHoldingContracts(forTokenScript: contents)?.map({ AddressAndOptionalRPCServer(address: $0.0, server: RPCServer(chainID: $0.1)) }) {
+                if let holdingContracts: [AddressAndOptionalRPCServer] = XMLHandler.functional.getHoldingContracts(forTokenScript: contents)?.map({ AddressAndOptionalRPCServer(address: $0.0, server: RPCServer(chainID: $0.1)) }) {
                     contractsAndServers = holdingContracts
-                    let entities = XMLHandler.Functional.getEntities(forTokenScript: contents)
+                    let entities = XMLHandler.functional.getEntities(forTokenScript: contents)
                     for eachContractAndServer in contractsAndServers {
                         tokenScriptFileIndices.contractsToFileNames[eachContractAndServer.address, default: []] += [fileName]
                     }
@@ -275,11 +269,9 @@ public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
             contractsAndServersAffected = contractsAndServers + contractsPreviouslyForThisXmlFile.map { AddressAndOptionalRPCServer(address: $0, server: nil) }
         } else {
             contractsAndServersAffected = [AddressAndOptionalRPCServer]()
-            for (xmlFileName, entities) in tokenScriptFileIndices.contractsToEntities {
-                if entities.contains(where: { $0.fileName == fileName }) {
-                    let contracts = tokenScriptFileIndices.contracts(inFileName: xmlFileName)
-                    contractsAndServersAffected.append(contentsOf: contracts.map { AddressAndOptionalRPCServer(address: $0, server: nil) })
-                }
+            for (xmlFileName, entities) in tokenScriptFileIndices.contractsToEntities where entities.contains(where: { $0.fileName == fileName }) {
+                let contracts = tokenScriptFileIndices.contracts(inFileName: xmlFileName)
+                contractsAndServersAffected.append(contentsOf: contracts.map { AddressAndOptionalRPCServer(address: $0, server: nil) })
             }
         }
         purgeCacheFor(contractsAndServers: contractsAndServersAffected, changeHandler: changeHandler)

@@ -1,8 +1,8 @@
 //
 //  Session+Publishers.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 10.05.2022.
+//  Created by Taran.
 //
 
 import Foundation
@@ -12,13 +12,15 @@ import Combine
 
 extension APIKitSession {
 
-    class func sendPublisher<Request: APIKit.Request>(_ request: Request, server: RPCServer, callbackQueue: CallbackQueue? = nil) -> AnyPublisher<Request.Response, SessionTaskError> {
+    class func sendPublisher<Request: APIKit.Request>(_ request: Request, server: RPCServer, analytics: AnalyticsLogger, callbackQueue: CallbackQueue? = nil) -> AnyPublisher<Request.Response, SessionTaskError> {
         sendImplPublisher(request, server: server, callbackQueue: callbackQueue)
             .retry(times: 2, when: {
                 guard case SessionTaskError.requestError(let e) = $0 else { return false }
+                if let e = e as? RpcNodeRetryableRequestError {
+                    logRpcNodeError(e, analytics: analytics)
+                }
                 return e is RpcNodeRetryableRequestError
-            })
-            .eraseToAnyPublisher()
+            }).eraseToAnyPublisher()
     }
 
     private class func sendImplPublisher<Request: APIKit.Request>(_ request: Request, server: RPCServer, callbackQueue: CallbackQueue? = nil) -> AnyPublisher<Request.Response, SessionTaskError> {
@@ -30,8 +32,8 @@ extension APIKitSession {
                     case .success(let result):
                         seal(.success(result))
                     case .failure(let error):
-                        if let friendlyErr = convertToUserFriendlyError(error: error, server: server, baseUrl: request.baseURL) {
-                            seal(.failure(.requestError(friendlyErr)))
+                        if let e = convertToUserFriendlyError(error: error, server: server, baseUrl: request.baseURL) {
+                            seal(.failure(.requestError(e)))
                         } else {
                             seal(.failure(error))
                         }

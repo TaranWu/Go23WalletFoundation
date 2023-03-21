@@ -1,8 +1,8 @@
 //
 //  Token.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 18.05.2022.
+//  Created by Taran.
 //
 
 import Foundation
@@ -11,7 +11,7 @@ import BigInt
 
 public struct Token: Equatable, Hashable {
     public let primaryKey: String
-    public let contractAddress: DerbyWallet.Address
+    public let contractAddress: Go23Wallet.Address
     public let symbol: String
     public let decimals: Int
     public let server: RPCServer
@@ -35,11 +35,6 @@ public struct Token: Equatable, Hashable {
         }
     }
 
-    public var valueDecimal: NSDecimalNumber? {
-        let value = EtherNumberFormatter.plain.string(from: value, decimals: decimals)
-        return value.optionalDecimalValue
-    }
-
     public var nonZeroBalance: [TokenBalanceValue] {
         return Array(balance.filter { isNonZeroBalance($0.balance, tokenType: self.type) })
     }
@@ -49,7 +44,7 @@ public struct Token: Equatable, Hashable {
     }
 
     public init(
-            contract: DerbyWallet.Address = Constants.nullAddress,
+            contract: Go23Wallet.Address = Constants.nullAddress,
             server: RPCServer = .main,
             name: String = "",
             symbol: String = "",

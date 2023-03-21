@@ -4,26 +4,12 @@ import UIKit
 import BigInt
 
 extension String {
-
-    //NOTE: as minimum chunck is as min time it will be executed, during testing we found that optimal chunck size is 100, but seems it could be optimized more, execution time (0.2 seconds), pretty good and doesn't block UI
-    public var toHexData: Data {
-        if self.hasPrefix("0x") {
-            return Data(_hex: self, chunkSize: 100)
-        } else {
-            return Data(_hex: self.hex, chunkSize: 100)
-        }
-    }
-}
-
-extension String {
     public var hex: String {
         guard let data = self.data(using: .utf8) else {
             return String()
         }
 
-        return data.map {
-            String(format: "%02x", $0)
-        }.joined()
+        return data.map { String(format: "%02x", $0) }.joined()
     }
 
     public var hexEncoded: String {
@@ -33,7 +19,7 @@ extension String {
         return data.hexEncoded
     }
 
-    public var isHexEncoded: Bool {
+    var isHexEncoded: Bool {
         guard starts(with: "0x") else {
             return false
         }
@@ -50,17 +36,6 @@ extension String {
 
     public var trimmed: String {
         return trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-    }
-
-    public var asDictionary: [String: Any]? {
-        if let data = self.data(using: .utf8) {
-            do {
-                return try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
-            } catch {
-                return [:]
-            }
-        }
-        return [:]
     }
 
     public var has0xPrefix: Bool {
@@ -96,25 +71,16 @@ extension String {
     }
 
     public func toInt() -> Int? {
-        return Int(self) ?? nil
-    }
-
-    public func toBool() -> Bool {
-        return (toInt()?.toBool())!
+        return Int(self)
     }
 
     public func toQRCode() -> UIImage? {
-        let data = self.data(using: String.Encoding.ascii)
-        return data?.toQRCode()
+        return data(using: String.Encoding.ascii)?.toQRCode()
     }
 
     public func isNumeric() -> Bool {
         let numberCharacters = CharacterSet.decimalDigits.inverted
         return !isEmpty && rangeOfCharacter(from: numberCharacters) == nil
-    }
-
-    public func isNotNumeric() -> Bool {
-        return !isNumeric()
     }
 }
 
@@ -222,7 +188,7 @@ extension StringProtocol {
 extension String {
 
     public var scientificAmountToBigInt: BigInt? {
-        let numberFormatter = Formatter.scientificAmount
+        let numberFormatter = NumberFormatter.scientificAmount
 
         let amountString = numberFormatter.number(from: self).flatMap { numberFormatter.string(from: $0) }
         return amountString.flatMap { BigInt($0) }
@@ -264,12 +230,6 @@ extension String {
 
         let predicate = NSPredicate(format: "SELF MATCHES %@", emailRegEx)
         return predicate.evaluate(with: self)
-    }
-}
-
-extension String {
-    public var hashForCachingHeight: Int {
-        return hashValue
     }
 }
 

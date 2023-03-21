@@ -1,20 +1,14 @@
 //
 //  DefaultsWalletAddressesStore.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 22.01.2022.
+//  Created by Taran.
 //
 
 import Foundation
 import Combine
 
 public struct DefaultsWalletAddressesStore: WalletAddressesStore {
-    public var walletsPublisher: AnyPublisher<Set<Wallet>, Never> {
-        walletsSubject.eraseToAnyPublisher()
-    }
-
-    private var walletsSubject: CurrentValueSubject<Set<Wallet>, Never> = .init([])
-
     private struct Keys {
         static let watchAddresses = "watchAddresses"
         static let ethereumAddressesWithPrivateKeys = "ethereumAddressesWithPrivateKeys"
@@ -38,9 +32,9 @@ public struct DefaultsWalletAddressesStore: WalletAddressesStore {
     public var recentlyUsedWallet: Wallet?
 
     public var wallets: [Wallet] {
-        let watchAddresses = self.watchAddresses.compactMap { DerbyWallet.Address(string: $0) }.map { Wallet(address: $0, origin: .watch) }
-        let addressesWithPrivateKeys = ethereumAddressesWithPrivateKeys.compactMap { DerbyWallet.Address(string: $0) }.map { Wallet(address: $0, origin: .privateKey) }
-        let addressesWithSeed = ethereumAddressesWithSeed.compactMap { DerbyWallet.Address(string: $0) }.map { Wallet(address: $0, origin: .hd) }
+        let watchAddresses = self.watchAddresses.compactMap { Go23Wallet.Address(string: $0) }.map { Wallet(address: $0, origin: .watch) }
+        let addressesWithPrivateKeys = ethereumAddressesWithPrivateKeys.compactMap { Go23Wallet.Address(string: $0) }.map { Wallet(address: $0, origin: .privateKey) }
+        let addressesWithSeed = ethereumAddressesWithSeed.compactMap { Go23Wallet.Address(string: $0) }.map { Wallet(address: $0, origin: .hd) }
         return addressesWithSeed + addressesWithPrivateKeys + watchAddresses
     }
 
@@ -92,42 +86,34 @@ public struct DefaultsWalletAddressesStore: WalletAddressesStore {
         }
     }
 
-    private var didAddWalletSubject: PassthroughSubject<DerbyWallet.Address, Never> = .init()
-    private var didRemoveWalletSubject: PassthroughSubject<Wallet, Never> = .init()
-
-    public var didAddWalletPublisher: AnyPublisher<DerbyWallet.Address, Never> {
-        didAddWalletSubject.eraseToAnyPublisher()
+    mutating public func add(wallet: Wallet) {
+        switch wallet.origin {
+        case .hd:
+            addToListOfEthereumAddressesWithSeed(wallet.address)
+        case .privateKey:
+            addToListOfEthereumAddressesWithPrivateKeys(wallet.address)
+        case .watch:
+            addToListOfWatchEthereumAddresses(wallet.address)
+        }
     }
 
-    public var didRemoveWalletPublisher: AnyPublisher<Wallet, Never> {
-        didRemoveWalletSubject.eraseToAnyPublisher()
-    }
-
-    mutating public func addToListOfWatchEthereumAddresses(_ address: DerbyWallet.Address) {
+    mutating private func addToListOfWatchEthereumAddresses(_ address: Go23Wallet.Address) {
         watchAddresses = [watchAddresses, [address.eip55String]].flatMap { $0 }
-
-        didAddWalletSubject.send(address)
     }
 
-    mutating public func addToListOfEthereumAddressesWithPrivateKeys(_ address: DerbyWallet.Address) {
+    mutating private func addToListOfEthereumAddressesWithPrivateKeys(_ address: Go23Wallet.Address) {
         let updatedOwnedAddresses = Array(Set(ethereumAddressesWithPrivateKeys + [address.eip55String]))
         ethereumAddressesWithPrivateKeys = updatedOwnedAddresses
-
-        didAddWalletSubject.send(address)
     }
 
-    mutating public func addToListOfEthereumAddressesWithSeed(_ address: DerbyWallet.Address) {
+    mutating private func addToListOfEthereumAddressesWithSeed(_ address: Go23Wallet.Address) {
         let updated = Array(Set(ethereumAddressesWithSeed + [address.eip55String]))
         ethereumAddressesWithSeed = updated
-
-        didAddWalletSubject.send(address)
     }
 
-    mutating public func addToListOfEthereumAddressesProtectedByUserPresence(_ address: DerbyWallet.Address) {
+    mutating public func addToListOfEthereumAddressesProtectedByUserPresence(_ address: Go23Wallet.Address) {
         let updated = Array(Set(ethereumAddressesProtectedByUserPresence + [address.eip55String]))
         ethereumAddressesProtectedByUserPresence = updated
-
-        didAddWalletSubject.send(address)
     }
 
     mutating public func removeAddress(_ account: Wallet) {
@@ -135,7 +121,5 @@ public struct DefaultsWalletAddressesStore: WalletAddressesStore {
         ethereumAddressesWithSeed = ethereumAddressesWithSeed.filter { $0 != account.address.eip55String }
         ethereumAddressesProtectedByUserPresence = ethereumAddressesProtectedByUserPresence.filter { $0 != account.address.eip55String }
         watchAddresses = watchAddresses.filter { $0 != account.address.eip55String }
-
-        didRemoveWalletSubject.send(account)
     }
 }

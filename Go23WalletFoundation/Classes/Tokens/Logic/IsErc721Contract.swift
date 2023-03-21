@@ -4,14 +4,21 @@
 //
 
 import Foundation
-import PromiseKit 
+import Combine
 
 public class IsErc721Contract {
-    private let server: RPCServer
+    private let blockchainProvider: BlockchainProvider
 
     private struct DoesNotSupportERC165Querying {
-        static let bitizen = "0xb891c4d89c1bf012f0014f56ce523f248a07f714"
-        static let cryptoSaga = "0xabc7e6c01237e8eef355bba2bf925a730b714d5f"
+        static let bitizen = Go23Wallet.Address(string: "0xb891c4d89c1bf012f0014f56ce523f248a07f714")!
+        static let cryptoSaga = Go23Wallet.Address(string: "0xabc7e6c01237e8eef355bba2bf925a730b714d5f")!
+    }
+
+    private struct DevconVISouvenir {
+        static let polygon = Go23Wallet.Address(string: "0x7Db4de78E6b9A98752B56959611e4cfdA52269D2")!
+        static let arbitrum = Go23Wallet.Address(string: "0x7Db4de78E6b9A98752B56959611e4cfdA52269D2")!
+        static let optimism = Go23Wallet.Address(string: "0x7Db4de78E6b9A98752B56959611e4cfdA52269D2")!
+        static let mainnet = Go23Wallet.Address(string: "0x7522dC5A357891B4dAEC194E285551EA5ea66d09")!
     }
 
     private struct ERC165Hash {
@@ -22,48 +29,84 @@ public class IsErc721Contract {
         //Using "kat" instead of "cryptokitties" to avoid being mistakenly detected by app review as supporting CryptoKitties
         static let onlyKat = "0x9a20483d"
     }
-    private let queue: DispatchQueue
 
-    public init(forServer server: RPCServer, queue: DispatchQueue = .global()) {
-        self.server = server
-        self.queue = queue
+    private var inFlightPromises: [String: AnyPublisher<Bool, SessionTaskError>] = [:]
+    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.isErc721Contract")
+    private lazy var isInterfaceSupported165 = IsInterfaceSupported165(blockchainProvider: blockchainProvider)
+
+    public init(blockchainProvider: BlockchainProvider) {
+        self.blockchainProvider = blockchainProvider
     }
 
-    func getIsERC721Contract(for contract: DerbyWallet.Address) -> Promise<Bool> {
-        let server = self.server
-        if contract.sameContract(as: DoesNotSupportERC165Querying.bitizen) {
-            return .value(true)
+    func getIsERC721Contract(for contract: Go23Wallet.Address) -> AnyPublisher<Bool, SessionTaskError> {
+        return Just(contract)
+            .receive(on: queue)
+            .setFailureType(to: SessionTaskError.self)
+            .flatMap { [weak self, queue, isInterfaceSupported165, blockchainProvider] contract -> AnyPublisher<Bool, SessionTaskError> in
+                if let value = IsErc721Contract.sureItsErc721(contract: contract) {
+                    return .just(value)
+                }
+
+                let key = "\(contract.eip55String)-\(blockchainProvider.server.chainID)"
+                if let promise = self?.inFlightPromises[key] {
+                    return promise
+                } else {
+                    let cryptoKittyPromise = isInterfaceSupported165
+                        .getInterfaceSupported165(hash: ERC165Hash.onlyKat, contract: contract)
+                        .mapToResult()
+
+                    let nonCryptoKittyERC721Promise = isInterfaceSupported165
+                        .getInterfaceSupported165(hash: ERC165Hash.official, contract: contract)
+                        .mapToResult()
+
+                    let nonCryptoKittyERC721WithOldInterfaceHashPromise = isInterfaceSupported165
+                        .getInterfaceSupported165(hash: ERC165Hash.old, contract: contract)
+                        .mapToResult()
+
+                    //Slower than theoretically possible because we wait for every promise to be resolved. In theory we can stop when any promise is fulfilled with true. But code is much less elegant
+                    let promise = Publishers.CombineLatest3(cryptoKittyPromise, nonCryptoKittyERC721Promise, nonCryptoKittyERC721WithOldInterfaceHashPromise)
+                        .receive(on: queue)
+                        .setFailureType(to: SessionTaskError.self)
+                        .flatMap { r1, r2, r3 -> AnyPublisher<Bool, SessionTaskError> in
+                            let isCryptoKitty = try? r1.get()
+                            let isNonCryptoKittyERC721 = try? r2.get()
+                            let isNonCryptoKittyERC721WithOldInterfaceHash = try? r3.get()
+                            if let isCryptoKitty = isCryptoKitty, isCryptoKitty {
+                                return .just(true)
+                            } else if let isNonCryptoKittyERC721 = isNonCryptoKittyERC721, isNonCryptoKittyERC721 {
+                                return .just(true)
+                            } else if let isNonCryptoKittyERC721WithOldInterfaceHash = isNonCryptoKittyERC721WithOldInterfaceHash, isNonCryptoKittyERC721WithOldInterfaceHash {
+                                return .just(true)
+                            } else if isCryptoKitty != nil, isNonCryptoKittyERC721 != nil, isNonCryptoKittyERC721WithOldInterfaceHash != nil {
+                                return .just(false)
+                            } else {
+                                return .just(false)
+                            }
+                        }.handleEvents(receiveCompletion: { _ in self?.inFlightPromises[key] = .none })
+                        .share()
+                        .eraseToAnyPublisher()
+
+                    self?.inFlightPromises[key] = promise
+
+                    return promise
+                }
+            }.eraseToAnyPublisher()
+    }
+
+    private static func sureItsErc721(contract: Go23Wallet.Address) -> Bool? {
+        let contracts: [Go23Wallet.Address] = [
+            DoesNotSupportERC165Querying.bitizen,
+            DoesNotSupportERC165Querying.cryptoSaga,
+            DevconVISouvenir.mainnet,
+            DevconVISouvenir.arbitrum,
+            DevconVISouvenir.optimism,
+            DevconVISouvenir.polygon
+        ]
+
+        if contracts.contains(contract) {
+            return true
         }
-        if contract.sameContract(as: DoesNotSupportERC165Querying.cryptoSaga) {
-            return .value(true)
-        }
 
-        let function = GetInterfaceSupported165Encode()
-
-        let cryptoKittyPromise = callSmartContract(withServer: server, contract: contract, functionName: function.name, abiString: function.abi, parameters: [ERC165Hash.onlyKat] as [AnyObject])
-
-        let nonCryptoKittyERC721Promise = callSmartContract(withServer: server, contract: contract, functionName: function.name, abiString: function.abi, parameters: [ERC165Hash.official] as [AnyObject])
-
-        let nonCryptoKittyERC721WithOldInterfaceHashPromise = callSmartContract(withServer: server, contract: contract, functionName: function.name, abiString: function.abi, parameters: [ERC165Hash.old] as [AnyObject])
-
-        //Slower than theoretically possible because we wait for every promise to be resolved. In theory we can stop when any promise is fulfilled with true. But code is much less elegant
-        return firstly {
-            when(resolved: cryptoKittyPromise, nonCryptoKittyERC721Promise, nonCryptoKittyERC721WithOldInterfaceHashPromise)
-        }.map { _ -> Bool in
-            let isCryptoKitty = cryptoKittyPromise.value?["0"] as? Bool
-            let isNonCryptoKittyERC721 = nonCryptoKittyERC721Promise.value?["0"] as? Bool
-            let isNonCryptoKittyERC721WithOldInterfaceHash = nonCryptoKittyERC721WithOldInterfaceHashPromise.value?["0"] as? Bool
-            if let isCryptoKitty = isCryptoKitty, isCryptoKitty {
-                return true
-            } else if let isNonCryptoKittyERC721 = isNonCryptoKittyERC721, isNonCryptoKittyERC721 {
-                return true
-            } else if let isNonCryptoKittyERC721WithOldInterfaceHash = isNonCryptoKittyERC721WithOldInterfaceHash, isNonCryptoKittyERC721WithOldInterfaceHash {
-                return true
-            } else if isCryptoKitty != nil, isNonCryptoKittyERC721 != nil, isNonCryptoKittyERC721WithOldInterfaceHash != nil {
-                return false
-            } else {
-                throw createSmartContractCallError(forContract: contract, functionName: function.name)
-            }
-        }
+        return nil
     }
 }

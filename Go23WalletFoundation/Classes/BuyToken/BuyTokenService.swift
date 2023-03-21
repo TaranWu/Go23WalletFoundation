@@ -1,8 +1,8 @@
 //
 //  BuyTokenService.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Tatan.
+//  Created by Taran.
 //
 
 import Foundation

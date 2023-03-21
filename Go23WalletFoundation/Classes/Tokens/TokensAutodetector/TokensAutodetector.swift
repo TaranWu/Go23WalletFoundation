@@ -1,8 +1,8 @@
 //
 //  TokensAutodetector.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 23.02.2022.
+//  Created by Taran.
 //
 
 import Foundation
@@ -18,39 +18,42 @@ public protocol TokensAutodetector: NSObjectProtocol {
 
 public protocol DetectedContractsProvideble {
     /// Tokens contracts
-    func alreadyAddedContracts(for server: RPCServer) -> [DerbyWallet.Address]
+    func alreadyAddedContracts(for server: RPCServer) -> [Go23Wallet.Address]
     /// Not using anymore, leave it to avoid migration fixing
-    func deletedContracts(for server: RPCServer) -> [DerbyWallet.Address]
+    func deletedContracts(for server: RPCServer) -> [Go23Wallet.Address]
     /// Also seems like not supported
-    func hiddenContracts(for server: RPCServer) -> [DerbyWallet.Address]
+    func hiddenContracts(for server: RPCServer) -> [Go23Wallet.Address]
     /// Partially resolved token contracts
-    func delegateContracts(for server: RPCServer) -> [DerbyWallet.Address]
+    func delegateContracts(for server: RPCServer) -> [Go23Wallet.Address]
 }
 
 public class SingleChainTokensAutodetector: NSObject, TokensAutodetector {
     private let autoDetectTransactedTokensQueue: OperationQueue
     private let autoDetectTokensQueue: OperationQueue
     private let session: WalletSession
-    private let queue: DispatchQueue = DispatchQueue(label: "org.DerbyWallet.swift.tokensAutoDetection")
-    private let importToken: ImportToken
+    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.tokensAutoDetection")
+    private let importToken: TokenImportable & TokenOrContractFetchable
     private let detectedTokens: DetectedContractsProvideble
-    private lazy var erc875BalanceFetcher = GetErc875Balance(forServer: session.server, queue: queue)
-    private lazy var erc20BalanceFetcher = GetErc20Balance(forServer: session.server, queue: queue)
     private let tokensOrContractsDetectedSubject = PassthroughSubject<[TokenOrContract], Never>()
-
+    private lazy var getContractInteractions = GetContractInteractions(networkService: networkService)
+    private let contractToImportStorage: ContractToImportStorage
+    private let networkService: NetworkService
     public var tokensOrContractsDetected: AnyPublisher<[TokenOrContract], Never> {
         tokensOrContractsDetectedSubject.eraseToAnyPublisher()
     }
-    public var isAutoDetectingTransactedTokens = false
+    var isAutoDetectingTransactedTokens = false
     var isAutoDetectingTokens = false
 
-    init(
-            session: WalletSession,
-            detectedTokens: DetectedContractsProvideble,
-            withAutoDetectTransactedTokensQueue autoDetectTransactedTokensQueue: OperationQueue,
-            withAutoDetectTokensQueue autoDetectTokensQueue: OperationQueue,
-            importToken: ImportToken
-    ) {
+    init(session: WalletSession,
+         contractToImportStorage: ContractToImportStorage,
+         detectedTokens: DetectedContractsProvideble,
+         withAutoDetectTransactedTokensQueue autoDetectTransactedTokensQueue: OperationQueue,
+         withAutoDetectTokensQueue autoDetectTokensQueue: OperationQueue,
+         importToken: TokenImportable & TokenOrContractFetchable,
+         networkService: NetworkService) {
+
+        self.networkService = networkService
+        self.contractToImportStorage = contractToImportStorage
         self.importToken = importToken
         self.session = session
         self.detectedTokens = detectedTokens
@@ -61,7 +64,7 @@ public class SingleChainTokensAutodetector: NSObject, TokensAutodetector {
     public func start() {
         //TODO we don't auto detect tokens if we are running tests. Maybe better to move this into app delegate's application(_:didFinishLaunchingWithOptions:)
         guard !isRunningTests() else { return }
-        
+
         //Since this is called at launch, we don't want it to block launching
         queue.async { [weak self] in
             self?.autoDetectTransactedTokens()
@@ -75,11 +78,11 @@ public class SingleChainTokensAutodetector: NSObject, TokensAutodetector {
         guard !isAutoDetectingTransactedTokens else { return }
 
         isAutoDetectingTransactedTokens = true
-        let operation = AutoDetectTransactedTokensOperation(session: session, delegate: self)
+        let operation = AutoDetectTransactedTokensOperation(server: session.server, wallet: session.account, delegate: self)
         autoDetectTransactedTokensQueue.addOperation(operation)
     }
 
-    private func contractsForTransactedTokens(detectedContracts: [DerbyWallet.Address], forServer server: RPCServer) -> [DerbyWallet.Address] {
+    private func contractsForTransactedTokens(detectedContracts: [Go23Wallet.Address], forServer server: RPCServer) -> [Go23Wallet.Address] {
         let alreadyAddedContracts = detectedTokens.alreadyAddedContracts(for: server)
         let deletedContracts = detectedTokens.deletedContracts(for: server)
         let hiddenContracts = detectedTokens.hiddenContracts(for: server)
@@ -88,7 +91,7 @@ public class SingleChainTokensAutodetector: NSObject, TokensAutodetector {
         return detectedContracts - alreadyAddedContracts - deletedContracts - hiddenContracts - delegateContracts
     }
 
-    internal func autoDetectTransactedContractsImpl(wallet: DerbyWallet.Address, erc20: Bool, server: RPCServer) -> Promise<[DerbyWallet.Address]> {
+    internal func autoDetectTransactedContractsImpl(wallet: Go23Wallet.Address, erc20: Bool, server: RPCServer) -> AnyPublisher<[Go23Wallet.Address], Never> {
         let startBlock: Int?
         if erc20 {
             startBlock = Config.getLastFetchedAutoDetectedTransactedTokenErc20BlockNumber(server, wallet: wallet).flatMap { $0 + 1 }
@@ -96,153 +99,82 @@ public class SingleChainTokensAutodetector: NSObject, TokensAutodetector {
             startBlock = Config.getLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumber(server, wallet: wallet).flatMap { $0 + 1 }
         }
 
-        return firstly {
-            GetContractInteractions(queue: queue)
-                .getContractList(walletAddress: wallet, server: server, startBlock: startBlock, erc20: erc20)
-        }.map(on: queue) { contracts, maxBlockNumber -> [DerbyWallet.Address] in
-            if let maxBlockNumber = maxBlockNumber {
-                if erc20 {
-                    Config.setLastFetchedAutoDetectedTransactedTokenErc20BlockNumber(maxBlockNumber, server: server, wallet: wallet)
-                } else {
-                    Config.setLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumber(maxBlockNumber, server: server, wallet: wallet)
+        return getContractInteractions
+            .getContractList(walletAddress: wallet, server: server, startBlock: startBlock, erc20: erc20)
+            .map { data -> [Go23Wallet.Address] in
+                if let maxBlockNumber = data.maxBlockNumber {
+                    if erc20 {
+                        Config.setLastFetchedAutoDetectedTransactedTokenErc20BlockNumber(maxBlockNumber, server: server, wallet: wallet)
+                    } else {
+                        Config.setLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumber(maxBlockNumber, server: server, wallet: wallet)
+                    }
                 }
-            }
 
-            return contracts
-        }
+                return data.uniqueNonEmptyContracts
+            }.replaceError(with: [])
+            .eraseToAnyPublisher()
     }
 
-    private func autoDetectTransactedTokensImpl(wallet: DerbyWallet.Address, erc20: Bool) -> Promise<[TokenOrContract]> {
+    private func autoDetectTransactedTokensImpl(wallet: Go23Wallet.Address, erc20: Bool) -> AnyPublisher<[TokenOrContract], Never> {
         let server = session.server
 
-        return firstly {
-            autoDetectTransactedContractsImpl(wallet: wallet, erc20: erc20, server: server)
-        }.then(on: queue, { [weak self, importToken] detectedContracts -> Promise<[TokenOrContract]> in
-            guard let strongSelf = self else { return .init(error: PMKError.cancelled) }
+        return autoDetectTransactedContractsImpl(wallet: wallet, erc20: erc20, server: server)
+            .flatMap { [importToken, queue, weak self] detectedContracts -> AnyPublisher<[TokenOrContract], Never> in
+                guard let strongSelf = self else { return .empty() }
+                let publishers = strongSelf.contractsForTransactedTokens(detectedContracts: detectedContracts, forServer: server)
+                    .map { importToken.fetchTokenOrContract(for: $0, onlyIfThereIsABalance: false).mapToResult() }
 
-            let promises = strongSelf.contractsForTransactedTokens(detectedContracts: detectedContracts, forServer: server)
-                .compactMap { contract -> Promise<TokenOrContract> in
-                    importToken.fetchTokenOrContract(for: contract, server: server, onlyIfThereIsABalance: false)
-                }
-
-            return when(resolved: promises).map(on: strongSelf.queue, { values -> [TokenOrContract] in
-                return values.compactMap { $0.optionalValue }
-            })
-        })
+                return Publishers.MergeMany(publishers).collect()
+                    .map { $0.compactMap { try? $0.get() } }
+                    .receive(on: queue)
+                    .eraseToAnyPublisher()
+            }.eraseToAnyPublisher()
     }
 
-    //TODO consolidate with adding `Constants.uefaMainnet` which is done elsewhere
     private func autoDetectPartnerTokens() {
-        guard !session.config.development.isAutoFetchingDisabled else { return }
-        switch session.server {
-        case .main:
-            autoDetectMainnetPartnerTokens()
-        case .xDai:
-            autoDetectXDaiPartnerTokens()
-        case .rinkeby:
-            autoDetectRinkebyPartnerTokens()
-        case .kovan, .ropsten, .poa, .sokol, .classic, .callisto, .goerli, .artis_sigma1, .binance_smart_chain, .binance_smart_chain_testnet, .artis_tau1, .custom, .heco_testnet, .heco, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .candle, .polygon, .mumbai_testnet, .optimistic, .optimisticKovan, .cronosTestnet, .arbitrum, .arbitrumRinkeby, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .phi, .ioTeX, .ioTeXTestnet:
-            break
-        }
-    }
-
-    private func autoDetectMainnetPartnerTokens() {
-        autoDetectTokens(withContracts: Constants.partnerContracts)
-    }
-
-    private func autoDetectXDaiPartnerTokens() {
-        autoDetectTokens(withContracts: Constants.ethDenverXDaiPartnerContracts)
-    }
-
-    private func autoDetectRinkebyPartnerTokens() {
-        autoDetectTokens(withContracts: Constants.rinkebyPartnerContracts)
-    }
-
-    private func autoDetectTokens(withContracts contractsToDetect: [(name: String, contract: DerbyWallet.Address)]) {
+        guard !isRunningTests() else { return }
+        guard !session.config.development.isAutoFetchingDisabled, !contractToImportStorage.contractsToDetect.isEmpty else { return }
         guard !isAutoDetectingTokens else { return }
-
         isAutoDetectingTokens = true
-        let operation = AutoDetectTokensOperation(session: session, delegate: self, tokens: contractsToDetect)
+
+        let operation = AutoDetectTokensOperation(server: session.server, delegate: self, tokens: contractToImportStorage.contractsToDetect)
         autoDetectTokensQueue.addOperation(operation)
     }
 
-    private func contractsToAutodetectTokens(withContracts contractsToDetect: [(name: String, contract: DerbyWallet.Address)], forServer server: RPCServer) -> [DerbyWallet.Address] {
-        let alreadyAddedContracts = detectedTokens.alreadyAddedContracts(for: server)
-        let deletedContracts = detectedTokens.deletedContracts(for: server)
-        let hiddenContracts = detectedTokens.hiddenContracts(for: server)
-
-        return contractsToDetect.map { $0.contract } - alreadyAddedContracts - deletedContracts - hiddenContracts
-    }
-
-    private func fetchCreateErc875OrErc20Token(forContract contract: DerbyWallet.Address, forServer server: RPCServer) -> Promise<TokenOrContract> {
-        let account = session.account.address
-        return session.tokenProvider.getTokenType(for: contract)
-            .then(on: queue, { [importToken, erc875BalanceFetcher, erc20BalanceFetcher, queue] tokenType -> Promise<TokenOrContract> in
-                switch tokenType {
-                case .erc875:
-                    //TODO long and very similar code below. Extract function
-                    return erc875BalanceFetcher.getERC875TokenBalance(for: account, contract: contract).then(on: queue, { balance -> Promise<TokenOrContract> in
-                        if balance.isEmpty {
-                            return .value(.none)
-                        } else {
-                            return importToken.fetchTokenOrContract(for: contract, server: server, onlyIfThereIsABalance: false)
-                        }
-                    }).recover(on: queue, { _ -> Guarantee<TokenOrContract> in
-                        return .value(.none)
-                    })
-                case .erc20:
-                    return erc20BalanceFetcher.getBalance(for: account, contract: contract).then(on: queue, { balance -> Promise<TokenOrContract> in
-                        if balance > 0 {
-                            return importToken.fetchTokenOrContract(for: contract, server: server, onlyIfThereIsABalance: false)
-                        } else {
-                            return .value(.none)
-                        }
-                    }).recover(on: queue, { _ -> Guarantee<TokenOrContract> in
-                        return .value(.none)
-                    })
-                case .erc721, .erc721ForTickets, .erc1155, .nativeCryptocurrency:
-                    //Handled in TokenBalanceFetcher.refreshBalanceForErc721Or1155Tokens()
-                    return .value(.none)
-                }
-            })
+    private func contractsToAutodetectTokens(contractsToDetect: [ContractToImport]) -> [ContractToImport] {
+        return contractsToDetect.filter {
+            !detectedTokens.alreadyAddedContracts(for: $0.server).contains($0.contract) &&
+            !detectedTokens.deletedContracts(for: $0.server).contains($0.contract) &&
+            !detectedTokens.hiddenContracts(for: $0.server).contains($0.contract)
+        }
     }
 }
 
 extension SingleChainTokensAutodetector: AutoDetectTransactedTokensOperationDelegate {
-    public func autoDetectTransactedErc20AndNonErc20Tokens(wallet: DerbyWallet.Address) -> Promise<[TokenOrContract]> {
+    public func autoDetectTransactedErc20AndNonErc20Tokens(wallet: Go23Wallet.Address) -> AnyPublisher<[TokenOrContract], Never> {
         let fetchErc20Tokens = autoDetectTransactedTokensImpl(wallet: wallet, erc20: true)
         let fetchNonErc20Tokens = autoDetectTransactedTokensImpl(wallet: wallet, erc20: false)
 
-        return when(resolved: [fetchErc20Tokens, fetchNonErc20Tokens]).map(on: queue, { results in
-            return results.compactMap { $0.optionalValue }.flatMap { $0 }
-        })
+        return Publishers.CombineLatest(fetchErc20Tokens, fetchNonErc20Tokens)
+            .map { $0.0 + $0.1 }
+            .replaceError(with: [])
+            .eraseToAnyPublisher()
     }
 }
 
 extension SingleChainTokensAutodetector: AutoDetectTokensOperationDelegate {
 
-    func autoDetectTokensImpl(withContracts contractsToDetect: [(name: String, contract: DerbyWallet.Address)], server: RPCServer) -> Promise<[TokenOrContract]> {
-        let promises = contractsToAutodetectTokens(withContracts: contractsToDetect, forServer: server)
-            .map { each -> Promise<TokenOrContract> in
-                return fetchCreateErc875OrErc20Token(forContract: each, forServer: server)
-            }
+    func autoDetectTokensImpl(withContracts contractsToDetect: [ContractToImport]) -> AnyPublisher<[TokenOrContract], Never> {
+        let publishers = contractsToAutodetectTokens(contractsToDetect: contractsToDetect)
+            .map { importToken.fetchTokenOrContract(for: $0.contract, onlyIfThereIsABalance: $0.onlyIfThereIsABalance).mapToResult() }
 
-        return when(resolved: promises).map(on: queue, { results in
-            return results.compactMap { $0.optionalValue }
-        })
+        return Publishers.MergeMany(publishers).collect()
+            .map { $0.compactMap { try? $0.get() } }
+            .receive(on: queue)
+            .eraseToAnyPublisher()
     }
 
     public func didDetect(tokensOrContracts: [TokenOrContract]) {
-        let tokensOrContracts = tokensOrContracts.filter { tokenOrContract in
-            switch tokenOrContract {
-            case .delegateContracts, .deletedContracts, .ercToken, .token, .fungibleTokenComplete:
-                return true
-            case .none:
-                return false
-            }
-        }
-        
         tokensOrContractsDetectedSubject.send(tokensOrContracts)
     }
-
 }

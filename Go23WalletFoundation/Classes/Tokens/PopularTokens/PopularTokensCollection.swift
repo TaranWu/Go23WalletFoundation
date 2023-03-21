@@ -1,8 +1,8 @@
 //
 //  PopularTokensCollection.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 04.06.2021.
+//  Created by Taran.
 //
 
 import Foundation
@@ -27,7 +27,7 @@ public struct PopularToken: Decodable {
         case invalid
     }
 
-    public var contractAddress: DerbyWallet.Address
+    public var contractAddress: Go23Wallet.Address
     public var server: RPCServer
     public var name: String
 
@@ -40,7 +40,7 @@ public struct PopularToken: Decodable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        if let address = DerbyWallet.Address(uncheckedAgainstNullAddress: try container.decode(String.self, forKey: .address)) {
+        if let address = Go23Wallet.Address(uncheckedAgainstNullAddress: try container.decode(String.self, forKey: .address)) {
             contractAddress = address
         } else {
             throw AnyError.invalid

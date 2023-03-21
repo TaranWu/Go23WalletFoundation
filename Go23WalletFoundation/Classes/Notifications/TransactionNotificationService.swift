@@ -1,8 +1,8 @@
 //
 //  TransactionNotificationService.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 25.03.2022.
+//  Created by Taran.
 //
 
 import Foundation
@@ -16,24 +16,29 @@ public final class TransactionNotificationSourceService: NotificationSourceServi
     private let formatter = EtherNumberFormatter.short
     private static let maximumNumberOfNotifications = 10
     private let receiveNotificationSubject: PassthroughSubject<LocalNotification, Never> = .init()
-
+    private let serversProvider: ServersProvidable
     public weak var delegate: NotificationSourceServiceDelegate?
 
     public var receiveNotification: AnyPublisher<LocalNotification, Never> {
         receiveNotificationSubject.eraseToAnyPublisher()
     }
 
-    public init(transactionDataStore: TransactionDataStore, config: Config) {
+    public init(transactionDataStore: TransactionDataStore,
+                config: Config,
+                serversProvider: ServersProvidable) {
+
         self.transactionDataStore = transactionDataStore
         self.config = config
+        self.serversProvider = serversProvider
     }
 
     public func start(wallet: Wallet) {
         let predicate = transactionsPredicate(wallet: wallet)
 
-        transactionDataStore
-            .transactionsChangeset(forFilter: .predicate(predicate), servers: config.enabledServers)
-            .map { changeset -> ServerDictionary<[TransactionInstance]> in
+        serversProvider.servers
+            .flatMapLatest { [transactionDataStore] in
+                return transactionDataStore.transactionsChangeset(filter: .predicate(predicate), servers: Array($0))
+            }.map { changeset -> ServerDictionary<[TransactionInstance]> in
                 switch changeset {
                 case .initial(let transactions):
                     return TransactionNotificationSourceService.mappedByServer(transactions: transactions)
@@ -70,7 +75,7 @@ public final class TransactionNotificationSourceService: NotificationSourceServi
     //NOTE: fetch only completed transactions with non zero block number and not older than yesterday
     private func transactionsPredicate(wallet: Wallet) -> NSPredicate {
         return NSCompoundPredicate(andPredicateWithSubpredicates: [
-            TransactionDataStore.Functional.blockNumberPredicate(blockNumber: 0),
+            TransactionDataStore.functional.blockNumberPredicate(blockNumber: 0),
             TransactionState.predicate(state: .completed),
             NSPredicate(format: "to = '\(wallet.address.eip55String)'"),
             NSPredicate(format: "date > %@", Date.yesterday as NSDate)
@@ -92,16 +97,13 @@ public final class TransactionNotificationSourceService: NotificationSourceServi
             config.markScheduledNotification(transaction: each, in: wallet)
         }
 
-        let etherReceivedUsedForBackupPrompt = newIncomingEthTransactions
-                .last
-                .flatMap { BigInt($0.value) }
+        let etherReceived = newIncomingEthTransactions.last.flatMap { BigInt($0.value) }
 
-        switch server {
+        switch server.serverWithEnhancedSupport {
         //TODO make this work for other mainnets
         case .main:
-            etherReceivedUsedForBackupPrompt
-                .flatMap { delegate?.showCreateBackupAfterReceiveNativeCryptoCurrencyPrompt(in: self, etherReceivedUsedForBackupPrompt: $0) }
-        case .classic, .xDai, .kovan, .ropsten, .rinkeby, .poa, .sokol, .callisto, .goerli, .artis_sigma1, .artis_tau1, .binance_smart_chain, .binance_smart_chain_testnet, .custom, .heco, .heco_testnet, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .candle, .polygon, .mumbai_testnet, .optimistic, .optimisticKovan, .cronosTestnet, .arbitrum, .arbitrumRinkeby, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .phi, .ioTeX, .ioTeXTestnet:
+            etherReceived.flatMap { delegate?.showCreateBackup(in: self, etherReceived: $0, wallet: wallet) }
+        case .xDai, .polygon, .binance_smart_chain, .heco, .arbitrum, .klaytnCypress, .klaytnBaobabTestnet, .rinkeby, nil:
             break
         }
     }
@@ -109,10 +111,8 @@ public final class TransactionNotificationSourceService: NotificationSourceServi
     //Etherscan for Ropsten returns the same transaction twice. Normally Realm will take care of this, but since we are showing user a notification, we don't want to show duplicates
     private func filterUniqueTransactions(_ transactions: [TransactionInstance]) -> [TransactionInstance] {
         var results = [TransactionInstance]()
-        for each in transactions {
-            if !results.contains(where: { each.id == $0.id }) {
-                results.append(each)
-            }
+        for each in transactions where !results.contains(where: { each.id == $0.id }) {
+            results.append(each)
         }
         return results
     }

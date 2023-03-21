@@ -1,8 +1,8 @@
 //
 //  WalletStore.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 21.01.2022.
+//  Created by Taran.
 //
 
 import Foundation
@@ -21,26 +21,21 @@ public protocol WalletAddressesStore: WalletAddressesStoreMigration {
     var wallets: [Wallet] { get }
     var hasMigratedFromKeystoreFiles: Bool { get }
     var recentlyUsedWallet: Wallet? { get set }
-    var walletsPublisher: AnyPublisher<Set<Wallet>, Never> { get }
-    var didAddWalletPublisher: AnyPublisher<DerbyWallet.Address, Never> { get }
-    var didRemoveWalletPublisher: AnyPublisher<Wallet, Never> { get }
 
     mutating func removeAddress(_ account: Wallet)
-    mutating func addToListOfWatchEthereumAddresses(_ address: DerbyWallet.Address)
-    mutating func addToListOfEthereumAddressesWithPrivateKeys(_ address: DerbyWallet.Address)
-    mutating func addToListOfEthereumAddressesWithSeed(_ address: DerbyWallet.Address)
-    mutating func addToListOfEthereumAddressesProtectedByUserPresence(_ address: DerbyWallet.Address)
+    mutating func add(wallet: Wallet)
+    mutating func addToListOfEthereumAddressesProtectedByUserPresence(_ address: Go23Wallet.Address)
 }
 
 extension WalletAddressesStore {
 
     public func migrate(to store: WalletAddressesStore) -> WalletAddressesStore {
-        var migrateStore = store
-        migrateStore.watchAddresses = watchAddresses
-        migrateStore.ethereumAddressesWithPrivateKeys = ethereumAddressesWithPrivateKeys
-        migrateStore.ethereumAddressesWithSeed = ethereumAddressesWithSeed
-        migrateStore.ethereumAddressesProtectedByUserPresence = ethereumAddressesProtectedByUserPresence
+        var store = store
+        store.watchAddresses = watchAddresses
+        store.ethereumAddressesWithPrivateKeys = ethereumAddressesWithPrivateKeys
+        store.ethereumAddressesWithSeed = ethereumAddressesWithSeed
+        store.ethereumAddressesProtectedByUserPresence = ethereumAddressesProtectedByUserPresence
 
-        return migrateStore
+        return store
     }
 }

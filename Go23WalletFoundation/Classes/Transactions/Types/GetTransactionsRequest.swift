@@ -1,19 +1,18 @@
 //
 //  GetTransactionsRequest.swift
-//  DerbyWalletFoundation
+//  Go23WalletFoundation
 //
-//  Created by Vladyslav Shepitko on 15.09.2022.
+//  Created by Taran.
 //
 
 import Foundation
-import Alamofire
 
-struct GetTransactions: URLRequestConvertible {
+public struct GetTransactions: URLRequestConvertible {
     struct NoBlockchainExplorerApi: Error {
     }
 
     let server: RPCServer
-    let address: DerbyWallet.Address
+    let address: Go23Wallet.Address
     let startBlock: Int
     let endBlock: Int
     let sortOrder: SortOrder
@@ -23,7 +22,7 @@ struct GetTransactions: URLRequestConvertible {
         case desc
     }
 
-    func asURLRequest() throws -> URLRequest {
+    public func asURLRequest() throws -> URLRequest {
         guard let url = server.transactionInfoEndpoints else { throw NoBlockchainExplorerApi() }
 
         var parameters: [String: Any] = [
@@ -47,6 +46,6 @@ struct GetTransactions: URLRequestConvertible {
             "client-build": Bundle.main.buildNumber ?? "",
         ]
 
-        return try URLEncoding().encode(URLRequest(url: url, method: .get), with: parameters)
+        return try URLEncoding().encode(request, with: parameters)
     }
 }

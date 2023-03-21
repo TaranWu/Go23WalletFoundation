@@ -4,16 +4,12 @@ import Foundation
 import Go23JSONRPCKit
 import BigInt
 
-struct EstimateGasRequest: Go23JSONRPCKit.Request {
-    typealias Response = String
+enum EstimateGasTransactionType {
+    case normal(to: Go23Wallet.Address)
+    case contractDeployment
 
-    enum TransactionType {
-        case normal(to: DerbyWallet.Address)
-        case contractDeployment
-    }
-
-    private var to: DerbyWallet.Address? {
-        switch transactionType {
+    var contract: Go23Wallet.Address? {
+        switch self {
         case .normal(let to):
             return to
         case .contractDeployment:
@@ -21,9 +17,22 @@ struct EstimateGasRequest: Go23JSONRPCKit.Request {
         }
     }
 
-    let from: DerbyWallet.Address
-    let transactionType: TransactionType
-    let value: BigInt
+    var canCapGasLimit: Bool {
+        switch self {
+        case .normal:
+            return true
+        case .contractDeployment:
+            return false
+        }
+    }
+}
+
+struct EstimateGasRequest: Go23JSONRPCKit.Request {
+    typealias Response = BigUInt
+
+    let from: Go23Wallet.Address
+    let transactionType: EstimateGasTransactionType
+    let value: BigUInt
     let data: Data
 
     var method: String {
@@ -39,15 +48,15 @@ struct EstimateGasRequest: Go23JSONRPCKit.Request {
                 "data": data.hexEncoded,
             ],
         ]
-        if let to: DerbyWallet.Address = to {
+        if let to: Go23Wallet.Address = transactionType.contract {
             results[0]["to"] = to.eip55String
         }
         return results
     }
 
     func response(from resultObject: Any) throws -> Response {
-        if let response = resultObject as? Response {
-            return response
+        if let response = resultObject as? String, let value = BigUInt(response.drop0x, radix: 16) {
+            return value
         } else {
             throw CastError(actualValue: resultObject, expectedType: Response.self)
         }

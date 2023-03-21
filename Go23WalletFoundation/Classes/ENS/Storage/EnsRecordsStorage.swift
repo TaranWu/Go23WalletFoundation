@@ -1,8 +1,8 @@
 //
 //  EnsRecordsStorage.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 06.06.2022.
+//  Created by Taran.
 //
 
 import Foundation
@@ -81,7 +81,7 @@ extension EnsRecord {
         guard let key = EnsLookupKey(object: recordObject) else { return nil }
         self.key = key
         self.date = recordObject.creatingDate as Date
-        if let addressString = recordObject.addressRawValue, let address = DerbyWallet.Address(string: addressString) {
+        if let addressString = recordObject.addressRawValue, let address = Go23Wallet.Address(string: addressString) {
             self.value = .address(address)
         } else if let record = recordObject.recordRawValue {
             self.value = .record(record)

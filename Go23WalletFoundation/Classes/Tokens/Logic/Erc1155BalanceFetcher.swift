@@ -2,7 +2,8 @@
 
 import Foundation
 import BigInt
-import PromiseKit 
+import Go23Web3Swift
+import Combine
 
 ///Fetching ERC1155 tokens in 2 steps:
 ///
@@ -10,28 +11,43 @@ import PromiseKit
 ///B. Fetch balance for each tokenId owned (now or previously. For the latter value would be 0)
 ///
 ///This class performs (B)
-public class Erc1155BalanceFetcher {
-    private let address: DerbyWallet.Address
-    private let server: RPCServer
+final class Erc1155BalanceFetcher {
+    private let address: Go23Wallet.Address
+    private var inFlightPromises: [String: AnyPublisher<[BigInt: BigUInt], SessionTaskError>] = [:]
+    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.erc1155BalanceFetcher")
+    private let blockchainProvider: BlockchainProvider
 
-    public init(address: DerbyWallet.Address, server: RPCServer) {
+    init(address: Go23Wallet.Address, blockchainProvider: BlockchainProvider) {
+        self.blockchainProvider = blockchainProvider
         self.address = address
-        self.server = server
     }
 
-    public func fetch(contract: DerbyWallet.Address, tokenIds: Set<BigInt>) -> Promise<[BigInt: BigUInt]> {
-        //tokenIds must be unique (hence arg is a Set) so `Dictionary(uniqueKeysWithValues:)` wouldn't crash
-        let tokenIds = Array(tokenIds)
-        let address = Web3.EthereumAddress(self.address.eip55String)!
-        let addresses: [Web3.EthereumAddress] = [Web3.EthereumAddress](repeating: address, count: tokenIds.count)
-        return firstly {
-            callSmartContract(withServer: server, contract: contract, functionName: "balanceOfBatch", abiString: DerbyWallet.Ethereum.ABI.erc1155String, parameters: [addresses, tokenIds] as [AnyObject])
-        }.map { result in
-            if let balances = result["0"] as? [BigUInt], balances.count == tokenIds.count {
-                return Dictionary(uniqueKeysWithValues: zip(tokenIds, balances))
-            } else {
-                throw createABIError(.invalidArgumentType)
-            }
-        }
+    func clear() {
+        inFlightPromises.removeAll()
+    }
+
+    func getErc1155Balance(contract: Go23Wallet.Address, tokenIds: Set<BigInt>) -> AnyPublisher<[BigInt: BigUInt], SessionTaskError> {
+        return Just(contract)
+            .receive(on: queue)
+            .setFailureType(to: SessionTaskError.self)
+            .flatMap { [weak self, queue, address, blockchainProvider] contract -> AnyPublisher<[BigInt: BigUInt], SessionTaskError> in
+                let key = "\(contract.eip55String)-\(tokenIds.hashValue)"
+
+                if let promise = self?.inFlightPromises[key] {
+                    return promise
+                } else {
+                    //tokenIds must be unique (hence arg is a Set) so `Dictionary(uniqueKeysWithValues:)` wouldn't crash
+                    let promise = blockchainProvider
+                        .call(Erc1155BalanceOfBatchMethodCall(contract: contract, address: address, tokenIds: tokenIds))
+                        .receive(on: queue)
+                        .handleEvents(receiveCompletion: { _ in self?.inFlightPromises[key] = .none })
+                        .share()
+                        .eraseToAnyPublisher()
+
+                    self?.inFlightPromises[key] = promise
+
+                    return promise
+                }
+            }.eraseToAnyPublisher()
     }
 }

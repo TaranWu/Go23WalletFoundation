@@ -75,20 +75,14 @@ public struct AssetAttributeSyntaxValue: Hashable {
     public var subscribableValue: Subscribable<AssetInternalValue>? {
         return value.subscribableValue
     }
-    public var subscribableStringValue: String? {
-        return value.subscribableValue?.value?.stringValue
-    }
-    public var isSubscribableValue: Bool {
-        return value.subscribableValue != nil
-    }
 }
 
 extension Dictionary where Key == AttributeId, Value == AssetAttributeSyntaxValue {
     //This is useful for implementing 3-phase resolution of attributes: resolve the immediate ones (non-function origins), then use those values to resolve the function-origins. There are no user-entry origins at the token level, so we don't need to check for them
     public var splitAttributesIntoSubscribablesAndNonSubscribables: (subscribables: [Key: Value], nonSubscribables: [Key: Value]) {
         return (
-                subscribables: filter { $0.value.isSubscribableValue },
-                nonSubscribables: filter { !$0.value.isSubscribableValue }
+            subscribables: filter { $0.value.subscribableValue != nil },
+            nonSubscribables: filter { $0.value.subscribableValue == nil }
         )
     }
 }
@@ -136,15 +130,23 @@ extension Dictionary where Key == AttributeId, Value == AssetAttributeSyntaxValu
     }
 
     public var imageUrlUrlValue: URL? {
-        self["imageUrl"]?.stringValue.flatMap { URL(string: $0) }
+        self["imageUrl"]?.stringValue.flatMap { WebImageURL(string: $0)?.url }
     }
 
     public mutating func setImageUrl(string: String) {
         self["imageUrl"] = .init(directoryString: string)
     }
 
+    public var animationUrlUrlValue: URL? {
+        self["animationUrl"]?.stringValue.flatMap { WebImageURL(string: $0)?.url }
+    }
+
+    public mutating func setAnimationUrl(string: String?) {
+        self["animationUrl"] = string.flatMap { .init(directoryString: $0) }
+    }
+
     public var thumbnailUrlUrlValue: URL? {
-        self["thumbnailUrl"]?.stringValue.flatMap { URL(string: $0) }
+        self["thumbnailUrl"]?.stringValue.flatMap { WebImageURL(string: $0)?.url }
     }
 
     public mutating func setThumbnailUrl(string: String) {
@@ -152,7 +154,7 @@ extension Dictionary where Key == AttributeId, Value == AssetAttributeSyntaxValu
     }
 
     public var externalLinkUrlValue: URL? {
-        self["externalLink"]?.stringValue.flatMap { URL(string: $0) }
+        self["externalLink"]?.stringValue.flatMap { WebImageURL(string: $0)?.url }
     }
 
     public mutating func setExternalLink(string: String) {
@@ -261,18 +263,6 @@ extension Dictionary where Key == AttributeId, Value == AssetAttributeSyntaxValu
         self["locality"]?.subscribableValue
     }
 
-    public var localitySubscribableStringValue: String? {
-        self["locality"]?.subscribableStringValue
-    }
-
-    public var stateSubscribableStringValue: String? {
-        self["state"]?.subscribableStringValue
-    }
-
-    public var streetSubscribableStringValue: String? {
-        self["street"]?.subscribableStringValue
-    }
-
     public var traitsValue: [OpenSeaNonFungibleTrait]? {
         switch self["traits"]?.value {
         case .openSeaNonFungibleTraits(let traits):
@@ -328,7 +318,7 @@ extension Dictionary where Key == AttributeId, Value == AssetAttributeSyntaxValu
 
     public var enjinIssuer: String? {
         let rawValue = self["enjin.issuer"]?.stringValue
-        guard let maybeAddress = rawValue.flatMap({ DerbyWallet.Address(string: $0) }) else {
+        guard let maybeAddress = rawValue.flatMap({ Go23Wallet.Address(string: $0) }) else {
             return rawValue
         }
         return maybeAddress.truncateMiddle
@@ -346,14 +336,14 @@ extension Dictionary where Key == AttributeId, Value == AssetAttributeSyntaxValu
         self["description"]?.value
     }
 
-    public var slug: String? {
-        self["slug"]?.stringValue
+    public var collectionId: String? {
+        self["collectionId"]?.stringValue
     }
 
-    public var collectionValue: Go23WalletOpenSea.Collection? {
-        return self["collection"]?.stringValue.flatMap { rawValue -> Go23WalletOpenSea.Collection? in
+    public var collectionValue: Go23WalletOpenSea.NftCollection? {
+        return self["collection"]?.stringValue.flatMap { rawValue -> Go23WalletOpenSea.NftCollection? in
             guard let data = rawValue.data(using: .utf8) else { return nil }
-            return try? JSONDecoder().decode(Go23WalletOpenSea.Collection.self, from: data)
+            return try? JSONDecoder().decode(Go23WalletOpenSea.NftCollection.self, from: data)
         }
     }
 
@@ -366,10 +356,6 @@ extension Dictionary where Key == AttributeId, Value == AssetAttributeSyntaxValu
 
     public mutating func setTraits(value: [OpenSeaNonFungibleTrait]) {
         self["traits"] = .init(openSeaTraits: value)
-    }
-
-    public mutating func setDecimals(int: Int) {
-        self["decimals"] = .init(int: BigInt(int))
     }
 
     public mutating func setTokenType(string: String) {
@@ -432,7 +418,7 @@ extension Dictionary where Key == AttributeId, Value == AssetAttributeSyntaxValu
         self["transferFee"] = string.flatMap { .init(directoryString: $0) }
     }
 
-    public mutating func setCollection(collection: Go23WalletOpenSea.Collection?) {
+    public mutating func setCollection(collection: Go23WalletOpenSea.NftCollection?) {
         self["collection"] = collection.flatMap { collection -> String? in
             let data = try? JSONEncoder().encode(collection)
             return data.flatMap { data in
@@ -450,7 +436,7 @@ extension Dictionary where Key == AttributeId, Value == AssetAttributeSyntaxValu
         }.flatMap { .init(directoryString: $0) }
     }
 
-    public mutating func setSlug(string: String?) {
-        self["slug"] = string.flatMap { .init(directoryString: $0) }
+    public mutating func setCollectionId(string: String?) {
+        self["collectionId"] = string.flatMap { .init(directoryString: $0) }
     }
 }

@@ -2,8 +2,7 @@
 //  AppDelegate.swift
 //  Go23WalletFoundation
 //
-//  Created by TaranWu on 10/27/2022.
-//  Copyright (c) 2022 TaranWu. All rights reserved.
+//  Created by TaranWu.
 //
 
 import UIKit

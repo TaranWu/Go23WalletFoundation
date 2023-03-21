@@ -1,15 +1,15 @@
 //
 //  UIImage.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 30.08.2022.
+//  Created by Taran.
 //
 
 import UIKit
 
 extension UIImage {
     static var tokenSymbolBackgroundImageCache: AtomicDictionary<UIColor, UIImage> = .init()
-    static func tokenSymbolBackgroundImage(backgroundColor: UIColor, contractAddress: DerbyWallet.Address) -> UIImage {
+    static func tokenSymbolBackgroundImage(backgroundColor: UIColor, contractAddress: Go23Wallet.Address) -> UIImage {
         if let cachedValue = tokenSymbolBackgroundImageCache[backgroundColor] {
             return cachedValue
         }

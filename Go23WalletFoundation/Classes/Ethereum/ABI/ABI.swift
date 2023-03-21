@@ -1,14 +1,13 @@
 //
 //  ABI.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by 
+//  Created by Taran.
 //
 
 import Foundation
-import Go23WalletAddress
 
-extension DerbyWallet {
+extension Go23Wallet {
     public enum Ethereum {
         public enum ABI {}
     }

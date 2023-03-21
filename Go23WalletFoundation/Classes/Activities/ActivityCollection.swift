@@ -49,6 +49,7 @@ public struct ActivityCollection {
         items = activities
     }
 
+    // swiftlint:disable function_body_length
     static func sorted(activities: [ActivityRowModel]) -> [MappedToDateActivityOrTransaction] {
         //Uses NSMutableArray instead of Swift array for performance. Really slow when dealing with 10k events, which is hardly a big wallet
         var newItems: [ActivityDateKey: NSMutableArray] = [:]
@@ -148,6 +149,7 @@ public struct ActivityCollection {
             return object1.date.date.timeIntervalSince1970 > object2.date.date.timeIntervalSince1970
         }
     }
+    // swiftlint:enable function_body_length
 
     public mutating func filter(_ filter: ActivityOrTransactionFilter) {
         var newFilteredItems = items
@@ -183,7 +185,7 @@ public struct ActivityCollection {
         }
 
         filteredItems = newFilteredItems
-    } 
+    }
 
     private func splitIntoExactlyTwoKeywords(_ string: String) -> (String, String)? {
         let components = string.split(separator: " ")
@@ -199,12 +201,12 @@ extension String {
 }
 
 extension ActivityCollection {
-    public class Functional {}
+    public class functional {}
 }
 
-extension ActivityCollection.Functional {
+extension ActivityCollection.functional {
 
-    public static func extractTokenAndActivityName(fromTransactionRow transactionRow: TransactionRow, service: TokenProvidable, wallet: DerbyWallet.Address) -> (token: Token, activityName: String)? {
+    public static func extractTokenAndActivityName(fromTransactionRow transactionRow: TransactionRow, service: TokenProvidable, wallet: Go23Wallet.Address) -> (token: Token, activityName: String)? {
         enum TokenOperation {
             case nativeCryptoTransfer(Token)
             case completedTransfer(Token)
@@ -230,7 +232,7 @@ extension ActivityCollection.Functional {
 
         let erc20TokenOperation: TokenOperation?
         if transactionRow.operation == nil {
-            erc20TokenOperation = .nativeCryptoTransfer(MultipleChainsTokensDataStore.Functional.etherToken(forServer: transactionRow.server))
+            erc20TokenOperation = .nativeCryptoTransfer(MultipleChainsTokensDataStore.functional.etherToken(forServer: transactionRow.server))
         } else {
             //Explicitly listing out combinations so future changes to enums will be caught by compiler
             switch (transactionRow.state, transactionRow.operation?.operationType) {
@@ -267,7 +269,7 @@ extension ActivityCollection.Functional {
         return (token: token, activityName: activityName)
     }
 
-    static func createPseudoActivity(fromTransactionRow transactionRow: TransactionRow, service: TokenProvidable, wallet: DerbyWallet.Address) -> Activity? {
+    static func createPseudoActivity(fromTransactionRow transactionRow: TransactionRow, service: TokenProvidable, wallet: Go23Wallet.Address) -> Activity? {
         guard let (token, activityName) = extractTokenAndActivityName(fromTransactionRow: transactionRow, service: service, wallet: wallet) else { return nil }
 
         var cardAttributes = [AttributeId: AssetInternalValue]()
@@ -281,14 +283,14 @@ extension ActivityCollection.Functional {
             }
         }
 
-        if let value = DerbyWallet.Address(string: transactionRow.from) {
+        if let value = Go23Wallet.Address(string: transactionRow.from) {
             cardAttributes.setFrom(address: value)
         }
 
-        if let toString = transactionRow.operation?.to, let to = DerbyWallet.Address(string: toString) {
+        if let toString = transactionRow.operation?.to, let to = Go23Wallet.Address(string: toString) {
             cardAttributes.setTo(address: to)
         } else {
-            if let value = DerbyWallet.Address(string: transactionRow.to) {
+            if let value = Go23Wallet.Address(string: transactionRow.to) {
                 cardAttributes.setTo(address: value)
             }
         }

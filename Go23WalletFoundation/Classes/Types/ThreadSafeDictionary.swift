@@ -1,8 +1,8 @@
 //
 //  AtomicDictionary.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 27.05.2021.
+//  Created by Taran.
 //
 
 import Go23WalletAddress

@@ -35,13 +35,30 @@ public struct EIP712TypedData: Codable {
         }
     }
 
-    public var domainVerifyingContract: DerbyWallet.Address? {
+    public var server: RPCServer? {
+        switch domain {
+        case .object(let dictionary):
+            switch dictionary["chainId"] {
+            case .number(let value):
+                if let value = Int(value.description) {
+                    return RPCServer(chainIdOptional: value)
+                }
+                return nil
+            case .object, .string, .array, .object, .bool, .null, .none:
+                return nil
+            }
+        case .array, .string, .number, .bool, .null:
+            return nil
+        }
+    }
+
+    public var domainVerifyingContract: Go23Wallet.Address? {
         switch domain {
         case .object(let dictionary):
             switch dictionary["verifyingContract"] {
             case .string(let value):
                 //We need it to be unchecked because test sites like to use 0xCcc..cc
-                return DerbyWallet.Address(uncheckedAgainstNullAddress: value)
+                return Go23Wallet.Address(uncheckedAgainstNullAddress: value)
             case .array, .object, .number, .bool, .null, .none:
                 return nil
             }
@@ -141,8 +158,8 @@ extension EIP712TypedData {
             return try? ABIValue(Crypto.hash(data), type: .bytes(32))
         } else if type == "bool", let value = data?.boolValue {
             return try? ABIValue(value, type: .bool)
-            //Using `DerbyWallet.Address(uncheckedAgainstNullAddress:)` instead of `DerbyWallet.Address(string:)` because EIP712v3 test pages like to use the contract 0xb...b which fails the burn address check
-        } else if type == "address", let value = data?.stringValue, let address = DerbyWallet.Address(uncheckedAgainstNullAddress: value) {
+            //Using `Go23Wallet.Address(uncheckedAgainstNullAddress:)` instead of `Go23Wallet.Address(string:)` because EIP712v3 test pages like to use the contract 0xb...b which fails the burn address check
+        } else if type == "address", let value = data?.stringValue, let address = Go23Wallet.Address(uncheckedAgainstNullAddress: value) {
             return try? ABIValue(address, type: .address)
         } else if type.starts(with: "uint") {
             let size = parseIntSize(type: type, prefix: "uint")

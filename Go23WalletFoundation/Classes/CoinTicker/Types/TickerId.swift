@@ -1,8 +1,8 @@
 //
 //  TickerId.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Tatan.
+//  Created by Taran.
 //
 
 import Foundation
@@ -45,12 +45,12 @@ extension TickerId {
             var platforms: [AddressAndRPCServer] = []
             for each in try container.decode([String: String].self, forKey: .platforms) {
                 guard let server = RPCServer(coinGeckoPlatform: each.key.trimmed) else { continue }
-                let address: DerbyWallet.Address
+                let address: Go23Wallet.Address
                 let possibleAddressValue = each.value.trimmed
                 if possibleAddressValue.isEmpty {
                     address = Constants.nullAddress
                 } else {
-                    guard let _address = DerbyWallet.Address(string: possibleAddressValue) else { continue }
+                    guard let _address = Go23Wallet.Address(string: possibleAddressValue) else { continue }
                     address = _address
                 }
                 platforms.append(.init(address: address, server: server))

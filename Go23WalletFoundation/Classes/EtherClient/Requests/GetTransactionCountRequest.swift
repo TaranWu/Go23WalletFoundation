@@ -7,7 +7,7 @@ import Go23JSONRPCKit
 struct GetTransactionCountRequest: Go23JSONRPCKit.Request {
     typealias Response = Int
 
-    let address: DerbyWallet.Address
+    let address: Go23Wallet.Address
     let state: String
 
     var method: String {

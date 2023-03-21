@@ -1,8 +1,8 @@
 //
 //  NotificationCenter+Publishers.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 04.04.2022.
+//  Created by Taran.
 //
 
 import Foundation

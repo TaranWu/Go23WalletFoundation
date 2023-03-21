@@ -1,8 +1,8 @@
 //
 //  TokensProcessingPipeline.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 09.07.2022.
+//  Created by Taran.
 //
 
 import Foundation
@@ -16,8 +16,8 @@ public protocol TokenViewModelRefreshable {
 public protocol TokenViewModelState {
     var tokenViewModels: AnyPublisher<[TokenViewModel], Never> { get }
 
-    func tokenViewModelPublisher(for contract: DerbyWallet.Address, server: RPCServer) -> AnyPublisher<TokenViewModel?, Never>
-    func tokenViewModel(for contract: DerbyWallet.Address, server: RPCServer) -> TokenViewModel?
+    func tokenViewModelPublisher(for contract: Go23Wallet.Address, server: RPCServer) -> AnyPublisher<TokenViewModel?, Never>
+    func tokenViewModel(for contract: Go23Wallet.Address, server: RPCServer) -> TokenViewModel?
 }
 
 public protocol TokenBalanceRefreshable {
@@ -38,14 +38,54 @@ public final class WalletDataProcessingPipeline: TokensProcessingPipeline {
     private let tokenViewModelsSubject = CurrentValueSubject<[TokenViewModel], Never>([])
     private let eventsDataStore: NonActivityEventsDataStore
     private let wallet: Wallet
-    private let queue = DispatchQueue(label: "org.DerbyWallet.swift.walletData.processingPipeline", qos: .utility)
+    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.walletData.processingPipeline", qos: .utility)
+    private let currencyService: CurrencyService
+    private let sessionsProvider: SessionsProvider
 
     public var tokenViewModels: AnyPublisher<[TokenViewModel], Never> {
-        return tokenViewModelsSubject.eraseToAnyPublisher()
+        let whenTickersChanged = coinTickersFetcher.tickersDidUpdate.dropFirst()
+            .receive(on: queue)
+            .map { [tokensService] _ in tokensService.tokens }
+
+        let whenCurrencyChanged = currencyService.$currency.dropFirst()
+            .receive(on: queue)
+            .map { [tokensService] _ in tokensService.tokens }
+
+        let whenSignatureOrBodyChanged = assetDefinitionStore.assetsSignatureOrBodyChange
+            .receive(on: queue)
+            .map { [tokensService] _ in tokensService.tokens }
+
+        let whenTokensHasChanged = tokensService.tokensPublisher
+            .dropFirst()
+            .receive(on: queue)
+
+        let whenCollectionHasChanged = Publishers.Merge4(whenTokensHasChanged, whenTickersChanged, whenSignatureOrBodyChanged, whenCurrencyChanged)
+            .map { $0.map { TokenViewModel(token: $0) } }
+            .flatMapLatest { [weak self] in self?.applyTickers(tokens: $0) ?? .empty() }
+            .flatMapLatest { [weak self] in self?.applyTokenScriptOverrides(tokens: $0) ?? .empty() }
+            .removeAllDuplicates(by: { return $0.hashValue == $1.hashValue })
+            .receive(on: RunLoop.main)
+
+        let initialSnapshot = Just(tokensService.tokens)
+            .map { $0.map { TokenViewModel(token: $0) } }
+            .flatMapLatest { [weak self] in self?.applyTickers(tokens: $0) ?? .empty() }
+            .flatMapLatest { [weak self] in self?.applyTokenScriptOverrides(tokens: $0) ?? .empty() }
+
+        return Publishers.Merge(whenCollectionHasChanged, initialSnapshot)
+            .eraseToAnyPublisher()
     }
 
-    public init(wallet: Wallet, tokensService: TokensService, coinTickersFetcher: CoinTickersFetcher, assetDefinitionStore: AssetDefinitionStore, eventsDataStore: NonActivityEventsDataStore) {
+    public init(wallet: Wallet,
+                tokensService: TokensService,
+                coinTickersFetcher: CoinTickersFetcher,
+                assetDefinitionStore: AssetDefinitionStore,
+                eventsDataStore: NonActivityEventsDataStore,
+                currencyService: CurrencyService,
+                sessionsProvider: SessionsProvider) {
+
+        self.sessionsProvider = sessionsProvider
         self.wallet = wallet
+        self.currencyService = currencyService
         self.eventsDataStore = eventsDataStore
         self.tokensService = tokensService
         self.coinTickersFetcher = coinTickersFetcher
@@ -63,12 +103,10 @@ public final class WalletDataProcessingPipeline: TokensProcessingPipeline {
     public func refresh() {
         tokensService.refresh()
     }
-    
+
     public func start() {
-        cancelable.cancellAll()
         tokensService.start()
         startTickersHandling()
-        preparePipeline()
     }
 
     deinit {
@@ -79,17 +117,21 @@ public final class WalletDataProcessingPipeline: TokensProcessingPipeline {
         tokensService.refreshBalance(updatePolicy: updatePolicy)
     }
 
-    public func tokenViewModel(for contract: DerbyWallet.Address, server: RPCServer) -> TokenViewModel? {
+    public func tokensChangesetPublisher(servers: [RPCServer]) -> AnyPublisher<ChangeSet<[Token]>, Never> {
+        tokensService.tokensChangesetPublisher(servers: servers)
+    }
+
+    public func tokenViewModel(for contract: Go23Wallet.Address, server: RPCServer) -> TokenViewModel? {
         return tokensService.token(for: contract, server: server)
             .flatMap { TokenViewModel(token: $0) }
             .flatMap { [weak self] in self?.applyTicker(token: $0) }
             .flatMap { [weak self] in self?.applyTokenScriptOverrides(token: $0) }
     }
 
-    public func tokenViewModelPublisher(for contract: DerbyWallet.Address, server: RPCServer) -> AnyPublisher<TokenViewModel?, Never> {
+    public func tokenViewModelPublisher(for contract: Go23Wallet.Address, server: RPCServer) -> AnyPublisher<TokenViewModel?, Never> {
         let whenTickersHasChanged: AnyPublisher<Token?, Never> = coinTickersFetcher.tickersDidUpdate.dropFirst()
             //NOTE: filter coin ticker events, allow only if ticker has change
-            .compactMap { [coinTickersFetcher] _ in coinTickersFetcher.ticker(for: .init(address: contract, server: server)) }
+            .compactMap { [coinTickersFetcher, currencyService] _ in coinTickersFetcher.ticker(for: .init(address: contract, server: server), currency: currencyService.currency) }
             .removeDuplicates()
             .map { [tokensService] _ in tokensService.token(for: contract, server: server) }
             .receive(on: RunLoop.main)
@@ -122,44 +164,37 @@ public final class WalletDataProcessingPipeline: TokensProcessingPipeline {
     }
 
     public func tokenHolders(for token: TokenIdentifiable) -> [TokenHolder] {
-        tokenViewModel(for: token.contractAddress, server: token.server).flatMap { [assetDefinitionStore, eventsDataStore, wallet] in
-            $0.getTokenHolders(assetDefinitionStore: assetDefinitionStore, eventsDataStore: eventsDataStore, forWallet: wallet)
-        } ?? []
+        guard let session = sessionsProvider.session(for: token.server) else { return [] }
+        let tokenAdaptor = session.tokenAdaptor
+        return tokenViewModel(for: token.contractAddress, server: token.server).flatMap { tokenAdaptor.getTokenHolders(token: $0) } ?? []
     }
 
     public func tokenHoldersPublisher(for token: TokenIdentifiable) -> AnyPublisher<[TokenHolder], Never> {
-        tokenViewModelPublisher(for: token.contractAddress, server: token.server)
+        guard let session = sessionsProvider.session(for: token.server) else { return .empty() }
+        let tokenAdaptor = session.tokenAdaptor
+        return tokenViewModelPublisher(for: token.contractAddress, server: token.server)
             .compactMap { $0 }
-            .map { [assetDefinitionStore, eventsDataStore, wallet] in
-                $0.getTokenHolders(assetDefinitionStore: assetDefinitionStore, eventsDataStore: eventsDataStore, forWallet: wallet)
-            }.eraseToAnyPublisher()
+            .map { tokenAdaptor.getTokenHolders(token: $0) }
+            .eraseToAnyPublisher()
     }
 
-    public func token(for contract: DerbyWallet.Address) -> Token? {
+    public func token(for contract: Go23Wallet.Address) -> Token? {
         tokensService.token(for: contract)
     }
 
-    public func token(for contract: DerbyWallet.Address, server: RPCServer) -> Token? {
+    public func token(for contract: Go23Wallet.Address, server: RPCServer) -> Token? {
         tokensService.token(for: contract, server: server)
-    }
-
-    public func addCustom(tokens: [ERCToken], shouldUpdateBalance: Bool) -> [Token] {
-        tokensService.addCustom(tokens: tokens, shouldUpdateBalance: shouldUpdateBalance)
-    }
-
-    public func add(tokenUpdates updates: [TokenUpdate]) {
-        tokensService.add(tokenUpdates: updates)
     }
 
     public func addOrUpdate(tokensOrContracts: [TokenOrContract]) -> [Token] {
         tokensService.addOrUpdate(tokensOrContracts: tokensOrContracts)
     }
 
-    public func addOrUpdate(_ actions: [AddOrUpdateTokenAction]) -> Bool? {
-        tokensService.addOrUpdate(actions)
+    public func addOrUpdate(with actions: [AddOrUpdateTokenAction]) -> [Token] {
+        tokensService.addOrUpdate(with: actions)
     }
 
-    public func tokenPublisher(for contract: DerbyWallet.Address, server: RPCServer) -> AnyPublisher<Token?, Never> {
+    public func tokenPublisher(for contract: Go23Wallet.Address, server: RPCServer) -> AnyPublisher<Token?, Never> {
         tokensService.tokenPublisher(for: contract, server: server)
     }
 
@@ -171,62 +206,36 @@ public final class WalletDataProcessingPipeline: TokensProcessingPipeline {
         coinTickersFetcher.addOrUpdateTestsOnly(ticker: ticker, for: token)
     }
 
-    private func preparePipeline() {
-        let whenTickersChanged = coinTickersFetcher.tickersDidUpdate.dropFirst()
-            .receive(on: queue)
-            .map { [tokensService] _ in tokensService.tokens }
-
-        let whenSignatureOrBodyChanged = assetDefinitionStore.assetsSignatureOrBodyChange
-            .receive(on: queue)
-            .map { [tokensService] _ in tokensService.tokens }
-
-        let whenTokensHasChanged = tokensService.tokensPublisher
-            .dropFirst()
-            .receive(on: queue)
-
-        let whenCollectionHasChanged = Publishers.Merge3(whenTokensHasChanged, whenTickersChanged, whenSignatureOrBodyChanged)
-            .map { $0.map { TokenViewModel(token: $0) } }
-            .flatMapLatest { [weak self] in self?.applyTickers(tokens: $0) ?? .empty() }
-            .flatMapLatest { [weak self] in self?.applyTokenScriptOverrides(tokens: $0) ?? .empty() }
-            .removeAllDuplicates(by: { return $0.hashValue == $1.hashValue })
-            .receive(on: RunLoop.main)
-
-        let initialSnapshot = Just(tokensService.tokens)
-            .map { $0.map { TokenViewModel(token: $0) } }
-            .flatMapLatest { [weak self] in self?.applyTickers(tokens: $0) ?? .empty() }
-            .flatMapLatest { [weak self] in self?.applyTokenScriptOverrides(tokens: $0) ?? .empty() }
-
-        Publishers.Merge(whenCollectionHasChanged, initialSnapshot)
-            .assign(to: \.value, on: tokenViewModelsSubject, ownership: .weak)
-            .store(in: &cancelable)
-    }
-
     private func startTickersHandling() {
         //NOTE: To don't block start method, and apply delay to fetch tickers, inital only
-        Publishers.Merge(Just(tokensService.tokens).delay(for: .seconds(2), scheduler: queue), tokensService.newTokens)
+        let tokens = Publishers.Merge(Just(tokensService.tokens).delay(for: .seconds(2), scheduler: queue), tokensService.newTokens)
             .removeDuplicates()
-            .eraseToAnyPublisher()
-            .sink { [coinTickersFetcher, tokensService] tokens in
-                let nativeCryptoForAllChains = RPCServer.allCases.map { MultipleChainsTokensDataStore.Functional.etherToken(forServer: $0) }
-                let tokens = (tokens + nativeCryptoForAllChains).filter { !$0.server.isTestnet }
+
+        Publishers.CombineLatest(tokens, currencyService.$currency)
+            .sink { [coinTickersFetcher, tokensService] tokens, currency in
+                let nativeCryptoForAllChains = RPCServer.allCases.map { MultipleChainsTokensDataStore.functional.etherToken(forServer: $0) }
+                //NOTE: remove type type filtering when add support for nonfungibles
+                let tokens = (tokens + nativeCryptoForAllChains).filter { !$0.server.isTestnet && ($0.type == .nativeCryptocurrency || $0.type == .erc20 ) }
                 let uniqueTokens = Set(tokens).map { TokenMappedToTicker(symbol: $0.symbol, name: $0.name, contractAddress: $0.contractAddress, server: $0.server, coinGeckoId: nil) }
 
-                coinTickersFetcher.fetchTickers(for: uniqueTokens, force: false)
+                coinTickersFetcher.fetchTickers(for: uniqueTokens, force: false, currency: currency)
                 tokensService.refreshBalance(updatePolicy: .tokens(tokens: tokens))
             }.store(in: &cancelable)
 
         coinTickersFetcher.updateTickerIds
             .map { [tokensService] data -> [AddOrUpdateTokenAction] in
                 let v = data.compactMap { i in tokensService.token(for: i.key.address, server: i.key.server).flatMap { ($0, i.tickerId) } }
-                return v.map { AddOrUpdateTokenAction.update(token: $0.0, action: .coinGeckoTickerId($0.1)) }
+                return v.map { AddOrUpdateTokenAction.update(token: $0.0, field: .coinGeckoTickerId($0.1)) }
             }.sink { [tokensService] actions in
-                tokensService.addOrUpdate(actions)
+                tokensService.addOrUpdate(with: actions)
             }.store(in: &cancelable)
     }
 
     private func applyTokenScriptOverrides(tokens: [TokenViewModel]) -> AnyPublisher<[TokenViewModel], Never> {
         let overrides = tokens.map { token -> TokenViewModel in
-            let overrides = TokenScriptOverrides(token: token, assetDefinitionStore: assetDefinitionStore, wallet: wallet, eventsDataStore: eventsDataStore)
+            guard let session = sessionsProvider.session(for: token.server) else { return token }
+            let overrides = session.tokenAdaptor.tokenScriptOverrides(token: token)
+
             return token.override(tokenScriptOverrides: overrides)
         }
         return .just(overrides)
@@ -234,8 +243,8 @@ public final class WalletDataProcessingPipeline: TokensProcessingPipeline {
 
     private func applyTokenScriptOverrides(token: TokenViewModel?) -> TokenViewModel? {
         guard let token = token else { return token }
-
-        let overrides = TokenScriptOverrides(token: token, assetDefinitionStore: assetDefinitionStore, wallet: wallet, eventsDataStore: eventsDataStore)
+        guard let session = sessionsProvider.session(for: token.server) else { return token }
+        let overrides = session.tokenAdaptor.tokenScriptOverrides(token: token)
         return token.override(tokenScriptOverrides: overrides)
     }
 
@@ -245,15 +254,15 @@ public final class WalletDataProcessingPipeline: TokensProcessingPipeline {
 
     private func applyTicker(token: TokenViewModel?) -> TokenViewModel? {
         guard let token = token else { return nil }
-        let ticker = coinTickersFetcher.ticker(for: .init(address: token.contractAddress, server: token.server))
+        let ticker = coinTickersFetcher.ticker(for: .init(address: token.contractAddress, server: token.server), currency: currencyService.currency)
         let balance: BalanceViewModel
         switch token.type {
         case .nativeCryptocurrency:
-            balance = .init(balance: NativecryptoBalanceViewModel(token: token, ticker: ticker))
+            balance = .init(balance: NativecryptoBalanceViewModel(balance: token, ticker: ticker))
         case .erc20:
-            balance = .init(balance: Erc20BalanceViewModel(token: token, ticker: ticker))
+            balance = .init(balance: Erc20BalanceViewModel(balance: token, ticker: ticker))
         case .erc875, .erc721, .erc721ForTickets, .erc1155:
-            balance = .init(balance: NFTBalanceViewModel(token: token, ticker: ticker))
+            balance = .init(balance: NFTBalanceViewModel(balance: token, ticker: ticker))
         }
 
         return token.override(balance: balance)

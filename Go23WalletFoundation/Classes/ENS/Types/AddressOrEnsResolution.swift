@@ -1,8 +1,8 @@
 //
 //  AddressOrEnsResolution.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 27.01.2022.
+//  Created by Taran.
 //
 
 import Foundation 

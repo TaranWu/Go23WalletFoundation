@@ -7,7 +7,7 @@ import Go23JSONRPCKit
 struct BalanceRequest: Go23JSONRPCKit.Request {
     typealias Response = Balance
 
-    let address: DerbyWallet.Address
+    let address: Go23Wallet.Address
 
     var method: String {
         return "eth_getBalance"

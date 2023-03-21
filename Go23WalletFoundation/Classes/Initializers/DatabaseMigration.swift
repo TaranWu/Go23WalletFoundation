@@ -6,12 +6,13 @@ import RealmSwift
 public class DatabaseMigration: Initializer {
     let account: Wallet
 
-    lazy var config: Realm.Configuration = RealmConfiguration.configuration(for: account)
+    lazy var config: Realm.Configuration = RealmConfiguration.configuration(for: account.address)
 
     public init(account: Wallet) {
         self.account = account
     }
 
+    // swiftlint:disable function_body_length
     public func perform() {
         config.schemaVersion = 12
         config.objectTypes = [
@@ -28,6 +29,7 @@ public class DatabaseMigration: Initializer {
             //It is necessary to include these 2 classes even though they are no longer managed in this Realm database (since 8814bd234dec8fc01be2cf9e7201724572627c97 and earlier) because they can still be accessed by users for database migration
             Bookmark.self,
             History.self,
+            EnjinTokenObject.self
         ]
         //NOTE: use [weak self] to avoid memory leak
         config.migrationBlock = { [weak self] migration, oldSchemaVersion in
@@ -120,18 +122,34 @@ public class DatabaseMigration: Initializer {
             }
         }
     }
+    // swiftlint:enable function_body_length
 }
 
-extension DatabaseMigration {
+import Go23WalletCore
 
-    public static func removeRealmFiles(account: Wallet) {
-        for each in realmFilesUrls(account: account) {
-            try? FileManager.default.removeItem(at: each)
+extension DatabaseMigration {
+    //e.g https://stackoverflow.com/questions/45683173/realm-crash-when-invalidating-while-updating
+    private static let walletsToDeleted = Storage<[Go23Wallet.Address]>(fileName: "deleted_wallets", defaultValue: [])
+
+    public static func addToDeleteList(address: Go23Wallet.Address) {
+        walletsToDeleted.value = Array(Set(walletsToDeleted.value + [address]))
+    }
+
+    public static func dropDeletedRealmFiles(excluding wallets: [Wallet]) {
+        let walletsToDelete = walletsToDeleted.value.filter { address in !wallets.contains(where: { address == $0.address }) }
+        for address in walletsToDelete {
+            let config = RealmConfiguration.configuration(for: address)
+
+            for each in realmFilesUrls(config: config) {
+                try? FileManager.default.removeItem(at: each)
+            }
         }
+
+        walletsToDeleted.value = []
     }
 
     public static func realmFilesUrls(account: Wallet) -> [URL] {
-        let config = RealmConfiguration.configuration(for: account)
+        let config = RealmConfiguration.configuration(for: account.address)
         return realmFilesUrls(config: config)
     }
 
@@ -162,7 +180,7 @@ extension DatabaseMigration {
     //NOTE: This function is using to make sure that wallets in user defaults will be removed after restoring backup from iCloud. Realm files don't backup to iCloud but user defaults does backed up.
     public static func removeWalletsIfRealmFilesMissed(keystore: Keystore) {
         for wallet in keystore.wallets {
-            let config = RealmConfiguration.configuration(for: wallet)
+            let config = RealmConfiguration.configuration(for: wallet.address)
 
             guard let path = config.fileURL else { continue }
 
@@ -175,13 +193,10 @@ extension DatabaseMigration {
         }
     }
 
-    public static func oneTimeMigrationForBookmarksAndUrlHistoryToSharedRealm(walletAddressesStore: WalletAddressesStore, config: Config) {
-//Disable what seems like a sprurious SwiftLint warning
-// swiftlint:disable empty_enum_arguments
+    public static func oneTimeMigrationForBookmarksAndUrlHistoryToSharedRealm(keystore: Keystore, config: Config) {
         guard !config.hasMigratedToSharedRealm() else { return }
-// swiftlint:enable empty_enum_arguments
 
-        for each in walletAddressesStore.wallets {
+        for each in keystore.wallets {
             let migration = DatabaseMigration(account: each)
             migration.perform()
             migration.oneTimeMigrationForBookmarksAndUrlHistoryToSharedRealm()

@@ -1,31 +1,54 @@
 //
 //  WaitTillTransactionCompleted.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 20.08.2022.
+//  Created by Taran.
 //
 
 import Foundation
-import APIKit
-import Go23JSONRPCKit
-import PromiseKit
 import Go23WalletCore
+import Combine
 
 public final class WaitTillTransactionCompleted {
-    private let server: RPCServer
-    private let analytics: AnalyticsLogger
-    private lazy var provider = GetIsTransactionCompleted(server: server, analytics: analytics)
-
-    public init(server: RPCServer, analytics: AnalyticsLogger) {
-        self.server = server
-        self.analytics = analytics
+    
+    enum TransactionError: Error {
+        case `internal`(Error)
+        case timeout
+        case notInState(TransactionState)
     }
 
-    public func waitTillCompleted(hash: EthereumTransaction.Hash, timesToRepeat: Int = 50) -> Promise<Void> {
-        return attempt(maximumRetryCount: timesToRepeat, delayBeforeRetry: .seconds(10), delayUpperRangeValueFrom0To: 20) { [provider] in
-            firstly {
-                provider.getTransactionIfCompleted(hash: hash)
-            }.map { _ in }
-        }
+    private let server: RPCServer
+    private let transactionDataStore: TransactionDataStore
+
+    public init(transactionDataStore: TransactionDataStore, server: RPCServer) {
+        self.transactionDataStore = transactionDataStore
+        self.server = server
+    }
+
+    /// Return transaction when it reaches state
+    /// - state - transactions state required
+    /// - hash - transaction hash to look for trsnsaction
+    /// - timeout - waiting timeout
+    func transaction(hash: String, for state: TransactionState, timeout: Int) -> AnyPublisher<TransactionInstance, TransactionError> {
+        transactionDataStore
+            .transactionPublisher(for: hash, server: server)
+            .mapError { TransactionError.internal($0) }
+            .map { tx -> Result<TransactionInstance, TransactionError> in
+                if let tx = tx {
+                    if tx.state == state {
+                        return .success(tx)
+                    } else {
+                        return .failure(TransactionError.notInState(state))
+                    }
+                } else {
+                    return .failure(TransactionError.internal(DataStoreError.objectNotFound))
+                }
+            }.compactMap { result -> TransactionInstance? in
+                guard case .success(let tx) = result else { return nil }
+                return tx
+            }.timeout(.seconds(timeout), scheduler: DispatchQueue.main, options: nil) { return TransactionError.timeout }
+            .receive(on: DispatchQueue.main)
+            .first()
+            .eraseToAnyPublisher()
     }
 }

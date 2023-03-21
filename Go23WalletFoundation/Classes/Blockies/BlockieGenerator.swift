@@ -1,12 +1,12 @@
 //
 //  BlockieGenerator.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Tatan.
+//  Created by Taran.
 //
 
 import Foundation
-import BlockiesSwift 
+import BlockiesSwift
 import UIKit.UIImage
 import Combine
 import Go23WalletENS
@@ -22,41 +22,33 @@ public class BlockiesGenerator {
         case none
     }
 
-    private struct BlockieKey: Hashable {
-        let address: DerbyWallet.Address
-        let size: Int
-        let scale: Int
-
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(address.eip55String)
-            hasher.combine(size)
-            hasher.combine(scale)
-        }
-    }
-
-    private let queue = DispatchQueue(label: "org.DerbyWallet.swift.blockies.generator")
+    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.blockies.generator")
 
     /// Address related icons cache with image size and scale
-    private var cache: [BlockieKey: BlockiesImage] = [:]
+    private var cache: [String: BlockiesImage] = [:]
     /// Address related icons cache without image size. Cache is using for determine images without sizes and scales, fetched out from OpenSea
-    private var sizeLessCache: [DerbyWallet.Address: BlockiesImage] = [:]
+    private var sizelessCache: [String: BlockiesImage] = [:]
     private let storage: EnsRecordsStorage
-    private lazy var ensTextRecordFetcher = GetEnsTextRecord(server: .forResolvingEns, storage: storage)
+    private lazy var ensTextRecordFetcher = GetEnsTextRecord(blockchainProvider: blockchainProvider, storage: storage)
     private let assetImageProvider: NftAssetImageProvider
+    private let blockchainProvider: BlockchainProvider
 
-    public init(assetImageProvider: NftAssetImageProvider, storage: EnsRecordsStorage) {
+    public init(assetImageProvider: NftAssetImageProvider,
+                storage: EnsRecordsStorage,
+                blockchainProvider: BlockchainProvider) {
+        self.blockchainProvider = blockchainProvider
         self.assetImageProvider = assetImageProvider
         self.storage = storage
     }
 
-    public func getBlockieOrEnsAvatarImage(address: DerbyWallet.Address, ens: String? = nil, size: Int = 8, scale: Int = 3, fallbackImage: BlockiesImage) -> AnyPublisher<BlockiesImage, Never> {
+    public func getBlockieOrEnsAvatarImage(address: Go23Wallet.Address, ens: String? = nil, size: Int = 8, scale: Int = 3, fallbackImage: BlockiesImage) -> AnyPublisher<BlockiesImage, Never> {
         return getBlockieOrEnsAvatarImage(address: address, ens: ens, size: size, scale: size)
             .prepend(fallbackImage)
             .replaceError(with: fallbackImage)
             .eraseToAnyPublisher()
     }
 
-    public func getBlockieOrEnsAvatarImage(address: DerbyWallet.Address, ens: String? = nil, size: Int = 8, scale: Int = 3) -> AnyPublisher<BlockiesImage, SmartContractError> {
+    public func getBlockieOrEnsAvatarImage(address: Go23Wallet.Address, ens: String? = nil, size: Int = 8, scale: Int = 3) -> AnyPublisher<BlockiesImage, SmartContractError> {
         if let cached = self.cachedBlockie(address: address, size: .sized(size: size, scale: scale)) {
             return .just(cached)
         }
@@ -84,7 +76,7 @@ public class BlockiesGenerator {
             .eraseToAnyPublisher()
     }
 
-    private func fetchEnsAvatar(for address: DerbyWallet.Address, ens: String?) -> AnyPublisher<BlockiesImage, SmartContractError> {
+    private func fetchEnsAvatar(for address: Go23Wallet.Address, ens: String?) -> AnyPublisher<BlockiesImage, SmartContractError> {
         return ensTextRecordFetcher.getEnsAvatar(for: address, ens: ens)
             .flatMap { imageOrEip155 -> AnyPublisher<BlockiesImage, SmartContractError> in
                 switch imageOrEip155 {
@@ -113,27 +105,27 @@ public class BlockiesGenerator {
             .eraseToAnyPublisher()
     }
 
-    private func cacheBlockie(address: DerbyWallet.Address, blockie: BlockiesImage, size: BlockieSize) {
+    private func cacheBlockie(address: Go23Wallet.Address, blockie: BlockiesImage, size: BlockieSize) {
         switch size {
         case .sized(let size, let scale):
-            let key = BlockieKey(address: address, size: size, scale: scale)
+            let key = "\(address.eip55String)-\(size)-\(scale)"
             cache[key] = blockie
         case .none:
-            sizeLessCache[address] = blockie
+            sizelessCache[address.eip55String] = blockie
         }
     }
 
-    private func cachedBlockie(address: DerbyWallet.Address, size: BlockieSize) -> BlockiesImage? {
+    private func cachedBlockie(address: Go23Wallet.Address, size: BlockieSize) -> BlockiesImage? {
         switch size {
         case .sized(let size, let scale):
-            let key = BlockieKey(address: address, size: size, scale: scale)
-            return cache[key] ?? sizeLessCache[address]
+            let key = "\(address.eip55String)-\(size)-\(scale)"
+            return cache[key] ?? sizelessCache[address.eip55String]
         case .none:
-            return sizeLessCache[address]
+            return sizelessCache[address.eip55String]
         }
     }
 
-    private func createBlockieImage(address: DerbyWallet.Address, size: Int, scale: Int) -> AnyPublisher<BlockiesImage, PromiseError> {
+    private func createBlockieImage(address: Go23Wallet.Address, size: Int, scale: Int) -> AnyPublisher<BlockiesImage, PromiseError> {
         enum AnyError: Error {
             case blockieCreateFailure
         }

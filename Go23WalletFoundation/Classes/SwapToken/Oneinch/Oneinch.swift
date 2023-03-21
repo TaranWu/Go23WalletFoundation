@@ -1,38 +1,71 @@
 //
 //  OneinchHolder.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 11.11.2020.
+//  Created by Taran.
 //
 
 import Foundation
 import Combine
-import Alamofire
 import Go23WalletCore
 
 public class Oneinch: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
-    private var assets: [DerbyWallet.Address: Oneinch.Asset] = .init()
-    private let queue = DispatchQueue(label: "org.DerbyWallet.swift.Oneinch")
+    private (set) public var assets: Swift.Result<[Go23Wallet.Address: Oneinch.Asset], Error> = .failure(OneinchError())
+    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.Oneinch")
     private var cancelable = Set<AnyCancellable>()
     private var objectWillChangeSubject = PassthroughSubject<Void, Never>()
     private var supportedServers: [RPCServer] {
         return [.main, .binance_smart_chain, .polygon, .optimistic, .arbitrum]
     }
-    private let decoder = JSONDecoder()
     private static let baseURL = "https://1inch.exchange/#"
     private static let referralSlug = "/r/0x98f21584006c79871F176F8D474958a69e04595B"
     //NOTE: for Oneinch exchange service we need to use two addresses, by default it uses Uptrennd token
     private var predefinedAssets: [Oneinch.Asset] {
         [.init(symbol: "ETH", name: "ETH", address: Constants.nativeCryptoAddressInDatabase, decimal: RPCServer.main.decimals)]
     }
+    private let networkProvider: OneinchNetworkProviderType
+    private let reachability: ReachabilityManagerProtocol
+    private let retryBehavior: RetryBehavior<RunLoop>
+    public static let defaultRetryBehavior: RetryBehavior<RunLoop> = .randomDelayed(retries: 3, delayBeforeRetry: 5, delayUpperRangeValueFrom0To: 15)
 
     public var objectWillChange: AnyPublisher<Void, Never> {
-        objectWillChangeSubject.receive(on: RunLoop.main).eraseToAnyPublisher()
+        objectWillChangeSubject
+            .receive(on: RunLoop.main)
+            .eraseToAnyPublisher()
     }
-
     public let action: String
     public let analyticsNavigation: Analytics.Navigation = .onOneinch
     public let analyticsName: String = "Oneinch"
+
+    public init(action: String, networkProvider: OneinchNetworkProviderType, reachability: ReachabilityManagerProtocol = ReachabilityManager(), retryBehavior: RetryBehavior<RunLoop> = Oneinch.defaultRetryBehavior) {
+        self.action = action
+        self.networkProvider = networkProvider
+        self.reachability = reachability
+        self.retryBehavior = retryBehavior
+    }
+
+    public func start() {
+        reachability.networkBecomeReachablePublisher
+            .receive(on: queue)
+            .setFailureType(to: PromiseError.self)
+            .flatMapLatest { [networkProvider, retryBehavior] _ -> AnyPublisher<[Asset], PromiseError> in
+                networkProvider.retrieveAssets()
+                    .retry(retryBehavior, scheduler: RunLoop.main)
+                    .eraseToAnyPublisher()
+            }.receive(on: queue)
+            .sink { [objectWillChangeSubject] result in
+                objectWillChangeSubject.send(())
+
+                guard case .failure(let error) = result else { return }
+                let request = RampNetworkProvider.RampRequest()
+            } receiveValue: { assets in
+                var newAssets: [Go23Wallet.Address: Oneinch.Asset] = [:]
+                for asset in self.predefinedAssets + assets {
+                    newAssets[asset.address] = asset
+                }
+                self.assets = .success(newAssets)
+            }.store(in: &cancelable)
+    }
 
     public func url(token: TokenActionsIdentifiable) -> URL? {
         var components = URLComponents()
@@ -52,67 +85,35 @@ public class Oneinch: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
     }
 
     public func isSupport(token: TokenActionsIdentifiable) -> Bool {
-        switch token.server {
+        switch token.server.serverWithEnhancedSupport {
         case .main, .arbitrum:
             return asset(for: token.contractAddress) != nil
-        case .kovan, .ropsten, .rinkeby, .sokol, .goerli, .artis_sigma1, .artis_tau1, .custom, .poa, .callisto, .xDai, .classic, .binance_smart_chain, .binance_smart_chain_testnet, .heco, .heco_testnet, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .candle, .polygon, .mumbai_testnet, .optimistic, .optimisticKovan, .cronosTestnet, .palm, .palmTestnet, .arbitrumRinkeby, .klaytnCypress, .klaytnBaobabTestnet, .phi, .ioTeX, .ioTeXTestnet:
+        case .main, .xDai, .polygon, .binance_smart_chain, .heco, .rinkeby, .klaytnCypress, .klaytnBaobabTestnet, nil:
             return false
         }
     }
 
-    private func asset(for address: DerbyWallet.Address) -> Oneinch.Asset? {
-        return assets[address]
+    private func asset(for address: Go23Wallet.Address) -> Oneinch.Asset? {
+        switch assets {
+        case .success(let assets):
+            return assets[address]
+        case .failure:
+            return nil
+        }
     }
 
-    public init(action: String) {
-        self.action = action
-    }
-
-    public func start() {
-        let request = OneInchAssetsRequest()
-        Just(request)
-            .receive(on: queue)
-            .setFailureType(to: PromiseError.self)
-            .flatMap { request -> AnyPublisher<[Asset], PromiseError> in
-                self.retrieveAssets(request)
-            }.sink { [objectWillChangeSubject] result in
-                objectWillChangeSubject.send(())
-            } receiveValue: { assets in
-                for asset in self.predefinedAssets + assets {
-                    self.assets[asset.address] = asset
-                } 
-            }.store(in: &cancelable)
-    }
-
-    private func subpath(inputAddress: DerbyWallet.Address) -> String {
+    private func subpath(inputAddress: Go23Wallet.Address) -> String {
         return [asset(for: inputAddress), asset(for: defaultOutputAddress(forInput: inputAddress))].compactMap {
             $0?.symbol
         }.joined(separator: "/")
     }
 
-    private func retrieveAssets(_ request: OneInchAssetsRequest) -> AnyPublisher<[Oneinch.Asset], PromiseError> {
-        return Alamofire.request(request)
-            .responseDataPublisher(queue: queue)
-            .tryMap { [decoder] in try decoder.decode(AssetsResponse.self, from: $0.data).tokens.map { $0.value } }
-            .mapError { PromiseError.some(error: $0) }
-            .eraseToAnyPublisher()
-    }
-
-    private func defaultOutputAddress(forInput input: DerbyWallet.Address) -> DerbyWallet.Address {
+    private func defaultOutputAddress(forInput input: Go23Wallet.Address) -> Go23Wallet.Address {
         if input == Constants.nativeCryptoAddressInDatabase {
             //TODO extract a list of known/popular token contracts we use in the app? Would that be too much dependency?
-            return DerbyWallet.Address(string: "0xdAC17F958D2ee523a2206206994597C13D831ec7")!
+            return Go23Wallet.Address(string: "0xdAC17F958D2ee523a2206206994597C13D831ec7")!
         } else {
             return Constants.nativeCryptoAddressInDatabase
         }
-    }
-}
-
-private struct OneInchAssetsRequest: URLRequestConvertible {
-    func asURLRequest() throws -> URLRequest {
-        guard var components = URLComponents(url: Constants.OneInch.exchangeUrl, resolvingAgainstBaseURL: false) else { throw URLError(.badURL) }
-        components.path = "/v3.0/1/tokens"
-        let url = try components.asURL()
-        return try URLRequest(url: url, method: .get)
     }
 }

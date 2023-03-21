@@ -1,5 +1,5 @@
 //
-//  BalanceHelper.swift
+//  TokenAdaptor.swift
 //  Alpha-Wallet
 //
 //  Created by Oguzhan Gungor on 2/25/18.
@@ -14,36 +14,103 @@ import Combine
 public protocol TokenHolderState {
     func tokenHolders(for token: TokenIdentifiable) -> [TokenHolder]
     func tokenHoldersPublisher(for token: TokenIdentifiable) -> AnyPublisher<[TokenHolder], Never>
+    func tokenHolderPublisher(for token: TokenIdentifiable, tokenId: TokenId) -> AnyPublisher<TokenHolder?, Never>
+}
+
+extension TokenHolderState {
+    public func tokenHolderPublisher(for token: TokenIdentifiable, tokenId: TokenId) -> AnyPublisher<TokenHolder?, Never> {
+        tokenHoldersPublisher(for: token)
+            .map { tokenHolders in
+                switch token.type {
+                case .erc721, .erc875, .erc721ForTickets:
+                    return tokenHolders.first { $0.tokens[0].id == tokenId }
+                case .erc1155:
+                    return tokenHolders.first(where: { $0.tokens.contains(where: { $0.id == tokenId }) })
+                case .nativeCryptocurrency, .erc20:
+                    return nil
+                }
+            }.eraseToAnyPublisher()
+    }
 }
 
 extension TokenHolder: ObservableObject { }
 
-extension TokenScriptSupportable {
+public struct TokenAdaptor {
+    let nftProvider: NFTProvider
+    let assetDefinitionStore: AssetDefinitionStore
+    let eventsDataStore: NonActivityEventsDataStore
+    let wallet: Wallet
 
-    public func getTokenHolders(assetDefinitionStore: AssetDefinitionStore, eventsDataStore: NonActivityEventsDataStore, forWallet account: Wallet, isSourcedFromEvents: Bool = true) -> [TokenHolder] {
-        let tokenAdaptor = TokenAdaptor(token: self, assetDefinitionStore: assetDefinitionStore, eventsDataStore: eventsDataStore)
-        return tokenAdaptor.getTokenHolders(forWallet: account, isSourcedFromEvents: isSourcedFromEvents)
+    public init(assetDefinitionStore: AssetDefinitionStore,
+                eventsDataStore: NonActivityEventsDataStore,
+                wallet: Wallet,
+                nftProvider: NFTProvider) {
+
+        self.nftProvider = nftProvider
+        self.wallet = wallet
+        self.assetDefinitionStore = assetDefinitionStore
+        self.eventsDataStore = eventsDataStore
     }
 
-    /// Generates token holder for fungible token, with id 1
-    public func getTokenHolder(assetDefinitionStore: AssetDefinitionStore, forWallet account: Wallet) -> TokenHolder {
+    public func xmlHandler(token: TokenScriptSupportable) -> XMLHandler {
+        return XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore)
+    }
+
+    public func xmlHandler(contract: Go23Wallet.Address, tokenType: TokenType) -> XMLHandler {
+        return XMLHandler(contract: contract, tokenType: tokenType, assetDefinitionStore: assetDefinitionStore)
+    }
+
+    public func tokenScriptOverrides(token: TokenScriptSupportable) -> TokenScriptOverrides {
+        return TokenScriptOverrides(token: token, tokenAdaptor: self)
+    }
+
+    //`sourceFromEvents`: We'll usually source from events if available, except when we are actually using this func to create the filter to fetch the events
+    public func getTokenHolders(token: TokenScriptSupportable, isSourcedFromEvents: Bool = true) -> [TokenHolder] {
+        switch token.type {
+        case .nativeCryptocurrency, .erc20, .erc875, .erc721ForTickets:
+            return getNotSupportedByNonFungibleJsonTokenHolders(token: token)
+        case .erc721, .erc1155:
+            let tokenType = NonFungibleFromJsonSupportedTokenHandling(token: token)
+            switch tokenType {
+            case .supported:
+                return getSupportedByNonFungibleJsonTokenHolders(token: token, isSourcedFromEvents: isSourcedFromEvents)
+            case .notSupported:
+                return getNotSupportedByNonFungibleJsonTokenHolders(token: token)
+            }
+        }
+    }
+
+    public func getTokenHolder(token: TokenScriptSupportable) -> TokenHolder {
         //TODO id 1 for fungibles. Might come back to bite us?
         let hardcodedTokenIdForFungibles = BigUInt(1)
-        let xmlHandler = XMLHandler(token: self, assetDefinitionStore: assetDefinitionStore)
+        let xmlHandler = XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore)
             //TODO Event support, if/when designed for fungibles
-        let values = xmlHandler.resolveAttributesBypassingCache(withTokenIdOrEvent: .tokenId(tokenId: hardcodedTokenIdForFungibles), server: server, account: account)
+        let values = xmlHandler.resolveAttributesBypassingCache(
+            withTokenIdOrEvent: .tokenId(tokenId: hardcodedTokenIdForFungibles),
+            server: token.server,
+            account: wallet,
+            assetDefinitionStore: assetDefinitionStore)
+
         let subscribablesForAttributeValues = values.values
         let allResolved = subscribablesForAttributeValues.allSatisfy { $0.subscribableValue?.value != nil }
 
-        let token = TokenScript.Token(tokenIdOrEvent: .tokenId(tokenId: hardcodedTokenIdForFungibles), tokenType: type, index: 0, name: name, symbol: symbol, status: .available, values: values)
-        let tokenHolder = TokenHolder(tokens: [token], contractAddress: contractAddress, hasAssetDefinition: true)
+        let tokenScriptToken = TokenScript.Token(
+            tokenIdOrEvent: .tokenId(tokenId: hardcodedTokenIdForFungibles),
+            tokenType: token.type,
+            index: 0,
+            name: token.name,
+            symbol: token.symbol,
+            status: .available,
+            values: values)
+
+        let tokenHolder = TokenHolder(tokens: [tokenScriptToken], contractAddress: token.contractAddress, hasAssetDefinition: true)
 
         if allResolved {
             //no-op
         } else {
             for each in subscribablesForAttributeValues {
                 guard let subscribable = each.subscribableValue else { continue }
-                subscribable.subscribe { [weak tokenHolder] _ in
+                subscribable.sinkAsync { [weak tokenHolder] _ in
                     tokenHolder?.objectWillChange.send()
                 }
             }
@@ -51,38 +118,9 @@ extension TokenScriptSupportable {
 
         return tokenHolder
     }
-}
 
-public class TokenAdaptor {
-    private let token: TokenScriptSupportable
-    private let assetDefinitionStore: AssetDefinitionStore
-    private let eventsDataStore: NonActivityEventsDataStore
-    private let xmlHandler: XMLHandler
-
-    public init(token: TokenScriptSupportable, assetDefinitionStore: AssetDefinitionStore, eventsDataStore: NonActivityEventsDataStore) {
-        self.token = token
-        self.assetDefinitionStore = assetDefinitionStore
-        self.eventsDataStore = eventsDataStore
-        self.xmlHandler = XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore)
-    }
-
-    //`sourceFromEvents`: We'll usually source from events if available, except when we are actually using this func to create the filter to fetch the events
-    public func getTokenHolders(forWallet account: Wallet, isSourcedFromEvents: Bool = true) -> [TokenHolder] {
-        switch token.type {
-        case .nativeCryptocurrency, .erc20, .erc875, .erc721ForTickets:
-            return getNotSupportedByNonFungibleJsonTokenHolders(forWallet: account)
-        case .erc721, .erc1155:
-            let tokenType = NonFungibleFromJsonSupportedTokenHandling(token: token)
-            switch tokenType {
-            case .supported:
-                return getSupportedByNonFungibleJsonTokenHolders(forWallet: account, isSourcedFromEvents: isSourcedFromEvents)
-            case .notSupported:
-                return getNotSupportedByNonFungibleJsonTokenHolders(forWallet: account)
-            }
-        }
-    }
-
-    private func getNotSupportedByNonFungibleJsonTokenHolders(forWallet account: Wallet) -> [TokenHolder] {
+    //TODO: is it possible to make single token holder with multiple token ids without making each token holder for each token id?
+    private func getNotSupportedByNonFungibleJsonTokenHolders(token: TokenScriptSupportable) -> [TokenHolder] {
         var tokens = [TokenScript.Token]()
         switch token.type {
         case .erc875, .erc721ForTickets, .erc721, .erc1155, .nativeCryptocurrency:
@@ -91,62 +129,56 @@ public class TokenAdaptor {
                 let id = item.balance
                 guard isNonZeroBalance(id, tokenType: token.type) else { continue }
                 if let tokenInt = BigUInt(id.drop0x, radix: 16) {
-                    let server = self.token.server
                     //TODO Event support, if/when designed, for non-OpenSea. Probably need `distinct` or something to that effect
-                    let token = getToken(name: self.token.name, symbol: self.token.symbol, forTokenIdOrEvent: .tokenId(tokenId: tokenInt), index: UInt16(index), inWallet: account, server: server)
+                    let token = getToken(name: token.name, symbol: token.symbol, forTokenIdOrEvent: .tokenId(tokenId: tokenInt), index: UInt16(index), token: token)
                     tokens.append(token)
                 }
             }
-            return bundle(tokens: tokens)
+            return bundle(tokens: tokens, token: token)
         case .erc20:
             //For fungibles, we have to get 1 token even if the balance.count is 0. Maybe we check value? No, even if value is 0, there might be attributes
             let tokenInt: BigUInt = .init(1)
             let index = 0
 
-            let server = self.token.server
             //TODO Event support, if/when designed, for non-OpenSea. Probably need `distinct` or something to that effect
-            let token = getToken(name: self.token.name, symbol: self.token.symbol, forTokenIdOrEvent: .tokenId(tokenId: tokenInt), index: UInt16(index), inWallet: account, server: server)
-            tokens.append(token)
-            return bundle(tokens: tokens)
+            let tokenScriptToken = getToken(name: token.name, symbol: token.symbol, forTokenIdOrEvent: .tokenId(tokenId: tokenInt), index: UInt16(index), token: token)
+            tokens.append(tokenScriptToken)
+            return bundle(tokens: tokens, token: token)
         }
     }
 
-    private func getSupportedByNonFungibleJsonTokenHolders(forWallet account: Wallet, isSourcedFromEvents: Bool) -> [TokenHolder] {
+    private func getSupportedByNonFungibleJsonTokenHolders(token: TokenScriptSupportable, isSourcedFromEvents: Bool) -> [TokenHolder] {
         var tokens = [TokenScript.Token]()
         for nonFungibleBalance in token.balanceNft.compactMap({ $0.nonFungibleBalance }) {
-            if let token = getTokenForNonFungible(nonFungible: nonFungibleBalance, inWallet: account, server: self.token.server, isSourcedFromEvents: isSourcedFromEvents, tokenType: self.token.type) {
+            if let token = getTokenForNonFungible(nonFungible: nonFungibleBalance, token: token, isSourcedFromEvents: isSourcedFromEvents) {
                 tokens.append(token)
             }
         }
-        return bundle(tokens: tokens)
+        return bundle(tokens: tokens, token: token)
     }
 
     //NOTE: internal for testing purposes
-    public func bundleTestsOnly(tokens: [TokenScript.Token]) -> [TokenHolder] {
-        bundle(tokens: tokens)
+    public func bundleTestsOnly(tokens: [TokenScript.Token], token: TokenScriptSupportable) -> [TokenHolder] {
+        bundle(tokens: tokens, token: token)
     }
 
-    private func bundle(tokens: [TokenScript.Token]) -> [TokenHolder] {
+    private func bundle(tokens: [TokenScript.Token], token: TokenScriptSupportable) -> [TokenHolder] {
         switch token.type {
         case .nativeCryptocurrency, .erc20, .erc875:
             if !tokens.isEmpty && tokens[0].isSpawnableMeetupContract {
-                return tokens.sorted { $0.id < $1.id }.map { getTokenHolder(for: [$0]) }
+                return tokens.sorted { $0.id < $1.id }.map { getTokenHolder(for: [$0], token: token) }
             } else {
-                break
+                var tokenHolders: [TokenHolder] = []
+                for each in groupTokensByFields(tokens: tokens) {
+                    for tokens in breakBundlesFurtherToHaveContinuousSeatRange(tokens: each) {
+                        tokenHolders.append(getTokenHolder(for: tokens, token: token))
+                    }
+                }
+                return sortBundlesUpcomingFirst(bundles: tokenHolders)
             }
         case .erc721, .erc721ForTickets, .erc1155:
-            return tokens.map { getTokenHolder(for: [$0]) }
+            return tokens.map { getTokenHolder(for: [$0], token: token) }
         }
-        var tokenHolders: [TokenHolder] = []
-        let groups = groupTokensByFields(tokens: tokens)
-        for each in groups {
-            let results = breakBundlesFurtherToHaveContinuousSeatRange(tokens: each)
-            for tokens in results {
-                tokenHolders.append(getTokenHolder(for: tokens))
-            }
-        }
-        tokenHolders = sortBundlesUpcomingFirst(bundles: tokenHolders)
-        return tokenHolders
     }
 
     private func sortBundlesUpcomingFirst(bundles: [TokenHolder]) -> [TokenHolder] {
@@ -200,20 +232,38 @@ public class TokenAdaptor {
     }
 
     //TODO pass lang into here
-    private func getToken(name: String, symbol: String, forTokenIdOrEvent tokenIdOrEvent: TokenIdOrEvent, index: UInt16, inWallet account: Wallet, server: RPCServer) -> TokenScript.Token {
-        xmlHandler.getToken(name: name, symbol: symbol, fromTokenIdOrEvent: tokenIdOrEvent, index: index, inWallet: account, server: server, tokenType: token.type)
+    private func getToken(name: String,
+                          symbol: String,
+                          forTokenIdOrEvent tokenIdOrEvent: TokenIdOrEvent,
+                          index: UInt16,
+                          token: TokenScriptSupportable) -> TokenScript.Token {
+
+        let xmlHandler = xmlHandler(token: token)
+        return xmlHandler.getToken(
+            name: name,
+            symbol: symbol,
+            fromTokenIdOrEvent: tokenIdOrEvent,
+            index: index,
+            inWallet: wallet,
+            server: token.server,
+            tokenType: token.type,
+            assetDefinitionStore: assetDefinitionStore)
     }
 
-    private func getFirstMatchingEvent(nonFungible: NonFungibleFromJson, inWallet account: Wallet, isSourcedFromEvents: Bool) -> EventInstanceValue? {
+    private func getFirstMatchingEvent(nonFungible: NonFungibleFromJson,
+                                       token: TokenScriptSupportable,
+                                       isSourcedFromEvents: Bool) -> EventInstanceValue? {
+
+        let xmlHandler = xmlHandler(token: token)
         if isSourcedFromEvents, let attributeWithEventSource = xmlHandler.attributesWithEventSource.first, let eventFilter = attributeWithEventSource.eventOrigin?.eventFilter, let eventName = attributeWithEventSource.eventOrigin?.eventName, let eventContract = attributeWithEventSource.eventOrigin?.contract {
             let filterName = eventFilter.name
             let filterValue: String
-            if let implicitAttribute = EventSource.Functional.convertToImplicitAttribute(string: eventFilter.value) {
+            if let implicitAttribute = EventSource.functional.convertToImplicitAttribute(string: eventFilter.value) {
                 switch implicitAttribute {
                 case .tokenId:
                     filterValue = eventFilter.value.replacingOccurrences(of: "${tokenId}", with: nonFungible.tokenId)
                 case .ownerAddress:
-                    filterValue = eventFilter.value.replacingOccurrences(of: "${ownerAddress}", with: account.address.eip55String)
+                    filterValue = eventFilter.value.replacingOccurrences(of: "${ownerAddress}", with: wallet.address.eip55String)
                 case .label, .contractAddress, .symbol:
                     filterValue = eventFilter.value
                 }
@@ -237,7 +287,7 @@ public class TokenAdaptor {
         return tokenIdOrEvent
     }
 
-    private func getTokenForNonFungible(nonFungible: NonFungibleFromJson, inWallet account: Wallet, server: RPCServer, isSourcedFromEvents: Bool, tokenType: TokenType) -> TokenScript.Token? {
+    private func getTokenForNonFungible(nonFungible: NonFungibleFromJson, token: TokenScriptSupportable, isSourcedFromEvents: Bool) -> TokenScript.Token? {
         switch nonFungible.tokenType {
         case .erc721:
             break
@@ -245,10 +295,16 @@ public class TokenAdaptor {
             guard !nonFungible.value.isZero else { return nil }
         }
 
-        let event = getFirstMatchingEvent(nonFungible: nonFungible, inWallet: account, isSourcedFromEvents: isSourcedFromEvents)
+        let event = getFirstMatchingEvent(nonFungible: nonFungible, token: token, isSourcedFromEvents: isSourcedFromEvents)
         let tokenIdOrEvent: TokenIdOrEvent = getTokenIdOrEvent(event: event, nonFungible: nonFungible)
 
-        var values = xmlHandler.resolveAttributesBypassingCache(withTokenIdOrEvent: tokenIdOrEvent, server: token.server, account: account)
+        let xmlHandler = xmlHandler(token: token)
+        var values = xmlHandler.resolveAttributesBypassingCache(
+            withTokenIdOrEvent: tokenIdOrEvent,
+            server: token.server,
+            account: wallet,
+            assetDefinitionStore: assetDefinitionStore)
+
         values.setTokenId(string: nonFungible.tokenId)
         if let date = nonFungible.collectionCreatedDate {
             //Storing as GeneralisedTime because we only support that for date/time formats in TokenScript. We are using the same `values` infrastructure
@@ -257,36 +313,38 @@ public class TokenAdaptor {
             generalisedTime.date = date
             values.setCollectionCreatedDate(generalisedTime: generalisedTime)
         }
+
         values.collectionDescriptionStringValue = nonFungible.collectionDescription
         values.setName(string: nonFungible.name)
         values.setDescription(string: nonFungible.description)
         values.setImageUrl(string: nonFungible.imageUrl)
+        values.setAnimationUrl(string: nonFungible.animationUrl)
         values.setContractImageUrl(string: nonFungible.contractImageUrl)
         values.setThumbnailUrl(string: nonFungible.thumbnailUrl)
         values.setExternalLink(string: nonFungible.externalLink)
         values.backgroundColorStringValue = nonFungible.backgroundColor
         values.setTraits(value: nonFungible.traits)
         values.setValue(int: nonFungible.value)
-        values.setDecimals(int: nonFungible.decimals)
         values.setTokenType(string: nonFungible.tokenType.rawValue)
 
-        values.setMeltStringValue(string: nonFungible.meltStringValue)
-        values.setMeltFeeRatio(int: nonFungible.meltFeeRatio)
-        values.setMeltFeeMaxRatio(int: nonFungible.meltFeeMaxRatio)
-        values.setTotalSupplyStringValue(string: nonFungible.totalSupplyStringValue)
-        values.setCirculatingSupply(string: nonFungible.circulatingSupplyStringValue)
-        values.setReserveStringValue(string: nonFungible.reserveStringValue)
-        values.setNonFungible(bool: nonFungible.nonFungible)
-        values.setBlockHeight(int: nonFungible.blockHeight)
-        values.setMintableSupply(bigInt: nonFungible.mintableSupply)
-        values.setTransferable(string: nonFungible.transferable)
-        values.setSupplyModel(string: nonFungible.supplyModel)
-        values.setIssuer(string: nonFungible.issuer)
-        values.setCreated(string: nonFungible.created)
-        values.setTransferFee(string: nonFungible.transferFee)
+        if let token = nftProvider.enjinToken(tokenId: tokenIdOrEvent.tokenId) {
+            values.setMeltStringValue(string: token.meltValue)
+            values.setMeltFeeRatio(int: token.meltFeeRatio)
+            values.setMeltFeeMaxRatio(int: token.meltFeeMaxRatio)
+            values.setTotalSupplyStringValue(string: token.totalSupply)
+            values.setCirculatingSupply(string: token.circulatingSupply)
+            values.setReserveStringValue(string: token.reserve)
+            values.setNonFungible(bool: token.nonFungible)
+            values.setBlockHeight(int: token.blockHeight)
+            values.setMintableSupply(bigInt: BigInt(token.mintableSupply))
+            values.setTransferable(string: token.transferable)
+            values.setSupplyModel(string: token.supplyModel)
+            values.setCreated(string: token.createdAt)
+            values.setTransferFee(string: token.transferFee)
+        }
 
         values.setCollection(collection: nonFungible.collection)
-        values.setSlug(string: nonFungible.slug)
+        values.setCollectionId(string: nonFungible.collectionId)
         values.setCreator(creator: nonFungible.creator)
 
         let status: TokenScript.Token.Status
@@ -303,16 +361,15 @@ public class TokenAdaptor {
                 name: nonFungible.contractName,
                 symbol: "",
                 status: status,
-                values: values
-        )
+                values: values)
     }
 
-    private func getTokenHolder(for tokens: [TokenScript.Token]) -> TokenHolder {
+    private func getTokenHolder(for tokens: [TokenScript.Token], token: TokenScriptSupportable) -> TokenHolder {
+        let xmlHandler = xmlHandler(token: token)
         return TokenHolder(
                 tokens: tokens,
                 contractAddress: token.contractAddress,
-                hasAssetDefinition: xmlHandler.hasAssetDefinition
-        )
+                hasAssetDefinition: xmlHandler.hasAssetDefinition)
     }
 
 }
@@ -320,6 +377,6 @@ public class TokenAdaptor {
 extension TokenScript.Token {
     //TODO Convenience-only. (Look for references). Should remove once we generalize things further and not hardcode the use of seatId
     var seatId: Int {
-        return values.numeroIntValue.flatMap { Int($0) }  ?? 0
+        return values.numeroIntValue.flatMap { Int($0) } ?? 0
     }
 }

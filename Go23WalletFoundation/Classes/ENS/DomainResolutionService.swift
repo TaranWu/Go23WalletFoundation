@@ -1,8 +1,8 @@
 //
 //  DomainResolutionServiceType.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 27.01.2022.
+//  Created by Taran.
 //
 
 import Foundation
@@ -13,20 +13,22 @@ import Go23WalletCore
 public class DomainResolutionService {
     private let storage: EnsRecordsStorage
     private let blockiesGenerator: BlockiesGenerator
-    private lazy var getEnsAddressResolver = EnsResolver(server: server, storage: storage)
-    private lazy var unstoppableDomainsV2Resolver = UnstoppableDomainsV2Resolver(server: server, storage: storage)
-    private lazy var ensReverseLookupResolver = EnsReverseResolver(server: server, storage: storage)
+    private lazy var getEnsAddressResolver = EnsResolver(storage: storage, blockchainProvider: blockchainProvider)
+    private lazy var unstoppableDomainsV2Resolver = UnstoppableDomainsV2Resolver(server: blockchainProvider.server, storage: storage, networkService: networkService)
+    private lazy var ensReverseLookupResolver = EnsReverseResolver(storage: storage, blockchainProvider: blockchainProvider)
+    private let networkService: NetworkService
+    private let blockchainProvider: BlockchainProvider
 
-    public let server: RPCServer = .forResolvingEns
-
-    public init(blockiesGenerator: BlockiesGenerator, storage: EnsRecordsStorage) {
+    public init(blockiesGenerator: BlockiesGenerator, storage: EnsRecordsStorage, networkService: NetworkService, blockchainProvider: BlockchainProvider) {
+        self.blockchainProvider = blockchainProvider
         self.blockiesGenerator = blockiesGenerator
         self.storage = storage
+        self.networkService = networkService
     }
 }
 
 extension DomainResolutionService: DomainResolutionServiceType {
-    public func resolveAddress(string value: String) -> AnyPublisher<DerbyWallet.Address, PromiseError> {
+    public func resolveAddress(string value: String) -> AnyPublisher<Go23Wallet.Address, PromiseError> {
 
         let services: [CachebleAddressResolutionServiceType] = [
             getEnsAddressResolver,
@@ -41,13 +43,13 @@ extension DomainResolutionService: DomainResolutionServiceType {
             .setFailureType(to: SmartContractError.self)
             .flatMap { [getEnsAddressResolver] value in
                 getEnsAddressResolver.getENSAddressFromResolver(for: value)
-            }.catch { [unstoppableDomainsV2Resolver] _ -> AnyPublisher<DerbyWallet.Address, PromiseError> in
+            }.catch { [unstoppableDomainsV2Resolver] _ -> AnyPublisher<Go23Wallet.Address, PromiseError> in
                 unstoppableDomainsV2Resolver.resolveAddress(forName: value)
             }.receive(on: RunLoop.main)//We want to be sure it's on main
             .eraseToAnyPublisher()
     }
 
-    public func resolveEnsAndBlockie(address: DerbyWallet.Address) -> AnyPublisher<BlockieAndAddressOrEnsResolution, PromiseError> {
+    public func resolveEnsAndBlockie(address: Go23Wallet.Address) -> AnyPublisher<BlockieAndAddressOrEnsResolution, PromiseError> {
 
         func getBlockieImage(for ens: String) -> AnyPublisher<BlockieAndAddressOrEnsResolution, PromiseError> {
             return blockiesGenerator.getBlockieOrEnsAvatarImage(address: address, ens: ens)
@@ -65,7 +67,7 @@ extension DomainResolutionService: DomainResolutionServiceType {
 
     public func resolveAddressAndBlockie(string: String) -> AnyPublisher<BlockieAndAddressOrEnsResolution, PromiseError> {
 
-        func getBlockieImage(for addr: DerbyWallet.Address) -> AnyPublisher<BlockieAndAddressOrEnsResolution, PromiseError> {
+        func getBlockieImage(for addr: Go23Wallet.Address) -> AnyPublisher<BlockieAndAddressOrEnsResolution, PromiseError> {
             return blockiesGenerator.getBlockieOrEnsAvatarImage(address: addr, ens: string)
                 .map { image -> BlockieAndAddressOrEnsResolution in
                     return (image, .resolved(.address(addr)))
@@ -79,7 +81,7 @@ extension DomainResolutionService: DomainResolutionServiceType {
             .eraseToAnyPublisher()
     }
 
-    public func resolveEns(address: DerbyWallet.Address) -> AnyPublisher<EnsName, PromiseError> {
+    public func resolveEns(address: Go23Wallet.Address) -> AnyPublisher<EnsName, PromiseError> {
         let services: [CachedEnsResolutionServiceType] = [
             ensReverseLookupResolver,
             unstoppableDomainsV2Resolver

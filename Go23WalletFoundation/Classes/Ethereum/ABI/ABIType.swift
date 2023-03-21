@@ -59,14 +59,14 @@ public indirect enum ABIType: Equatable, CustomStringConvertible {
             return "address"
         case .bool:
             return "bool"
-        case .fixed(let mmm, let nnn):
-            return "fixed\(mmm)x\(nnn)"
-        case .ufixed(let mmm, let nnn):
-            return "ufixed\(mmm)x\(nnn)"
+        case .fixed(let m, let n):
+            return "fixed\(m)x\(n)"
+        case .ufixed(let m, let n):
+            return "ufixed\(m)x\(n)"
         case .bytes(let size):
             return "bytes\(size)"
-        case .function(let functionName):
-            return functionName.description
+        case .function(let f):
+            return f.description
         case .array(let type, let size):
             return "\(type)[\(size)]"
         case .dynamicBytes:
@@ -87,8 +87,8 @@ public indirect enum ABIType: Equatable, CustomStringConvertible {
             return false
         case .dynamicBytes, .string, .dynamicArray:
             return true
-        case .function(let functionName):
-            return functionName.parameters.contains(where: { $0.isDynamic })
+        case .function(let f):
+            return f.parameters.contains(where: { $0.isDynamic })
         case .tuple(let array):
             return array.contains(where: { $0.isDynamic })
         }

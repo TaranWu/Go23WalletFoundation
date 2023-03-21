@@ -1,8 +1,8 @@
 // Copyright © 2021 Stormbird PTE. LTD.
 
 import Foundation
-import PromiseKit
+import Combine
 
 public protocol Erc721TokenIdsFetcher: AnyObject {
-    func tokenIdsForErc721Token(contract: DerbyWallet.Address, forServer: RPCServer, inAccount account: DerbyWallet.Address) -> Promise<[String]>
+    func tokenIdsForErc721Token(contract: Go23Wallet.Address, forServer: RPCServer, inAccount account: Go23Wallet.Address) -> AnyPublisher<[String], Never>
 }

@@ -1,8 +1,8 @@
 //
 //  DecodedFunctionCall+Decode.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 11.05.2021.
+//  Created by Taran.
 //
 
 import BigInt
@@ -11,7 +11,7 @@ import Go23EthereumABI
 extension FunctionCall.Argument {
     init(type: ABIType, anyValue: Any?) {
         self.type = type
-        if let address = DerbyWallet.Address(possibleAddress: anyValue) {
+        if let address = Go23Wallet.Address(possibleAddress: anyValue) {
             self.value = address
         } else {
             self.value = anyValue
@@ -81,8 +81,8 @@ extension ABIType {
         case .bytes(let length):
             self = .bytes(Int(length))
         case .array(let type, let length):
-            guard let abitype = ABIType(abiParam: type) else { return nil }
-            self = .array(abitype, Int(length))
+            guard let t = ABIType(abiParam: type) else { return nil }
+            self = .array(t, Int(length))
         case .dynamicBytes:
             self = .dynamicBytes
         case .string:
@@ -96,15 +96,15 @@ extension ABIType {
 
 extension DecodedFunctionCall.FunctionType {
     init(name: String, arguments: [FunctionCall.Argument]) {
-        if name == DecodedFunctionCall.erc20Transfer.name, let address: DerbyWallet.Address = arguments.get(type: .address, atIndex: 0), let value: BigUInt = arguments.get(type: .uint(bits: 256), atIndex: 1) {
+        if name == DecodedFunctionCall.erc20Transfer.name, let address: Go23Wallet.Address = arguments.get(type: .address, atIndex: 0), let value: BigUInt = arguments.get(type: .uint(bits: 256), atIndex: 1) {
             self = .erc20Transfer(recipient: address, value: value)
-        } else if name == DecodedFunctionCall.erc20Approve.name, let address: DerbyWallet.Address = arguments.get(type: .address, atIndex: 0), let value: BigUInt = arguments.get(type: .uint(bits: 256), atIndex: 1) {
+        } else if name == DecodedFunctionCall.erc20Approve.name, let address: Go23Wallet.Address = arguments.get(type: .address, atIndex: 0), let value: BigUInt = arguments.get(type: .uint(bits: 256), atIndex: 1) {
             self = .erc20Approve(spender: address, value: value)
-        } else if name == DecodedFunctionCall.erc721ApproveAll.name, let address: DerbyWallet.Address = arguments.get(type: .address, atIndex: 0), let value: Bool = arguments.get(type: .bool, atIndex: 1) {
+        } else if name == DecodedFunctionCall.erc721ApproveAll.name, let address: Go23Wallet.Address = arguments.get(type: .address, atIndex: 0), let value: Bool = arguments.get(type: .bool, atIndex: 1) {
             self = .erc721ApproveAll(spender: address, value: value)
-        } else if name == DecodedFunctionCall.erc1155SafeTransfer.name, let address: DerbyWallet.Address = arguments.get(type: .address, atIndex: 0) {
+        } else if name == DecodedFunctionCall.erc1155SafeTransfer.name, let address: Go23Wallet.Address = arguments.get(type: .address, atIndex: 0) {
             self = .erc1155SafeTransfer(spender: address)
-        } else if name == DecodedFunctionCall.erc1155SafeBatchTransfer.name, let address: DerbyWallet.Address = arguments.get(type: .address, atIndex: 0) {
+        } else if name == DecodedFunctionCall.erc1155SafeBatchTransfer.name, let address: Go23Wallet.Address = arguments.get(type: .address, atIndex: 0) {
             self = .erc1155SafeBatchTransfer(spender: address)
         } else {
             self = .others(name: name, arguments: arguments)

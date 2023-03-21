@@ -27,7 +27,7 @@ public struct EtherServiceRequest<Batch: Go23JSONRPCKit.Batch>: APIKit.Request {
         return rpcURL
     }
 
-    public var method: HTTPMethod {
+    public var method: APIKit.HTTPMethod {
         return .post
     }
 

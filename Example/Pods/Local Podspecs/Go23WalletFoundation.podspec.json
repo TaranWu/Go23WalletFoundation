@@ -1,6 +1,6 @@
 {
   "name": "Go23WalletFoundation",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "summary": "Go23Wallet functionality",
   "description": "Core wallet functionality",
   "homepage": "https://github.com/TaranWu/Go23WalletFoundation",
@@ -13,7 +13,7 @@
   },
   "source": {
     "git": "https://github.com/TaranWu/Go23WalletFoundation.git",
-    "tag": "1.0.7"
+    "tag": "1.0.8"
   },
   "platforms": {
     "ios": "13.0"
@@ -56,9 +56,6 @@
     "PromiseKit/CorePromise": [
 
     ],
-    "PromiseKit/Alamofire": [
-
-    ],
     "Kanna": [
 
     ],
@@ -72,10 +69,10 @@
 
     ],
     "Go23WalletAddress": [
-
+      "1.0.2"
     ],
     "Go23WalletCore": [
-
+      "1.0.2"
     ],
     "Go23WalletGoBack": [
 

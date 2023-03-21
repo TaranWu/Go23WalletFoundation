@@ -1,8 +1,8 @@
 //
 //  Alert.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Tatan.
+//  Created by Taran.
 //
 
 import Foundation
@@ -12,10 +12,26 @@ public enum PriceTarget: String, Codable {
     case below
 }
 
-public enum AlertType: Codable {
+public enum AlertType {
+    case price(priceTarget: PriceTarget, marketPrice: Double)
+}
+
+public struct PriceAlert {
+    public var type: AlertType
+    public var isEnabled: Bool
+    public let addressAndRPCServer: AddressAndRPCServer
+}
+
+extension AlertType: Codable, Hashable {
+
     private enum CodingKeys: String, CodingKey {
         case priceTarget
         case value
+    }
+
+    public init(value: Double, marketPrice: Double) {
+        let priceTarget: PriceTarget = value > marketPrice ? .above : .below
+        self = .price(priceTarget: priceTarget, marketPrice: value)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -33,22 +49,11 @@ public enum AlertType: Codable {
 
         let priceTarget: PriceTarget = container.decode(PriceTarget.self, forKey: .priceTarget, defaultValue: PriceTarget.above)
         let value: Double = container.decode(Double.self, forKey: .value, defaultValue: 0.0)
-
-        self = .price(priceTarget: priceTarget, value: value)
-    }
-
-    case price(priceTarget: PriceTarget, value: Double)
-
-    public init(value: Double, marketPrice: Double) {
-        let priceTarget: PriceTarget = value > marketPrice ? .above : .below
-        self = .price(priceTarget: priceTarget, value: value)
+        self = .price(priceTarget: priceTarget, marketPrice: value)
     }
 }
 
-public struct PriceAlert: Codable, Equatable {
-    public var type: AlertType
-    public var isEnabled: Bool
-    public let addressAndRPCServer: AddressAndRPCServer
+extension PriceAlert: Codable, Hashable, Equatable {
 
     public init(type: AlertType, token: Token, isEnabled: Bool) {
         self.addressAndRPCServer = token.addressAndRPCServer
@@ -57,6 +62,6 @@ public struct PriceAlert: Codable, Equatable {
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        return lhs.addressAndRPCServer == rhs.addressAndRPCServer
+        return lhs.addressAndRPCServer == rhs.addressAndRPCServer && lhs.isEnabled == rhs.isEnabled && lhs.type == rhs.type
     }
 }

@@ -1,26 +1,52 @@
 // Copyright © 2020 Stormbird PTE. LTD.
 
 import Foundation
-import PromiseKit
-import Alamofire
+import Combine
+import Go23WalletCore
+import BigInt
 
-public class EtherscanGasPriceEstimator {
-    struct EtherscanPriceEstimatesResponse: Decodable {
-        let result: EtherscanPriceEstimates
+class EtherscanGasPriceEstimator {
+    private let networkService: NetworkService
+    private let decoder = JSONDecoder()
+
+    init(networkService: NetworkService) {
+        self.networkService = networkService
     }
 
     static func supports(server: RPCServer) -> Bool {
         return server.etherscanGasPriceEstimatesURL != nil
     }
 
-    public func fetch(server: RPCServer) -> Promise<GasPriceEstimates> {
-        struct AnyError: Error {}
-        guard let url = server.etherscanGasPriceEstimatesURL else {
-            return .init(error: AnyError())
-        }
+    func gasPriceEstimates(server: RPCServer) -> AnyPublisher<GasEstimates, PromiseError> {
+        return networkService
+            .dataTaskPublisher(GetGasPriceEstimatesRequest(server: server))
+            .receive(on: DispatchQueue.global())
+            .tryMap { [decoder] in try decoder.decode(EtherscanPriceEstimatesResponse.self, from: $0.data) }
+            .compactMap { EtherscanPriceEstimates.bridgeToGasPriceEstimates(for: $0.result) }
+            .map { estimates in
+                GasEstimates(standard: BigUInt(estimates.standard), others: [
+                    TransactionConfigurationType.slow: BigUInt(estimates.slow),
+                    TransactionConfigurationType.fast: BigUInt(estimates.fast),
+                    TransactionConfigurationType.rapid: BigUInt(estimates.rapid)
+                ])
+            }.mapError { PromiseError.some(error: $0) }
+            .receive(on: RunLoop.main)
+            .eraseToAnyPublisher()
+    }
+}
 
-        return Alamofire.request(url, method: .get).responseDecodable(EtherscanPriceEstimatesResponse.self).compactMap { response in
-            EtherscanPriceEstimates.bridgeToGasPriceEstimates(for: response.result)
+extension EtherscanGasPriceEstimator {
+    struct EtherscanPriceEstimatesResponse: Decodable {
+        let result: EtherscanPriceEstimates
+    }
+
+    struct GetGasPriceEstimatesRequest: URLRequestConvertible {
+        let server: RPCServer
+
+        func asURLRequest() throws -> URLRequest {
+            guard let baseUrl = server.etherscanGasPriceEstimatesURL else { throw URLError(.badURL) }
+
+            return try URLRequest(url: baseUrl, method: .get)
         }
     }
 }
@@ -33,10 +59,10 @@ fileprivate extension RPCServer {
         } else {
             apiKeyParameter = ""
         }
-        switch self {
+        switch self.serverWithEnhancedSupport {
         case .main, .binance_smart_chain, .heco, .polygon:
             return etherscanApiRoot?.appendingQueryString("\("module=gastracker&action=gasoracle")\(apiKeyParameter)")
-        case .artis_sigma1, .artis_tau1, .binance_smart_chain_testnet, .callisto, .poa, .sokol, .classic, .xDai, .heco_testnet, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .mumbai_testnet, .cronosTestnet, .custom, .arbitrum, .arbitrumRinkeby, .kovan, .ropsten, .rinkeby, .goerli, .optimistic, .optimisticKovan, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .phi, .ioTeX, .ioTeXTestnet, .candle:
+        case .xDai, .rinkeby, .arbitrum, .klaytnCypress, .klaytnBaobabTestnet, nil:
             return nil
         }
     }

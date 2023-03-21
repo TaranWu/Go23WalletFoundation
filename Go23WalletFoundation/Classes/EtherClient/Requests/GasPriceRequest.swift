@@ -2,17 +2,18 @@
 
 import Foundation
 import Go23JSONRPCKit
+import BigInt
 
 struct GasPriceRequest: Go23JSONRPCKit.Request {
-    typealias Response = String
+    typealias Response = BigUInt
 
     var method: String {
         return "eth_gasPrice"
     }
 
     func response(from resultObject: Any) throws -> Response {
-        if let response = resultObject as? Response {
-            return response
+        if let response = resultObject as? String, let value = BigUInt(response.drop0x, radix: 16) {
+            return value
         } else {
             throw CastError(actualValue: resultObject, expectedType: Response.self)
         }

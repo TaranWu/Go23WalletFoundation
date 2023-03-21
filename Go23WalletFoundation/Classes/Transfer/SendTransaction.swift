@@ -1,8 +1,8 @@
-// Copyright SIX DAY LLC. All rights reserved.
+// Copyright © 2023 Stormbird PTE. LTD.
 
-import BigInt
 import Foundation
 import APIKit
+import BigInt
 import Go23JSONRPCKit
 import PromiseKit
 
@@ -14,14 +14,13 @@ public class SendTransaction {
     private let analytics: AnalyticsLogger
     private let prompt: String
 
-    public init(
-        session: WalletSession,
-        keystore: Keystore,
-        confirmType: ConfirmType,
-        config: Config,
-        analytics: AnalyticsLogger,
-        prompt: String
-    ) {
+    public init(session: WalletSession,
+                keystore: Keystore,
+                confirmType: ConfirmType,
+                config: Config,
+                analytics: AnalyticsLogger,
+                prompt: String) {
+
         self.prompt = prompt
         self.session = session
         self.keystore = keystore
@@ -74,7 +73,7 @@ public class SendTransaction {
     private func resolveNextNonce(for transaction: UnsignedTransaction) -> Promise<UnsignedTransaction> {
         let (rpcURL, rpcHeaders) = rpcURLAndHeaders
         return firstly {
-            GetNextNonce(rpcURL: rpcURL, rpcHeaders: rpcHeaders, server: session.server, wallet: session.account.address, analytics: analytics).promise()
+            GetNextNonce(rpcURL: rpcURL, rpcHeaders: rpcHeaders, server: session.server, analytics: analytics).getNextNonce(wallet: session.account.address)
         }.map { nonce -> UnsignedTransaction in
             let transaction = self.appendNonce(to: transaction, currentNonce: nonce)
             return transaction
@@ -111,10 +110,10 @@ public class SendTransaction {
 
     private func logSelectSendError(_ error: Error) {
         guard let error = error as? SendTransactionNotRetryableError else { return }
-        switch error {
+        switch error.type {
         case .nonceTooLow:
             analytics.log(error: Analytics.Error.sendTransactionNonceTooLow)
-        case .insufficientFunds, .gasPriceTooLow, .gasLimitTooLow, .gasLimitTooHigh, .possibleChainIdMismatch, .executionReverted:
+        case .insufficientFunds, .gasPriceTooLow, .gasLimitTooLow, .gasLimitTooHigh, .possibleChainIdMismatch, .executionReverted, .unknown:
             break
         }
     }

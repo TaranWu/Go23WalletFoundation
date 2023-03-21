@@ -1,14 +1,11 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
-import Alamofire
 import Combine
 import PromiseKit
 
-public protocol AssetDefinitionStoreDelegate: AnyObject {
-    func listOfBadTokenScriptFilesChanged(in: AssetDefinitionStore)
-}
 public typealias XMLFile = String
-public protocol BaseTokenScriptFilesProvider {
+
+public protocol BaseTokenScriptFilesProvider: AnyObject {
     func containsTokenScriptFile(for file: XMLFile) -> Bool
     func baseTokenScriptFile(for tokenType: TokenType) -> XMLFile?
 }
@@ -20,78 +17,76 @@ public class AssetDefinitionStore: NSObject {
         case updated
         case unmodified
         case error
+
+        var isError: Bool {
+            switch self {
+            case .error:
+                return true
+            case .cached, .updated, .unmodified:
+                return false
+            }
+        }
     }
 
-    private var httpHeaders: HTTPHeaders = {
-        guard let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String else { return [:] }
-        return [
-            "Accept": "application/tokenscript+xml; charset=UTF-8",
-            "X-Client-Name": TokenScript.repoClientName,
-            "X-Client-Version": appVersion,
-            "X-Platform-Name": TokenScript.repoPlatformName,
-            "X-Platform-Version": UIDevice.current.systemVersion
-        ]
-    }()
-    private var lastModifiedDateFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.dateFormat = "E, dd MMM yyyy HH:mm:ss z"
-        df.timeZone = TimeZone(secondsFromGMT: 0)
-        return df
-    }()
     private var lastContractInPasteboard: String?
     private var backingStore: AssetDefinitionBackingStore
-    private let _baseTokenScriptFiles: AtomicDictionary<TokenType, String> = .init()
-    private let xmlHandlers: AtomicDictionary<DerbyWallet.Address, PrivateXMLHandler> = .init()
+    private let xmlHandlers: AtomicDictionary<Go23Wallet.Address, PrivateXMLHandler> = .init()
     private let baseXmlHandlers: AtomicDictionary<String, PrivateXMLHandler> = .init()
-    private var signatureChangeSubject: PassthroughSubject<DerbyWallet.Address, Never> = .init()
-    private var bodyChangeSubject: PassthroughSubject<DerbyWallet.Address, Never> = .init()
+    private var signatureChangeSubject: PassthroughSubject<Go23Wallet.Address, Never> = .init()
+    private var bodyChangeSubject: PassthroughSubject<Go23Wallet.Address, Never> = .init()
+    private var listOfBadTokenScriptFilesSubject: CurrentValueSubject<[TokenScriptFileIndices.FileName], Never> = .init([])
+    private let networking: AssetDefinitionNetworking
+    private let tokenScriptStatusResolver: TokenScriptStatusResolver
+    private let tokenScriptFilesProvider: BaseTokenScriptFilesProvider
+    private let blockchainsProvider: BlockchainsProvider
 
-    public weak var delegate: AssetDefinitionStoreDelegate?
-    public var listOfBadTokenScriptFiles: [TokenScriptFileIndices.FileName] {
-        return backingStore.badTokenScriptFileNames
+    public let assetAttributeResolver: AssetAttributeResolver
+    public var listOfBadTokenScriptFiles: AnyPublisher<[TokenScriptFileIndices.FileName], Never> {
+        listOfBadTokenScriptFilesSubject.eraseToAnyPublisher()
     }
+
     public var conflictingTokenScriptFileNames: (official: [TokenScriptFileIndices.FileName], overrides: [TokenScriptFileIndices.FileName], all: [TokenScriptFileIndices.FileName]) {
         return backingStore.conflictingTokenScriptFileNames
     }
 
-    public var contractsWithTokenScriptFileFromOfficialRepo: [DerbyWallet.Address] {
+    public var contractsWithTokenScriptFileFromOfficialRepo: [Go23Wallet.Address] {
         return backingStore.contractsWithTokenScriptFileFromOfficialRepo
     }
 
-    public var signatureChange: AnyPublisher<DerbyWallet.Address, Never> {
+    public var signatureChange: AnyPublisher<Go23Wallet.Address, Never> {
         signatureChangeSubject.eraseToAnyPublisher()
     }
 
-    public var bodyChange: AnyPublisher<DerbyWallet.Address, Never> {
+    public var bodyChange: AnyPublisher<Go23Wallet.Address, Never> {
         bodyChangeSubject.eraseToAnyPublisher()
     }
 
-    public var assetsSignatureOrBodyChange: AnyPublisher<DerbyWallet.Address, Never> {
+    public var assetsSignatureOrBodyChange: AnyPublisher<Go23Wallet.Address, Never> {
         return Publishers
             .Merge(signatureChange, bodyChange)
             .eraseToAnyPublisher()
     }
 
-    public func assetBodyChanged(for contract: DerbyWallet.Address) -> AnyPublisher<Void, Never> {
+    public func assetBodyChanged(for contract: Go23Wallet.Address) -> AnyPublisher<Void, Never> {
         return bodyChangeSubject
-            .filter { $0.sameContract(as: contract) }
-            .map { _ in return () }
+            .filter { $0 == contract }
+            .mapToVoid()
             .share()
             .eraseToAnyPublisher()
     }
 
-    public func assetSignatureChanged(for contract: DerbyWallet.Address) -> AnyPublisher<Void, Never> {
+    public func assetSignatureChanged(for contract: Go23Wallet.Address) -> AnyPublisher<Void, Never> {
         return signatureChangeSubject
-            .filter { $0.sameContract(as: contract) }
-            .map { _ in return () }
+            .filter { $0 == contract }
+            .mapToVoid()
             .share()
             .eraseToAnyPublisher()
     }
 
-    public func assetsSignatureOrBodyChange(for contract: DerbyWallet.Address) -> AnyPublisher<Void, Never> {
+    public func assetsSignatureOrBodyChange(for contract: Go23Wallet.Address) -> AnyPublisher<Void, Never> {
         return Publishers
             .Merge(assetSignatureChanged(for: contract), assetSignatureChanged(for: contract))
-            .map { _ in return () }
+            .mapToVoid()
             .eraseToAnyPublisher()
     }
 
@@ -127,18 +122,46 @@ public class AssetDefinitionStore: NSObject {
                """
     }
 
-    public init(backingStore: AssetDefinitionBackingStore = AssetDefinitionDiskBackingStoreWithOverrides(), baseTokenScriptFiles: [TokenType: String] = [:]) {
-        self.backingStore = backingStore
-        self._baseTokenScriptFiles.set(value: baseTokenScriptFiles)
-        super.init()
-        self.backingStore.delegate = self
+    convenience public init(backingStore: AssetDefinitionBackingStore = AssetDefinitionDiskBackingStoreWithOverrides(),
+                            baseTokenScriptFiles: [TokenType: String] = [:],
+                            networkService: NetworkService,
+                            reachability: ReachabilityManagerProtocol = ReachabilityManager(),
+                            blockchainsProvider: BlockchainsProvider) {
+
+        let baseTokenScriptFilesProvider: BaseTokenScriptFilesProvider = InMemoryTokenScriptFilesProvider(baseTokenScriptFiles: baseTokenScriptFiles)
+        self.init(backingStore: backingStore,
+                  tokenScriptFilesProvider: baseTokenScriptFilesProvider,
+                  signatureVerifier: TokenScriptSignatureVerifier(
+                    tokenScriptFilesProvider: baseTokenScriptFilesProvider,
+                    networkService: networkService,
+                    reachability: reachability),
+                  networkService: networkService,
+                  blockchainsProvider: blockchainsProvider)
     }
 
-    func getXmlHandler(for key: DerbyWallet.Address) -> PrivateXMLHandler? {
+    public init(backingStore: AssetDefinitionBackingStore,
+                tokenScriptFilesProvider: BaseTokenScriptFilesProvider,
+                signatureVerifier: TokenScriptSignatureVerifieble,
+                networkService: NetworkService,
+                blockchainsProvider: BlockchainsProvider) {
+
+        self.blockchainsProvider = blockchainsProvider
+        self.networking = AssetDefinitionNetworking(networkService: networkService)
+        self.backingStore = backingStore
+        self.tokenScriptStatusResolver = BaseTokenScriptStatusResolver(backingStore: backingStore, signatureVerifier: signatureVerifier)
+        self.tokenScriptFilesProvider = tokenScriptFilesProvider
+        assetAttributeResolver = AssetAttributeResolver(blockchainsProvider: blockchainsProvider)
+        super.init()
+        self.backingStore.delegate = self
+
+        listOfBadTokenScriptFilesSubject.value = backingStore.badTokenScriptFileNames + backingStore.conflictingTokenScriptFileNames.all
+    }
+
+    func getXmlHandler(for key: Go23Wallet.Address) -> PrivateXMLHandler? {
         return xmlHandlers[key]
     }
 
-    func set(xmlHandler: PrivateXMLHandler?, for key: DerbyWallet.Address) {
+    func set(xmlHandler: PrivateXMLHandler?, for key: Go23Wallet.Address) {
         xmlHandlers[key] = xmlHandler
     }
 
@@ -148,14 +171,6 @@ public class AssetDefinitionStore: NSObject {
 
     func setBaseXmlHandler(for key: String, baseXmlHandler: PrivateXMLHandler?) {
         baseXmlHandlers[key] = baseXmlHandler
-    }
-
-    public func hasConflict(forContract contract: DerbyWallet.Address) -> Bool {
-        return backingStore.hasConflictingFile(forContract: contract)
-    }
-
-    public func hasOutdatedTokenScript(forContract contract: DerbyWallet.Address) -> Bool {
-        return backingStore.hasOutdatedTokenScript(forContract: contract)
     }
 
     public func enableFetchXMLForContractInPasteboard() {
@@ -168,58 +183,73 @@ public class AssetDefinitionStore: NSObject {
         }
     }
 
-    public subscript(contract: DerbyWallet.Address) -> String? {
-        get {
-            backingStore[contract]
-        }
-        set(value) {
-            backingStore[contract] = value
-        }
+    public subscript(contract: Go23Wallet.Address) -> String? {
+        get { backingStore[contract] }
+        set { backingStore[contract] = newValue }
     }
 
-    private func cacheXml(_ xml: String, forContract contract: DerbyWallet.Address) {
-        backingStore[contract] = xml
-    }
-
-    public func isOfficial(contract: DerbyWallet.Address) -> Bool {
+    public func isOfficial(contract: Go23Wallet.Address) -> Bool {
         return backingStore.isOfficial(contract: contract)
     }
 
-    public func isCanonicalized(contract: DerbyWallet.Address) -> Bool {
+    public func isCanonicalized(contract: Go23Wallet.Address) -> Bool {
         return backingStore.isCanonicalized(contract: contract)
     }
 
     /// useCacheAndFetch: when true, the completionHandler will be called immediately and a second time if an updated XML is fetched. When false, the completionHandler will only be called up fetching an updated XML
     ///
     /// IMPLEMENTATION NOTE: Current implementation will fetch the same XML multiple times if this function is called again before the previous attempt has completed. A check (which requires tracking completion handlers) hasn't been implemented because this doesn't usually happen in practice
-    public func fetchXML(forContract contract: DerbyWallet.Address, server: RPCServer?, useCacheAndFetch: Bool = false, completionHandler: ((Result) -> Void)? = nil) {
+    public func fetchXML(forContract contract: Go23Wallet.Address, server: RPCServer?, useCacheAndFetch: Bool = false, completionHandler: ((Result) -> Void)? = nil) {
         if useCacheAndFetch && self[contract] != nil {
             completionHandler?(.cached)
         }
-        firstly {
-            urlToFetch(contract: contract, server: server)
-        }.done { url in
-            guard let url = url else { return }
-            self.fetchXML(forContract: contract, server: server, withUrl: url, useCacheAndFetch: useCacheAndFetch, completionHandler: completionHandler)
-        }.catch { error in
+
+        //If we override with a TokenScript file that is for a contract that also has an official TokenScript file but the files are different, we'll enter an infinite recursion where we keep fetching the official TokenScript file, store it, think it has changed, invalid cache, re-download from the official repo and loops. The simple solution is to just not attempt to download or check against the official repo if the there's an overriding TokenScript file
+        if !backingStore.isOfficial(contract: contract) {
+            completionHandler?(.unmodified)
+            return
         }
+
+        urlToFetch(contract: contract, server: server)
+            .receive(on: RunLoop.main)
+            .sinkAsync(receiveCompletion: { result in
+                guard case .failure(_) = result else { return }
+            }, receiveValue: { result in
+                guard let (url, isScriptUri) = result else { return }
+                self.fetchXML(contract: contract, server: server, url: url, useCacheAndFetch: useCacheAndFetch) { result in
+                    //Try a bit harder if the TokenScript was specified via EIP-5169 (`scriptURI()`)
+                    //TODO probably better to convert completionHandler to Promise so we can retry more elegantly
+                    if isScriptUri && result.isError {
+                        self.fetchXML(contract: contract, server: server, url: url, useCacheAndFetch: useCacheAndFetch) { result in
+                            if isScriptUri && result.isError {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                    self.fetchXML(contract: contract, server: server, url: url, useCacheAndFetch: useCacheAndFetch, completionHandler: completionHandler)
+                                }
+                            }
+                        }
+                    } else {
+                        completionHandler?(result)
+                    }
+                }
+            })
     }
 
-    private func fetchXML(forContract contract: DerbyWallet.Address, server: RPCServer?, withUrl url: URL, useCacheAndFetch: Bool = false, completionHandler: ((Result) -> Void)? = nil) {
-        Alamofire.request(
-                url,
-                method: .get,
-                headers: httpHeadersWithLastModifiedTimestamp(forContract: contract)
-        ).response { [weak self] response in
-            guard let strongSelf = self else { return }
-            if response.response?.statusCode == 304 {
-                completionHandler?(.unmodified)
-            } else if response.response?.statusCode == 406 {
-                completionHandler?(.error)
-            } else if response.response?.statusCode == 404 {
-                completionHandler?(.error)
-            } else if response.response?.statusCode == 200 {
-                if let xml = response.data.flatMap({ String(data: $0, encoding: .utf8) }).nilIfEmpty {
+    private func fetchXML(contract: Go23Wallet.Address, server: RPCServer?, url: URL, useCacheAndFetch: Bool = false, completionHandler: ((Result) -> Void)? = nil) {
+        let lastModified = lastModifiedDateOfCachedAssetDefinitionFile(forContract: contract)
+        let request = AssetDefinitionNetworking.GetXmlFileRequest(url: url, lastModifiedDate: lastModified)
+
+        networking.fetchXml(request: request)
+            .sinkAsync(receiveCompletion: { _ in
+                //no-op
+            }, receiveValue: { [weak self] response in
+                guard let strongSelf = self else { return }
+
+                switch response {
+                case .error:
+                    completionHandler?(.error)
+                case .unmodified:
+                    completionHandler?(.unmodified)
+                case .xml(let xml):
                     //Note that Alamofire converts the 304 to a 200 if caching is enabled (which it is, by default). So we'll never get a 304 here. Checking against Charles proxy will show that a 304 is indeed returned by the server with an empty body. So we compare the contents instead. https://github.com/Alamofire/Alamofire/issues/615
                     if xml == strongSelf[contract] {
                         completionHandler?(.unmodified)
@@ -228,17 +258,14 @@ public class AssetDefinitionStore: NSObject {
                             completionHandler?(result)
                         }
                     } else {
-                        strongSelf.cacheXml(xml, forContract: contract)
+                        strongSelf[contract] = xml
                         strongSelf.invalidate(forContract: contract)
                         completionHandler?(.updated)
                         strongSelf.triggerBodyChangedSubscribers(forContract: contract)
                         strongSelf.triggerSignatureChangedSubscribers(forContract: contract)
                     }
-                } else {
-                    completionHandler?(.error)
                 }
-            }
-        }
+            })
     }
 
     private func isTruncatedXML(xml: String) -> Bool {
@@ -246,11 +273,11 @@ public class AssetDefinitionStore: NSObject {
         return !xml.trimmed.hasSuffix(">")
     }
 
-    private func triggerBodyChangedSubscribers(forContract contract: DerbyWallet.Address) {
+    private func triggerBodyChangedSubscribers(forContract contract: Go23Wallet.Address) {
         bodyChangeSubject.send(contract)
     }
 
-    private func triggerSignatureChangedSubscribers(forContract contract: DerbyWallet.Address) {
+    private func triggerSignatureChangedSubscribers(forContract contract: Go23Wallet.Address) {
         signatureChangeSubject.send(contract)
     }
 
@@ -258,72 +285,72 @@ public class AssetDefinitionStore: NSObject {
         guard let contents = UIPasteboard.general.string?.trimmed else { return }
         guard lastContractInPasteboard != contents else { return }
         guard CryptoAddressValidator.isValidAddress(contents) else { return }
-        guard let address = DerbyWallet.Address(string: contents) else { return }
+        guard let address = Go23Wallet.Address(string: contents) else { return }
         defer { lastContractInPasteboard = contents }
         fetchXML(forContract: address, server: nil)
     }
 
-    private func urlToFetch(contract: DerbyWallet.Address, server: RPCServer?) -> Promise<URL?> {
+    private func urlToFetch(contract: Go23Wallet.Address, server: RPCServer?) -> AnyPublisher<(url: URL, isScriptUri: Bool)?, Never> {
+        let urlToFetchFromTokenScriptRepo = functional.urlToFetchFromTokenScriptRepo(contract: contract).flatMap { ($0, false) }
+
         if let server = server {
-            return firstly {
-                Self.Functional.urlToFetchFromScriptUri(contract: contract, server: server)
-            }.map {
-                $0
-            }.recover { _ -> Promise<URL?> in
-                Self.Functional.urlToFetchFromTokenScriptRepo(contract: contract)
-            }
+            return Just(server)
+                .setFailureType(to: SessionTaskError.self)
+                .flatMap { [blockchainsProvider] server -> AnyPublisher<(url: URL, isScriptUri: Bool)?, SessionTaskError> in
+                    guard let blockchain = blockchainsProvider.blockchain(with: server) else { return .fail(SessionTaskError.responseError(PMKError.cancelled)) }
+
+                    return ScriptUri(blockchainProvider: blockchain).get(forContract: contract)
+                        .map { ($0, true) }
+                        .eraseToAnyPublisher()
+                }.replaceError(with: urlToFetchFromTokenScriptRepo)
+                .eraseToAnyPublisher()
         } else {
-            return Self.Functional.urlToFetchFromTokenScriptRepo(contract: contract)
+            return .just(urlToFetchFromTokenScriptRepo)
         }
     }
 
-    private func lastModifiedDateOfCachedAssetDefinitionFile(forContract contract: DerbyWallet.Address) -> Date? {
+    private func lastModifiedDateOfCachedAssetDefinitionFile(forContract contract: Go23Wallet.Address) -> Date? {
         return backingStore.lastModifiedDateOfCachedAssetDefinitionFile(forContract: contract)
     }
 
-    private func httpHeadersWithLastModifiedTimestamp(forContract contract: DerbyWallet.Address) -> HTTPHeaders {
-        var result = httpHeaders
-        if let lastModified = lastModifiedDateOfCachedAssetDefinitionFile(forContract: contract) {
-            result["IF-Modified-Since"] = string(fromLastModifiedDate: lastModified)
-            return result
-        } else {
-            return result
-        }
-    }
-
-    public func string(fromLastModifiedDate date: Date) -> String {
-        return lastModifiedDateFormatter.string(from: date)
-    }
-
-    public func forEachContractWithXML(_ body: (DerbyWallet.Address) -> Void) {
+    public func forEachContractWithXML(_ body: (Go23Wallet.Address) -> Void) {
         backingStore.forEachContractWithXML(body)
     }
 
-    public func invalidateSignatureStatus(forContract contract: DerbyWallet.Address) {
+    public func invalidateSignatureStatus(forContract contract: Go23Wallet.Address) {
         triggerSignatureChangedSubscribers(forContract: contract)
-    }
-
-    public func getCacheTokenScriptSignatureVerificationType(forXmlString xmlString: String) -> TokenScriptSignatureVerificationType? {
-        return backingStore.getCacheTokenScriptSignatureVerificationType(forXmlString: xmlString)
-    }
-
-    public func writeCacheTokenScriptSignatureVerificationType(_ verificationType: TokenScriptSignatureVerificationType, forContract contract: DerbyWallet.Address, forXmlString xmlString: String) {
-        return backingStore.writeCacheTokenScriptSignatureVerificationType(verificationType, forContract: contract, forXmlString: xmlString)
-    }
-
-    public func contractDeleted(_ contract: DerbyWallet.Address) {
-        invalidate(forContract: contract)
-        backingStore.deleteFileDownloadedFromOfficialRepoFor(contract: contract)
     }
 }
 
-extension AssetDefinitionStore: BaseTokenScriptFilesProvider {
+extension AssetDefinitionStore: TokenScriptStatusResolver {
+    public func computeTokenScriptStatus(forContract contract: Go23Wallet.Address, xmlString: String, isOfficial: Bool) -> Promise<TokenLevelTokenScriptDisplayStatus> {
+        tokenScriptStatusResolver.computeTokenScriptStatus(forContract: contract, xmlString: xmlString, isOfficial: isOfficial)
+    }
+}
+
+public final class InMemoryTokenScriptFilesProvider: BaseTokenScriptFilesProvider {
+    private let _baseTokenScriptFiles: AtomicDictionary<TokenType, String> = .init()
+
+    public init(baseTokenScriptFiles: [TokenType: String] = [:]) {
+        _baseTokenScriptFiles.set(value: baseTokenScriptFiles)
+    }
+
     public func containsTokenScriptFile(for file: XMLFile) -> Bool {
         return _baseTokenScriptFiles.contains(where: { $1 == file })
     }
 
     public func baseTokenScriptFile(for tokenType: TokenType) -> XMLFile? {
         return _baseTokenScriptFiles[tokenType]
+    }
+}
+
+extension AssetDefinitionStore: BaseTokenScriptFilesProvider {
+    public func containsTokenScriptFile(for file: XMLFile) -> Bool {
+        return tokenScriptFilesProvider.containsTokenScriptFile(for: file)
+    }
+
+    public func baseTokenScriptFile(for tokenType: TokenType) -> XMLFile? {
+        return tokenScriptFilesProvider.baseTokenScriptFile(for: tokenType)
     }
 }
 
@@ -339,29 +366,25 @@ extension AssetDefinitionStore: AssetDefinitionBackingStoreDelegate {
     public func badTokenScriptFilesChanged(in: AssetDefinitionBackingStore) {
         //Careful to not fire immediately because even though we are on the main thread; while we are modifying the indices, we can't read from it or there'll be a crash
         DispatchQueue.main.async {
-            self.delegate?.listOfBadTokenScriptFilesChanged(in: self)
+            self.listOfBadTokenScriptFilesSubject.value = self.backingStore.badTokenScriptFileNames + self.backingStore.conflictingTokenScriptFileNames.all
         }
     }
 }
 
 extension AssetDefinitionStore {
-    func invalidate(forContract contract: DerbyWallet.Address) {
+    func invalidate(forContract contract: Go23Wallet.Address) {
         xmlHandlers[contract] = nil
     }
 }
 
 extension AssetDefinitionStore {
-    enum Functional {}
+    enum functional {}
 }
 
-extension AssetDefinitionStore.Functional {
-    public static func urlToFetchFromTokenScriptRepo(contract: DerbyWallet.Address) -> Promise<URL?> {
+extension AssetDefinitionStore.functional {
+    public static func urlToFetchFromTokenScriptRepo(contract: Go23Wallet.Address) -> URL? {
         let name = contract.eip55String
         let url = URL(string: TokenScript.repoServer)?.appendingPathComponent(name)
-        return .value(url)
-    }
-
-    public static func urlToFetchFromScriptUri(contract: DerbyWallet.Address, server: RPCServer) -> Promise<URL> {
-        ScriptUri(forServer: server).get(forContract: contract)
+        return url
     }
 }

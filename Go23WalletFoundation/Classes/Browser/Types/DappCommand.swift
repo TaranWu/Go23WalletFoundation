@@ -8,14 +8,25 @@ public struct DappCommand: Decodable {
     public let object: [String: DappCommandObjectValue]
 }
 
+//The optional values help us to filter out those that don't parse. Eg. we don't expect that key-value pair — maybe the dapp might include those for testing, or maybe we don't make use them yet
+public struct DappCommandWithOptionalObjectValues: Decodable {
+    public let name: Method
+    public let id: Int
+    public let object: [String: DappCommandObjectValue?]
+
+    public var toCommand: DappCommand {
+        return DappCommand(name: name, id: id, object: object.compactMapValues { $0 })
+    }
+}
+
 public struct AddCustomChainCommand: Decodable {
     //Single case enum just useful for validation
     public enum Method: String, Decodable {
         case walletAddEthereumChain
 
         public init?(string: String) {
-            if let methodString = Method(rawValue: string) {
-                self = methodString
+            if let s = Method(rawValue: string) {
+                self = s
             } else {
                 return nil
             }
@@ -33,8 +44,8 @@ public struct SwitchChainCommand: Decodable {
         case walletSwitchEthereumChain
 
         public init?(string: String) {
-            if let methodString = Method(rawValue: string) {
-                self = methodString
+            if let s = Method(rawValue: string) {
+                self = s
             } else {
                 return nil
             }
@@ -79,7 +90,7 @@ public enum DappCallbackValue {
     case signMessage(Data)
     case signPersonalMessage(Data)
     case signTypedMessage(Data)
-    case signTypedMessageV3(Data)
+    case signEip712v3And4(Data)
     case ethCall(String)
     case walletAddEthereumChain
     case walletSwitchEthereumChain
@@ -96,7 +107,7 @@ public enum DappCallbackValue {
             return data.hexEncoded
         case .signTypedMessage(let data):
             return data.hexEncoded
-        case .signTypedMessageV3(let data):
+        case .signEip712v3And4(let data):
             return data.hexEncoded
         case .ethCall(let value):
             return value
@@ -161,6 +172,10 @@ public struct WalletAddEthereumChainObject: Decodable, CustomStringConvertible {
     public let chainName: String?
     public let chainId: String
     public let rpcUrls: [String]?
+
+    public var server: RPCServer? {
+        return Int(chainId0xString: chainId).flatMap { RPCServer(chainIdOptional: $0) }
+    }
 
     public init(nativeCurrency: NativeCurrency?, blockExplorerUrls: [String]?, chainName: String?, chainId: String, rpcUrls: [String]?) {
         self.nativeCurrency = nativeCurrency

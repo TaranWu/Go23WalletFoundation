@@ -1,13 +1,13 @@
 //
 //  ConnectionUrl.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 31.08.2022.
+//  Created by Taran.
 //
 
 import Foundation
 
-extension DerbyWallet {
+extension Go23Wallet {
 
     public enum WalletConnect {
 

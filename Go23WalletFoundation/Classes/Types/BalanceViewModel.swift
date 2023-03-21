@@ -5,13 +5,12 @@ import BigInt
 import Go23WalletCore
 import Go23WalletOpenSea
 
-public protocol BalanceViewModelType {
-    var currencyAmount: String? { get }
+protocol BalanceViewModelType {
     var amountFull: String { get }
     var amountShort: String { get }
     var symbol: String { get }
-    var amount: Double { get }
-    var currencyAmountWithoutSymbol: Double? { get }
+    var valueDecimal: Decimal { get }
+    var amountInFiat: Double? { get }
 
     var value: BigInt { get }
     var balance: [TokenBalanceValue] { get }
@@ -20,17 +19,15 @@ public protocol BalanceViewModelType {
 }
 
 extension BalanceViewModelType {
-    public var isZero: Bool { value.isZero }
-    public var valueDecimal: NSDecimalNumber? { amountFull.optionalDecimalValue }
+    var isZero: Bool { value.isZero }
 }
 
 public struct BalanceViewModel: BalanceViewModelType {
-    public let currencyAmount: String?
     public let amountFull: String
     public let amountShort: String
     public let symbol: String
-    public let amount: Double
-    public let currencyAmountWithoutSymbol: Double?
+    public let valueDecimal: Decimal
+    public let amountInFiat: Double?
     
     public let value: BigInt
     public let balance: [TokenBalanceValue]
@@ -42,12 +39,11 @@ extension BalanceViewModel: Hashable { }
 
 extension BalanceViewModel {
     init(balance: BalanceViewModelType) {
-        self.currencyAmount = balance.currencyAmount
         self.amountFull = balance.amountFull
         self.amountShort = balance.amountShort
         self.symbol = balance.symbol
-        self.amount = balance.amount
-        self.currencyAmountWithoutSymbol = balance.currencyAmountWithoutSymbol
+        self.valueDecimal = balance.valueDecimal
+        self.amountInFiat = balance.amountInFiat
         self.value = balance.value
         self.balance = balance.balance
         self.ticker = balance.ticker

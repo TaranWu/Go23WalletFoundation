@@ -14,11 +14,12 @@ extension APIKitSession {
             case .success(let result):
                 seal.fulfill(result)
             case .failure(let error):
-                if let friendlyErr = convertToUserFriendlyError(error: error, server: server, baseUrl: request.baseURL) {
-                    if let err = friendlyErr as? RpcNodeRetryableRequestError {
-                        logRpcNodeError(err, analytics: analytics)
+                if let e = convertToUserFriendlyError(error: error, server: server, baseUrl: request.baseURL) {
+                    if let e = e as? RpcNodeRetryableRequestError {
+                        logRpcNodeError(e, analytics: analytics)
                     }
-                    seal.reject(friendlyErr)
+
+                    seal.reject(e)
                 } else {
                     seal.reject(error)
                 }
@@ -28,7 +29,7 @@ extension APIKitSession {
         return promise
     }
 
-    private static func logRpcNodeError(_ rpcNodeError: RpcNodeRetryableRequestError, analytics: AnalyticsLogger) {
+    static func logRpcNodeError(_ rpcNodeError: RpcNodeRetryableRequestError, analytics: AnalyticsLogger) {
         switch rpcNodeError {
         case .rateLimited(let server, let domainName):
             analytics.log(error: Analytics.WebApiErrors.rpcNodeRateLimited, properties: [Analytics.Properties.chain.rawValue: server.chainID, Analytics.Properties.domainName.rawValue: domainName])
@@ -53,10 +54,11 @@ extension APIKitSession {
     }
 
     //TODO we should make sure we only call this RPC nodes because the errors we map to mentions "RPC"
+    // swiftlint:disable function_body_length
     public static func convertToUserFriendlyError(error: SessionTaskError, server: RPCServer, baseUrl: URL) -> Error? {
         switch error {
-        case .connectionError(let err):
-            let message = err.localizedDescription
+        case .connectionError(let e):
+            let message = e.localizedDescription
             if message.hasPrefix("The network connection was lost") {
                 return RpcNodeRetryableRequestError.networkConnectionWasLost
             } else if message.hasPrefix("The certificate for this server is invalid") {
@@ -65,64 +67,66 @@ extension APIKitSession {
                 return RpcNodeRetryableRequestError.requestTimedOut
             }
             return nil
-        case .requestError(let err):
+        case .requestError(let e):
             return nil
-        case .responseError(let err):
-            if let jsonRpcError = err as? JSONRPCError {
+        case .responseError(let e):
+            if let jsonRpcError = e as? JSONRPCError {
                 switch jsonRpcError {
                 case .responseError(let code, let message, _):
                     //Lowercased as RPC nodes implementation differ
                     if message.lowercased().hasPrefix("insufficient funds") {
-                        return SendTransactionNotRetryableError.insufficientFunds(message: message)
+                        return SendTransactionNotRetryableError(type: .insufficientFunds(message: message), server: server)
                     } else if message.lowercased().hasPrefix("execution reverted") || message.lowercased().hasPrefix("vm execution error") || message.lowercased().hasPrefix("revert") {
-                        return SendTransactionNotRetryableError.executionReverted(message: message)
+                        return SendTransactionNotRetryableError(type: .executionReverted(message: message), server: server)
                     } else if message.lowercased().hasPrefix("nonce too low") || message.lowercased().hasPrefix("nonce is too low") {
-                        return SendTransactionNotRetryableError.nonceTooLow(message: message)
-                    } else if message.lowercased().hasPrefix("transaction underpriced") {
-                        return SendTransactionNotRetryableError.gasPriceTooLow(message: message)
+                        return SendTransactionNotRetryableError(type: .nonceTooLow(message: message), server: server)
+                    } else if message.lowercased().hasPrefix("transaction underpriced") || message.lowercased().hasPrefix("feetoolow") {
+                        return SendTransactionNotRetryableError(type: .gasPriceTooLow(message: message), server: server)
                     } else if message.lowercased().hasPrefix("intrinsic gas too low") || message.lowercased().hasPrefix("Transaction gas is too low") {
-                        return SendTransactionNotRetryableError.gasLimitTooLow(message: message)
+                        return SendTransactionNotRetryableError(type: .gasLimitTooLow(message: message), server: server)
                     } else if message.lowercased().hasPrefix("intrinsic gas exceeds gas limit") {
-                        return SendTransactionNotRetryableError.gasLimitTooHigh(message: message)
+                        return SendTransactionNotRetryableError(type: .gasLimitTooHigh(message: message), server: server)
                     } else if message.lowercased().hasPrefix("invalid sender") {
-                        return SendTransactionNotRetryableError.possibleChainIdMismatch(message: message)
+                        return SendTransactionNotRetryableError(type: .possibleChainIdMismatch(message: message), server: server)
                     } else if message == "Upfront cost exceeds account balance" {
                         //Spotted for Palm chain (mainnet)
-                        return SendTransactionNotRetryableError.insufficientFunds(message: message)
+                        return SendTransactionNotRetryableError(type: .insufficientFunds(message: message), server: server)
                     } else {
+                        return SendTransactionNotRetryableError(type: .unknown(code: code, message: message), server: server)
                     }
-                case .responseNotFound(_, let object): break
-                case .resultObjectParseError(let err): break
-                case .errorObjectParseError(let err): break
-                case .unsupportedVersion(let str): break
-                case .unexpectedTypeObject(let obj): break
-                case .missingBothResultAndError(let obj): break
-                case .nonArrayResponse(let obj): break
+                case .responseNotFound(_, let object):break
+                case .resultObjectParseError(let e):break
+                case .errorObjectParseError(let e):break
+                case .unsupportedVersion(let str):break
+                case .unexpectedTypeObject(let obj):break
+                case .missingBothResultAndError(let obj):break
+                case .nonArrayResponse(let obj):break
                 }
                 return nil
             }
 
-            if let apiKitError = err as? APIKit.ResponseError {
+            if let apiKitError = e as? APIKit.ResponseError {
                 switch apiKitError {
-                case .nonHTTPURLResponse: break
+                case .nonHTTPURLResponse:break
                 case .unacceptableStatusCode(let statusCode):
                     if statusCode == 401 {
                         return RpcNodeRetryableRequestError.invalidApiKey(server: server, domainName: baseUrl.host ?? "")
                     } else if statusCode == 429 {
                         return RpcNodeRetryableRequestError.rateLimited(server: server, domainName: baseUrl.host ?? "")
-                    } else {
                     }
-                case .unexpectedObject(let obj): break
+                case .unexpectedObject(let obj):break
                 }
                 return nil
             }
 
-            if RPCServer.binance_smart_chain_testnet.rpcURL.absoluteString == baseUrl.absoluteString, err.localizedDescription == "The data couldn’t be read because it isn’t in the correct format." {
+            if RPCServer.binance_smart_chain_testnet.rpcURL.absoluteString == baseUrl.absoluteString, e.localizedDescription == "The data couldn’t be read because it isn’t in the correct format." {
+                //This is potentially Binance testnet timing out
                 return RpcNodeRetryableRequestError.possibleBinanceTestnetTimeout
             }
             return nil
         }
     }
+    // swiftlint:enable function_body_length
 }
 
 extension RPCServer {

@@ -4,43 +4,50 @@ import Foundation
 import PromiseKit
 import Go23WalletCore
 import Go23WalletOpenSea
+import Combine
 
-public typealias Stats = Go23WalletOpenSea.Stats
+public typealias Stats = Go23WalletOpenSea.NftCollectionStats
 
 public final class OpenSea {
     private let analytics: AnalyticsLogger
     private let storage: Storage<[AddressAndRPCServer: OpenSeaAddressesToNonFungibles]> = .init(fileName: "OpenSea", defaultValue: [:])
-    private let queue: DispatchQueue
-    private lazy var networkProvider: OpenSeaNetworkProvider = OpenSeaNetworkProvider(analytics: analytics, queue: queue)
+    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.openSea")
+    private let config: Config
+    private let server: RPCServer
+    private let openSea: Go23WalletOpenSea.OpenSea
 
-    public init(analytics: AnalyticsLogger, queue: DispatchQueue) {
+    private let excludeContracts: [(Go23Wallet.Address, ChainId)] = [
+        (Constants.uefaMainnet.0, Constants.uefaMainnet.1.chainID)
+    ]
+
+    public init(analytics: AnalyticsLogger, server: RPCServer, config: Config) {
+        self.config = config
         self.analytics = analytics
-        self.queue = queue
+        self.server = server
+        self.openSea = Go23WalletOpenSea.OpenSea(apiKeys: Self.openSeaApiKeys(config: config))
+        openSea.delegate = self
     }
 
     public static func isServerSupported(_ server: RPCServer) -> Bool {
         switch server {
-        case .main, .rinkeby:
+        case .main, .polygon, .arbitrum, .avalanche, .klaytnCypress, .optimistic:
             return true
-        case .kovan, .ropsten, .poa, .sokol, .classic, .callisto, .custom, .goerli, .xDai, .artis_sigma1, .artis_tau1, .binance_smart_chain, .binance_smart_chain_testnet, .heco, .heco_testnet, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .candle, .polygon, .mumbai_testnet, .optimistic, .optimisticKovan, .cronosTestnet, .arbitrum, .arbitrumRinkeby, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .phi, .ioTeX, .ioTeXTestnet:
+        default:
             return false
         }
     }
 
-    public func nonFungible(wallet: Wallet, server: RPCServer) -> Promise<OpenSeaAddressesToNonFungibles> {
-        let key: AddressAndRPCServer = .init(address: wallet.address, server: server)
+    public func nonFungible(wallet: Wallet) -> AnyPublisher<OpenSeaAddressesToNonFungibles, Never> {
+        guard !config.development.isOpenSeaFetchingDisabled else { return .empty() }
 
+        let key: AddressAndRPCServer = .init(address: wallet.address, server: server)
+        
         guard OpenSea.isServerSupported(key.server) else {
-            return .value([:])
+            return .just([:])
         }
 
-        return fetchFromLocalAndRemotePromise(key: key)
-    }
-
-    private func fetchFromLocalAndRemotePromise(key: AddressAndRPCServer) -> Promise<OpenSeaAddressesToNonFungibles> {
-        return networkProvider
-            .fetchAssetsPromise(address: key.address, server: key.server)
-            .map(on: queue, { [weak storage] result in
+        return openSea.fetchAssetsCollections(owner: wallet.address, chainId: server.chainID, excludeContracts: excludeContracts)
+            .map { [weak storage] result -> OpenSeaAddressesToNonFungibles in
                 if result.hasError {
                     let merged = (storage?.value[key] ?? [:])
                         .merging(result.result) { Array(Set($0 + $1)) }
@@ -55,14 +62,49 @@ public final class OpenSea {
                 }
 
                 return storage?.value[key] ?? result.result
-            })
+            }.eraseToAnyPublisher()
     }
 
-    public func fetchAssetImageUrl(for value: Eip155URL, server: RPCServer) -> Promise<URL> {
-        networkProvider.fetchAssetImageUrl(for: value, server: server)
+    public func fetchAsset(for value: Eip155URL) -> AnyPublisher<NftAsset, PromiseError> {
+        //OK and safer to return a promise that never resolves so we don't mangle with real OpenSea data we stored previously, since this is for development only
+        guard !config.development.isOpenSeaFetchingDisabled else { return .empty() }
+
+        return openSea.fetchAsset(asset: value.path, chainId: server.chainID)
     }
 
-    public func collectionStats(slug: String, server: RPCServer) -> Promise<Stats> {
-        networkProvider.collectionStats(slug: slug, server: server)
+    public func collectionStats(collectionId: String) -> AnyPublisher<Stats, PromiseError> {
+        guard !config.development.isOpenSeaFetchingDisabled else { return .empty() }
+
+        return openSea.collectionStats(collectionId: collectionId, chainId: server.chainID)
+    }
+
+    private static func openSeaApiKeys(config: Config) -> [Int: String] {
+        guard !config.development.isOpenSeaFetchingDisabled else { return [:] }
+        var results: [Int: String] = [:]
+
+        results[RPCServer.main.chainID] = Constants.Credentials.openseaKey
+        results[RPCServer.polygon.chainID] = Constants.Credentials.openseaKey
+        results[RPCServer.arbitrum.chainID] = Constants.Credentials.openseaKey
+        results[RPCServer.avalanche.chainID] = Constants.Credentials.openseaKey
+        results[RPCServer.klaytnCypress.chainID] = Constants.Credentials.openseaKey
+        results[RPCServer.optimistic.chainID] = Constants.Credentials.openseaKey
+
+        return results
     }
 }
+
+extension OpenSea: OpenSeaDelegate {
+    public func openSeaError(error: OpenSeaApiError) {
+        switch error {
+        case .rateLimited:
+            analytics.log(error: Analytics.WebApiErrors.openSeaRateLimited)
+        case .expiredApiKey:
+            analytics.log(error: Analytics.WebApiErrors.openSeaExpiredApiKey)
+        case .invalidApiKey:
+            analytics.log(error: Analytics.WebApiErrors.openSeaInvalidApiKey)
+        case .invalidJson, .internal:
+            break
+        }
+    }
+}
+

@@ -1,8 +1,8 @@
 //
 //  TokenInfoObject.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 30.05.2022.
+//  Created by Taran.
 //
 
 import Foundation

@@ -46,7 +46,7 @@ extension URL: AnalyticsEventPropertyValue {
         return self
     }
 }
-extension DerbyWallet.Address: AnalyticsEventPropertyValue {
+extension Go23Wallet.Address: AnalyticsEventPropertyValue {
     public var value: Any {
         return self.eip55String
     }

@@ -25,7 +25,7 @@ public struct FunctionCall {
         }
 
         private func toString(_ value: Any?) -> String {
-            if let value = value as? DerbyWallet.Address {
+            if let value = value as? Go23Wallet.Address {
                 return value.eip55String
             //We special-case Bool otherwise it will be printed as "1" below
             } else if type == .bool, let value = value as? Bool {
@@ -43,19 +43,19 @@ public struct DecodedFunctionCall {
     public enum FunctionType {
 //NOTE: Not sure if we need these functions
 //        case erc20TotalSupply
-//        case erc20BalanceOf(address: DerbyWallet.Address)
-//        case erc20Allowance(address: DerbyWallet.Address, address: DerbyWallet.Address)
-//        case erc20TransferFrom(address: DerbyWallet.Address, address: DerbyWallet.Address, value: BigUInt)
+//        case erc20BalanceOf(address: Go23Wallet.Address)
+//        case erc20Allowance(address: Go23Wallet.Address, address: Go23Wallet.Address)
+//        case erc20TransferFrom(address: Go23Wallet.Address, address: Go23Wallet.Address, value: BigUInt)
 
         //NOTE: erc20
-        case erc20Transfer(recipient: DerbyWallet.Address, value: BigUInt)
-        case erc20Approve(spender: DerbyWallet.Address, value: BigUInt)
-        case erc721ApproveAll(spender: DerbyWallet.Address, value: Bool)
-        //NOTE: native crypty
+        case erc20Transfer(recipient: Go23Wallet.Address, value: BigUInt)
+        case erc20Approve(spender: Go23Wallet.Address, value: BigUInt)
+        case erc721ApproveAll(spender: Go23Wallet.Address, value: Bool)
+        //NOTE: native crypto
         case nativeCryptoTransfer(value: BigUInt)
         //NOTE: erc1155
-        case erc1155SafeTransfer(spender: DerbyWallet.Address)
-        case erc1155SafeBatchTransfer(spender: DerbyWallet.Address)
+        case erc1155SafeTransfer(spender: Go23Wallet.Address)
+        case erc1155SafeBatchTransfer(spender: Go23Wallet.Address)
 
         case others(name: String, arguments: [FunctionCall.Argument])
     }
@@ -72,9 +72,9 @@ public struct DecodedFunctionCall {
     public let type: FunctionType
 
     public init?(data: Data) {
-        if let decoded = DecodedFunctionCall.decode(data: data, abi: DerbyWallet.Ethereum.ABI.erc20) {
+        if let decoded = DecodedFunctionCall.decode(data: data, abi: Go23Wallet.Ethereum.ABI.erc20) {
             self = decoded
-        } else if let decoded = DecodedFunctionCall.decode(data: data, abi: DerbyWallet.Ethereum.ABI.erc721) {
+        } else if let decoded = DecodedFunctionCall.decode(data: data, abi: Go23Wallet.Ethereum.ABI.erc721Data) {
             self = decoded
         } else {
             return nil

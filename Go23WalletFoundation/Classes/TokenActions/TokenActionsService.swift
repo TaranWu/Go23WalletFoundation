@@ -1,8 +1,8 @@
 //
 //  TokenActionsService.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 26.11.2020.
+//  Created by Taran.
 //
 
 import Foundation
@@ -10,7 +10,7 @@ import Combine
 import CombineExt
 
 public protocol TokenActionsIdentifiable {
-    var contractAddress: DerbyWallet.Address { get }
+    var contractAddress: Go23Wallet.Address { get }
     var server: RPCServer { get }
     var symbol: String { get }
     var decimals: Int { get }
@@ -75,7 +75,7 @@ extension TransactionType {
             return token
         case .erc20Token(let token, _, _):
             return token
-        case .erc875Token, .erc875TokenOrder, .erc721Token, .erc721ForTicketToken, .erc1155Token, .dapp, .tokenScript, .claimPaidErc875MagicLink, .prebuilt:
+        case .erc875Token, .erc721Token, .erc721ForTicketToken, .erc1155Token, .prebuilt:
             return nil
         }
     }

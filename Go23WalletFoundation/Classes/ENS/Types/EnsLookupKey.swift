@@ -1,8 +1,8 @@
 //
 //  EnsLookupKey.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 06.06.2022.
+//  Created by Taran.
 //
 
 import Foundation

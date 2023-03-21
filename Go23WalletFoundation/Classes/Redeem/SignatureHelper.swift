@@ -10,7 +10,7 @@ import Foundation
 import BigInt
 
 public class SignatureHelper {
-    class func signatureAsHex(for message: String, account: DerbyWallet.Address, keystore: Keystore, prompt: String) throws -> String? {
+    class func signatureAsHex(for message: String, account: Go23Wallet.Address, keystore: Keystore, prompt: String) throws -> String? {
         let signature = keystore.signMessageData(message.data(using: String.Encoding.utf8), for: account, prompt: prompt)
         let signatureHex = try? signature.get().hex(options: .upperCase)
         guard let data = signatureHex else {
@@ -19,20 +19,9 @@ public class SignatureHelper {
         return data
     }
 
-    public class func signatureAsDecimal(for message: String, account: DerbyWallet.Address, keystore: Keystore, prompt: String) throws -> String? {
+    public class func signatureAsDecimal(for message: String, account: Go23Wallet.Address, keystore: Keystore, prompt: String) throws -> String? {
         guard let signatureHex = try signatureAsHex(for: message, account: account, keystore: keystore, prompt: prompt) else { return nil }
         guard let signatureDecimalString = BigInt(signatureHex, radix: 16)?.description else { return nil }
         return signatureDecimalString
-    }
-}
-
-extension Result {
-    public var error: Failure? {
-        switch self {
-        case let .success:
-            return nil
-        case let .failure(error):
-            return error
-        }
     }
 }

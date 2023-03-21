@@ -1,8 +1,8 @@
 //
 //  RunLoopThread.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 25.05.2022.
+//  Created by Taran.
 //
 
 import UIKit
@@ -18,7 +18,7 @@ public class RunLoopThread: Thread {
     }
 
     deinit {
-       
+        
     }
 
     public override func main() {
@@ -38,8 +38,6 @@ public class RunLoopThread: Thread {
     public func _perform(_ block: @escaping () -> Swift.Void) {
         guard self.isExecuting else {
             if !self.isCancelled {
-                if isRunLoopThreadLoggingEnabled {
-                }
                 Thread.sleep(forTimeInterval: 0.002)
                 self._perform(block)
             }
@@ -56,7 +54,7 @@ public class RunLoopThread: Thread {
     }
 
     func stop() {
-        self._perform() {
+        self._perform {
             self.cancel()
         }
     }

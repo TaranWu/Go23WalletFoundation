@@ -1,8 +1,8 @@
 //
 //  SwapTokenError.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Vladyslav Shepitko on 30.08.2022.
+//  Created by Taran.
 //
 
 import Foundation
@@ -28,11 +28,4 @@ public enum WalletApiError: LocalizedError {
     case requestedWalletNonActive
     case requestedServerDisabled
     case cancelled
-}
-
-public struct RequestCanceledDueToWatchWalletError: Error {
-    public init() {}
-}
-public struct DelayWalletConnectResponseError: Error {
-    public init() {}
 }
