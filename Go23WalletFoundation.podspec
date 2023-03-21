@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'Go23WalletFoundation'
-  s.version          = '1.0.8'
+  s.version          = '1.0.9'
   s.summary          = 'Go23Wallet functionality'
 
   s.description      = <<-DESC
@@ -48,8 +48,8 @@ Pod::Spec.new do |s|
   s.dependency 'TrustWalletCore', '2.6.34'
   s.dependency 'Go23EthereumABI'
   s.dependency 'BlockiesSwift'
-  s.dependency 'Go23WalletAddress', '1.0.2'
-  s.dependency 'Go23WalletCore', '1.0.2'
+  s.dependency 'Go23WalletAddress'
+  s.dependency 'Go23WalletCore'
   s.dependency 'Go23WalletGoBack'
   s.dependency 'Go23WalletENS'
   s.dependency 'Go23WalletOpenSea'
