@@ -1,8 +1,8 @@
 //
 //  ShareContentAction.swift
-//  Go23Wallet
+//  AlphaWallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 11.11.2020.
 //
 
 import Foundation
