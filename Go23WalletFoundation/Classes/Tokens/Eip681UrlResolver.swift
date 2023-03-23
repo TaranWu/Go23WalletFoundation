@@ -96,9 +96,9 @@ public final class Eip681UrlResolver {
         //NOTE: use decimals only if send ether or number has e notation
         var decimals: Int = 0
         switch amount {
-        case .ether(let value):
+        case .ether(_):
             decimals = token.decimals
-        case .uint256(let value, let eNotation):
+        case .uint256(_, let eNotation):
             if eNotation { //If a number has e notation, we treat as number need to be converted as
                 decimals = token.decimals
             } else {

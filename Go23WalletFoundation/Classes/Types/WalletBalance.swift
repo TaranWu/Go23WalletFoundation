@@ -34,7 +34,7 @@ public struct WalletBalance {
         self.wallet = wallet
 
         if tokens.allSatisfy({ $0.server.isTestnet }) {
-            if let server = tokens.map { $0.server }.sorted(by: { $0.displayOrderPriority > $1.displayOrderPriority }).first {
+            if let server = tokens.map({ $0.server }).sorted(by: { $0.displayOrderPriority > $1.displayOrderPriority }).first {
                 etherBalance = tokens.first(where: { $0 == MultipleChainsTokensDataStore.functional.etherToken(forServer: server) })
                     .flatMap { BalanceRepresentable(token: $0) }
             } else {
