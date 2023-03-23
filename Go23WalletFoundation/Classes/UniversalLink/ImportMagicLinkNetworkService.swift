@@ -2,13 +2,14 @@
 //  ImportMagicLinkNetworking.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 15.12.2022.
 //
 
 import Foundation
 import BigInt
 import Combine
 import Go23WalletCore
+import Go23WalletAddress
 
 public class ImportMagicLinkNetworking {
     private let networkService: NetworkService

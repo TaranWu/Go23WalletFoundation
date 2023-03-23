@@ -1,6 +1,7 @@
 // Copyright SIX DAY LLC. All rights reserved.
 
 import Foundation
+import Go23WalletAddress
 
 struct ERC20Contract: Decodable {
     let address: String

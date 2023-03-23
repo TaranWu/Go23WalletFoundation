@@ -2,7 +2,7 @@
 //  TokenSourceProvider.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 08.07.2022.
 //
 
 import Foundation

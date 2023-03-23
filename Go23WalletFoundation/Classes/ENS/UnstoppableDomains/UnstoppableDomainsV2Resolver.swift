@@ -2,7 +2,7 @@
 //  UnstoppableDomainsV2Resolver.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 27.01.2022.
 //
 
 import Foundation
@@ -10,6 +10,7 @@ import Combine
 import SwiftyJSON
 import Go23WalletENS
 import Go23WalletCore
+import Go23WalletAddress
 
 struct UnstoppableDomainsV2ApiError: Error {
     var localizedDescription: String

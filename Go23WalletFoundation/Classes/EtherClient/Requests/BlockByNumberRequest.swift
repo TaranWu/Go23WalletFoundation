@@ -2,13 +2,14 @@
 //  BlockByNumberRequest.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 28.10.2022.
 //
 
 import Foundation
 import Go23Web3Swift
 import BigInt
 import Go23JSONRPCKit
+import Go23WalletAddress
 
 struct BlockByNumberRequest: Go23JSONRPCKit.Request {
     typealias Response = Block

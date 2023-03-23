@@ -4,6 +4,7 @@
 import Foundation
 import Go23WalletENS
 import Combine
+import Go23WalletAddress
 
 public class EnsResolver {
     private let storage: EnsRecordsStorage

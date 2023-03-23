@@ -2,7 +2,7 @@
 //  CrashlyticsService.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 03.02.2021.
 //
 
 import Foundation

@@ -2,7 +2,7 @@
 //  BlockchainParams.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 20.01.2023.
 //
 
 import Foundation

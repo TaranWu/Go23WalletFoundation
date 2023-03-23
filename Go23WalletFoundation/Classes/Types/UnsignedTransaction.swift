@@ -2,6 +2,7 @@
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public struct UnsignedTransaction {
     public let value: BigUInt

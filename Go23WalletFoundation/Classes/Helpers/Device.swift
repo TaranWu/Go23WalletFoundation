@@ -2,10 +2,11 @@
 //  Type.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 11.01.2022.
 //
 
 import UIKit
+import Go23WalletAddress
 
 /// Used to get information about current, device, screen or iOS version.
 ///

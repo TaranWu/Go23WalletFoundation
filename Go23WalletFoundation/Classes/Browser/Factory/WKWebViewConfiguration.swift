@@ -3,10 +3,7 @@
 import Foundation
 import WebKit
 import JavaScriptCore
-
-class WebviewConfiguration: NSObject {
-    
-}
+import Go23WalletAddress
 
 public enum WebViewType {
     case dappBrowser(RPCServer)
@@ -21,12 +18,10 @@ extension WKWebViewConfiguration {
 
         switch type {
         case .dappBrowser(let server):
-            let currentBundle = Bundle(for: WebviewConfiguration.self)
-            guard let bundleUrl = currentBundle.url(forResource: "Go23WalletFoundation", withExtension: "bundle"),
-                  let resourceBundle = Bundle(url: bundleUrl) else {
-                return webViewConfig
-            }
-            if let filepath = resourceBundle.path(forResource: "Go23Wallet-min", ofType: "js") {
+            guard
+                    let bundlePath = Bundle.main.path(forResource: "AlphaWalletWeb3Provider", ofType: "bundle"),
+                    let bundle = Bundle(path: bundlePath) else { return webViewConfig }
+            if let filepath = bundle.path(forResource: "Go23Wallet-min", ofType: "js") {
                 do {
                     js += try String(contentsOfFile: filepath)
                 } catch { }

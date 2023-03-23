@@ -2,7 +2,7 @@
 //  Ramp.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 03.03.2021.
 //
 
 import Foundation
@@ -35,6 +35,7 @@ public final class Ramp: SupportedTokenActionsProvider, BuyTokenURLProviderType 
     }
 
     deinit {
+        
     }
 
     public func url(token: TokenActionsIdentifiable, wallet: Wallet) -> URL? {
@@ -82,6 +83,8 @@ public final class Ramp: SupportedTokenActionsProvider, BuyTokenURLProviderType 
                 objectWillChangeSubject.send(())
 
                 guard case .failure(let error) = result else { return }
+                let request = RampNetworkProvider.RampRequest()
+                RemoteLogger.instance.logRpcOrOtherWebError("Ramp error | \(error)", url: request.urlRequest?.url?.absoluteString ?? "")
             } receiveValue: {
                 self.assets = .success($0)
             }.store(in: &cancelable)

@@ -2,6 +2,7 @@
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public enum ActivityOrTransactionFilter {
     case keyword(_ value: String?)

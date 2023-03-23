@@ -2,7 +2,7 @@
 //  BlockchainsProvider.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.01.2023.
 //
 
 import Foundation
@@ -56,7 +56,7 @@ public class BlockchainsProvider {
     }
 
     public func start() {
-        serversProvider.servers
+        serversProvider.enabledServersPublisher
             .map { [blockchainsSubject, blockchainFactory] servers -> ServerDictionary<BlockchainProvider> in
                 var blockchains: ServerDictionary<BlockchainProvider> = .init()
 

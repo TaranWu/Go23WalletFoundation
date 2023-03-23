@@ -2,7 +2,7 @@
 //  GetTokenType.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 24.10.2022.
 //
 
 import Go23WalletCore
@@ -113,6 +113,7 @@ final class GetTokenType {
                 break
             }
         }.catch({ e in
+            logError(e, pref: "isErc721Promise", address: address)
         })
 
         firstly {
@@ -124,6 +125,7 @@ final class GetTokenType {
                 //no-op
             }
         }.catch({ e in
+            logError(e, pref: "isErc875Promise", address: address)
         })
 
         firstly {
@@ -135,6 +137,7 @@ final class GetTokenType {
                 //no-op
             }
         }.catch({ e in
+            logError(e, pref: "isErc1155Promise", address: address)
         })
 
         firstly {
@@ -146,6 +149,7 @@ final class GetTokenType {
                 //no-op
             }
         }.catch({ e in
+            logError(e, pref: "isErc20Promise", address: address)
         })
     }
     // swiftlint:enable function_body_length

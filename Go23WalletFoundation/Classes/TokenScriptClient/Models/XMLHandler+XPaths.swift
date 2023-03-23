@@ -3,6 +3,7 @@
 import Foundation
 import BigInt
 import Kanna
+import Go23WalletAddress
 
 extension String {
     public func addToXPath(namespacePrefix: String) -> String {
@@ -108,6 +109,7 @@ extension XMLHandler {
 
     static func getEventDefinition(contract: Go23Wallet.Address, asnModuleNamedTypeElement: XMLElement, xmlContext: XmlContext) -> EventDefinition? {
         guard let eventName = asnModuleNamedTypeElement["name"] else { return nil }
+        //Should remove the second XPath and only keep the first, with "type". https://github.com/AlphaWallet/alpha-wallet-ios/pull/1971#discussion_r445407138
         let parameters = asnModuleNamedTypeElement.xpath("type/sequence/element|sequence/element", namespaces: xmlContext.namespaces).compactMap { each -> EventParameter? in
             guard let name = each["name"], let type = each["type"] else { return nil }
             let isIndexed = each["indexed"] == "true"

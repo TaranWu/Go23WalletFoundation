@@ -200,7 +200,7 @@ public class TokenImageFetcherImpl: TokenImageFetcher {
         }
 
         firstly {
-            self.fetchFromAssetGitHubRepo(.alphaWallet, contractAddress: contractAddress)
+            self.fetchFromAssetGitHubRepo(.go23Wallet, contractAddress: contractAddress)
                 .map { image -> TokenImage in
                     return .init(image: .image(.loaded(image: image)), isFinal: true, overlayServerIcon: staticOverlayIcon)
                 }
@@ -255,12 +255,12 @@ class GithubAssetsURLResolver {
     static let file = "logo.png"
 
     enum Source: String {
-        case alphaWallet = "https://raw.githubusercontent.com/AlphaWallet/iconassets/master/"
+        case go23Wallet = "https://raw.githubusercontent.com/Go23Wallet/iconassets/master/"
         case thirdParty = "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/"
 
         func url(forContract contract: Go23Wallet.Address) -> String {
             switch self {
-            case .alphaWallet:
+            case .go23Wallet:
                 return rawValue + contract.eip55String.lowercased() + "/" + GithubAssetsURLResolver.file
             case .thirdParty:
                 return rawValue + contract.eip55String + "/" + GithubAssetsURLResolver.file

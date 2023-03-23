@@ -2,11 +2,12 @@
 //  WalletConnectTransaction.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 01.12.2022.
 //
 import Go23WalletCore
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public struct WalletConnectTransaction {
     public let value: BigUInt?

@@ -2,13 +2,14 @@
 //  UnstoppableDomainsV2NetworkProvider.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 23.09.2022.
 //
 
 import Combine
 import SwiftyJSON
 import Go23WalletENS
 import Go23WalletCore
+import Go23WalletAddress
 
 struct UnstoppableDomainsV2NetworkProvider {
     private let networkService: NetworkService

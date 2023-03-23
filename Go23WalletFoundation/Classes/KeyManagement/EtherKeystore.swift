@@ -14,6 +14,7 @@ public enum ImportWalletEvent {
     case keystore
     case privateKey
     case mnemonic
+    case hardware
     case watch
     case new
 }
@@ -146,6 +147,7 @@ open class EtherKeystore: NSObject, Keystore {
     private let didAddWalletSubject = PassthroughSubject<(wallet: Wallet, event: ImportWalletEvent), Never>()
     private let didRemoveWalletSubject = PassthroughSubject<Wallet, Never>()
     private var walletsSubject: CurrentValueSubject<Set<Wallet>, Never>
+    private let hardwareWalletFactory: HardwareWalletFactory
 
     public var walletsPublisher: AnyPublisher<Set<Wallet>, Never> {
         walletsSubject
@@ -164,13 +166,15 @@ open class EtherKeystore: NSObject, Keystore {
     public init(keychain: SecuredStorage,
                 walletAddressesStore: WalletAddressesStore,
                 analytics: AnalyticsLogger,
-                legacyFileBasedKeystore: LegacyFileBasedKeystore) {
+                legacyFileBasedKeystore: LegacyFileBasedKeystore,
+                hardwareWalletFactory: HardwareWalletFactory) {
 
         self.keychain = keychain
         self.analytics = analytics
         self.walletAddressesStore = walletAddressesStore
         self.legacyFileBasedKeystore = legacyFileBasedKeystore
         self.walletsSubject = .init(Set(walletAddressesStore.wallets))
+        self.hardwareWalletFactory = hardwareWalletFactory
 
         super.init()
 
@@ -294,6 +298,20 @@ open class EtherKeystore: NSObject, Keystore {
                 }
             }.receive(on: RunLoop.main)
             .handleEvents(receiveOutput: { self.add(wallet: $0, importType: .keystore) })
+            .eraseToAnyPublisher()
+    }
+
+    public func addHardwareWallet(address: Go23Wallet.Address) -> AnyPublisher<Wallet, KeystoreError> {
+        Just(address)
+            .receive(on: queue)
+            .setFailureType(to: KeystoreError.self)
+            .flatMap { address -> AnyPublisher<Wallet, KeystoreError> in
+                guard !self.isAddressAlreadyInWalletsList(address: address) else { return .fail(KeystoreError.duplicateAccount) }
+                let wallet = Wallet(address: address, origin: .hardware)
+
+                return .just(wallet)
+            }.receive(on: RunLoop.main)
+            .handleEvents(receiveOutput: { self.add(wallet: $0, importType: .hardware) })
             .eraseToAnyPublisher()
     }
 
@@ -426,20 +444,32 @@ open class EtherKeystore: NSObject, Keystore {
         return walletAddressesStore.ethereumAddressesProtectedByUserPresence.contains(account.eip55String)
     }
 
-    public func signPersonalMessage(_ message: Data, for account: Go23Wallet.Address, prompt: String) -> Result<Data, KeystoreError> {
+    public func signPersonalMessage(_ message: Data, for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError> {
         let prefix = "\u{19}Ethereum Signed Message:\n\(message.count)".data(using: .utf8)!
-        return signMessage(prefix + message, for: account, prompt: prompt)
+        return await signMessageData(prefix + message, for: account, prompt: prompt)
     }
 
-    public func signHash(_ hash: Data, for account: Go23Wallet.Address, prompt: String) -> Result<Data, KeystoreError> {
+    private func _signHash(_ hash: Data, for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError> {
+        if let currentWallet = currentWallet, currentWallet.address == account {
+            switch currentWallet.type {
+            case .real, .watch:
+                return await _signHashWithPrivateKey(hash: hash, for: account, prompt: prompt)
+            case .hardware:
+                return await _signHashWithHardwareWallet(hash: hash, for: account, prompt: prompt)
+            }
+        } else {
+            return await _signHashWithPrivateKey(hash: hash, for: account, prompt: prompt)
+        }
+    }
+
+    private func _signHashWithPrivateKey(hash: Data, for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError> {
         let key = getPrivateKeyForSigning(forAccount: account, prompt: prompt)
         switch key {
         case .seed, .seedPhrase:
             return .failure(.failedToExportPrivateKey)
         case .key(let key):
             do {
-                var data = try EthereumSigner().sign(hash: hash, withPrivateKey: key)
-                data[64] += EthereumSigner.vitaliklizeConstant
+                let data = try EthereumSigner().sign(hash: hash, withPrivateKey: key)
                 return .success(data)
             } catch {
                 return .failure(KeystoreError.failedToSignMessage)
@@ -451,70 +481,117 @@ open class EtherKeystore: NSObject, Keystore {
         }
     }
 
-    public func signEip712TypedData(_ data: EIP712TypedData, for account: Go23Wallet.Address, prompt: String) -> Result<Data, KeystoreError> {
-        signHash(data.digest, for: account, prompt: prompt)
+    private func _signHashWithHardwareWallet(hash: Data, for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError> {
+        let hwWallet = hardwareWalletFactory.createWallet()
+        do {
+            let signature = try await hwWallet.signHash(hash)
+            return .success(signature)
+        } catch {
+            if error.isCancelledBChainRequest {
+                return .failure(.userCancelled)
+            } else {
+                //TODO can improve, might need to be more hardware wallet specific
+                return .failure(KeystoreError.failedToSignMessage)
+            }
+        }
     }
 
-    public func signTypedMessage(_ datas: [EthTypedData], for account: Go23Wallet.Address, prompt: String) -> Result<Data, KeystoreError> {
+    private func _signHashes(_ hashes: [Data], for account: Go23Wallet.Address, prompt: String) async -> Result<[Data], KeystoreError> {
+        if let currentWallet = currentWallet, currentWallet.address == account {
+            switch currentWallet.type {
+            case .real, .watch:
+                return await _signHashesWithPrivateKey(hashes, for: account, prompt: prompt)
+            case .hardware:
+                return await _signHashesWithHardwareWallet(hashes, for: account, prompt: prompt)
+            }
+        } else {
+            return await _signHashesWithPrivateKey(hashes, for: account, prompt: prompt)
+        }
+    }
+
+    private func _signHashesWithPrivateKey(_ hashes: [Data], for account: Go23Wallet.Address, prompt: String) async -> Result<[Data], KeystoreError> {
+        let key = getPrivateKeyForSigning(forAccount: account, prompt: prompt)
+        switch key {
+        case .seed, .seedPhrase:
+            return .failure(.failedToExportPrivateKey)
+        case .key(let key):
+            do {
+                let data = try EthereumSigner().signHashes(hashes, withPrivateKey: key)
+                return .success(data)
+            } catch {
+                return .failure(KeystoreError.failedToSignMessage)
+            }
+        case .userCancelled:
+            return .failure(.userCancelled)
+        case .notFound, .otherFailure:
+            return .failure(.accountMayNeedImportingAgainOrEnablePasscode)
+        }
+    }
+
+    //We can't do bulk signing with hardware wallets, so users will have to perform the necessary action multiple times, e.g tap their hardware wallet card to the phone + authenticate multiple times
+    private func _signHashesWithHardwareWallet(_ hashes: [Data], for account: Go23Wallet.Address, prompt: String) async -> Result<[Data], KeystoreError> {
+        let hwWallet = hardwareWalletFactory.createWallet()
+        var results: [Data] = []
+        for each in hashes {
+            let eachResult = await _signHashWithHardwareWallet(hash: each, for: account, prompt: prompt)
+            switch eachResult {
+            case .success(let data):
+                results.append(data)
+            case .failure(let error):
+                return .failure(error)
+            }
+        }
+        return .success(results)
+    }
+
+    public func signHash(_ hash: Data, for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError> {
+        let result = await _signHash(hash, for: account, prompt: prompt)
+        switch result {
+        case .success(var data):
+            data[64] += EthereumSigner.vitaliklizeConstant
+            return .success(data)
+        case .failure:
+            return result
+        }
+    }
+
+    public func signEip712TypedData(_ data: EIP712TypedData, for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError> {
+        await signHash(data.digest, for: account, prompt: prompt)
+    }
+
+    public func signTypedMessage(_ datas: [EthTypedData], for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError> {
         let schemas = datas.map { $0.schemaData }.reduce(Data(), { $0 + $1 }).sha3(.keccak256)
         let values = datas.map { $0.typedData }.reduce(Data(), { $0 + $1 }).sha3(.keccak256)
         let combined = (schemas + values).sha3(.keccak256)
-        return signHash(combined, for: account, prompt: prompt)
+        return await signHash(combined, for: account, prompt: prompt)
     }
 
-    public func signMessage(_ message: Data, for account: Go23Wallet.Address, prompt: String) -> Result<Data, KeystoreError> {
-        return signHash(message.sha3(.keccak256), for: account, prompt: prompt)
-    }
-
-    public func signMessageBulk(_ data: [Data], for account: Go23Wallet.Address, prompt: String) -> Result<[Data], KeystoreError> {
+    public func signMessageBulk(_ data: [Data], for account: Go23Wallet.Address, prompt: String) async -> Result<[Data], KeystoreError> {
         guard !data.isEmpty else { return .failure(KeystoreError.signDataIsEmpty) }
 
-        switch getPrivateKeyForSigning(forAccount: account, prompt: prompt) {
-        case .seed, .seedPhrase:
-            return .failure(.failedToExportPrivateKey)
-        case .key(let key):
-            do {
-                var messageHashes = [Data]()
-                for i in 0...data.count - 1 {
-                    let hash = data[i].sha3(.keccak256)
-                    messageHashes.append(hash)
-                }
-                var data = try EthereumSigner().signHashes(messageHashes, withPrivateKey: key)
-                for i in 0...data.count - 1 {
-                    data[i][64] += EthereumSigner.vitaliklizeConstant
-                }
-                return .success(data)
-            } catch {
-                return .failure(KeystoreError.failedToSignMessage)
+        var messageHashes = [Data]()
+        for i in 0...data.count - 1 {
+            let hash = data[i].sha3(.keccak256)
+            messageHashes.append(hash)
+        }
+        let result = await _signHashes(messageHashes, for: account, prompt: prompt)
+        switch result {
+        case .success(var data):
+            for i in 0...data.count - 1 {
+                data[i][64] += EthereumSigner.vitaliklizeConstant
             }
-        case .userCancelled:
-            return .failure(.userCancelled)
-        case .notFound, .otherFailure:
-            return .failure(.accountMayNeedImportingAgainOrEnablePasscode)
+            return .success(data)
+        case .failure:
+            return result
         }
     }
 
-    public func signMessageData(_ message: Data?, for account: Go23Wallet.Address, prompt: String) -> Result<Data, KeystoreError> {
+    public func signMessageData(_ message: Data?, for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError> {
         guard let hash = message?.sha3(.keccak256) else { return .failure(KeystoreError.failedToSignMessage) }
-        switch getPrivateKeyForSigning(forAccount: account, prompt: prompt) {
-        case .seed, .seedPhrase:
-            return .failure(.failedToExportPrivateKey)
-        case .key(let key):
-            do {
-                var data = try EthereumSigner().sign(hash: hash, withPrivateKey: key)
-                data[64] += EthereumSigner.vitaliklizeConstant
-                return .success(data)
-            } catch {
-                return .failure(KeystoreError.failedToSignMessage)
-            }
-        case .userCancelled:
-            return .failure(.userCancelled)
-        case .notFound, .otherFailure:
-            return .failure(.accountMayNeedImportingAgainOrEnablePasscode)
-        }
+        return try await signHash(hash, for: account, prompt: prompt)
     }
 
-    public func signTransaction(_ transaction: UnsignedTransaction, prompt: String) -> Result<Data, KeystoreError> {
+    public func signTransaction(_ transaction: UnsignedTransaction, prompt: String) async -> Result<Data, KeystoreError> {
         let signer: Signer
         if transaction.server.chainID == 0 {
             signer = HomesteadSigner()
@@ -524,11 +601,9 @@ open class EtherKeystore: NSObject, Keystore {
 
         do {
             let hash = try signer.hash(transaction: transaction)
-            switch getPrivateKeyForSigning(forAccount: transaction.account, prompt: prompt) {
-            case .seed, .seedPhrase:
-                return .failure(.failedToExportPrivateKey)
-            case .key(let key):
-                let signature = try EthereumSigner().sign(hash: hash, withPrivateKey: key)
+            let data = await _signHash(hash, for: transaction.account, prompt: prompt)
+            switch data {
+            case .success(let signature):
                 let (r, s, v) = signer.values(signature: signature)
                 let values: [Any] = [
                     transaction.nonce,
@@ -544,10 +619,8 @@ open class EtherKeystore: NSObject, Keystore {
                     return .failure(.failedToSignTransaction)
                 }
                 return .success(data)
-            case .userCancelled:
-                return .failure(.userCancelled)
-            case .notFound, .otherFailure:
-                return .failure(.accountMayNeedImportingAgainOrEnablePasscode)
+            case .failure:
+                return data
             }
         } catch {
             return .failure(.failedToSignTransaction)
@@ -817,6 +890,10 @@ open class EtherKeystore: NSObject, Keystore {
 
     private func createContext() -> LAContext {
         return .init()
+    }
+
+    public static func generate12WordMnemonic() -> String {
+        return EtherKeystore.functional.generateMnemonic(seedPhraseCount: HDWallet.SeedPhraseCount.word12, passphrase: functional.emptyPassphrase)
     }
 }
 // swiftlint:enable type_body_length

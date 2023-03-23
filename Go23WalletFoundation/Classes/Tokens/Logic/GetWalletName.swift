@@ -2,6 +2,7 @@
 
 import Foundation
 import Combine
+import Go23WalletAddress
 
 //Use the wallet name which the user has set, otherwise fallback to ENS, if available
 public class GetWalletName {

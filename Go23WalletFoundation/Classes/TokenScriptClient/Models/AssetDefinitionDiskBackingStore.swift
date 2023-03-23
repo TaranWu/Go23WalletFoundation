@@ -1,6 +1,7 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
 import Foundation
+import Go23WalletAddress
 
 public class AssetDefinitionDiskBackingStore: AssetDefinitionBackingStore {
     public static let officialDirectoryName = "assetDefinitions"

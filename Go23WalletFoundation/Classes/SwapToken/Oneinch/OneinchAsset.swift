@@ -2,7 +2,7 @@
 //  OneinchAsset.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 11.11.2020.
 //
 
 import Foundation

@@ -2,7 +2,7 @@
 //  AvailableRpcNetwork.swift
 //  Go23Wallet
 //
-//  Created by taran.
+//  Created by Jerome Chan on 20/12/21.
 //
 
 import Foundation

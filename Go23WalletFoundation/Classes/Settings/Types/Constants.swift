@@ -2,6 +2,7 @@
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public struct Constants {
     static let xdaiDropPrefix = Data([0x58, 0x44, 0x41, 0x49, 0x44, 0x52, 0x4F, 0x50]).hex()
@@ -38,6 +39,7 @@ public struct Constants {
     static let optimismGoerliMagicLinkHost = "optimismGoerli.aw.app"
     static let arbitrumGoerliMagicLinkHost = "arbitrumGoerli.aw.app"
     static let okxMagicLinkHost = "okx.aw.app"
+    static let sepoliaMagicLinkHost = "sepolia.aw.app"
 
     // Magic link networks
     public static let legacyMagicLinkPrefix = "https://app.awallet.io/"
@@ -72,7 +74,7 @@ public struct Constants {
 
     static func buyWithRampUrl(asset: String, wallet: Wallet) -> String? {
         guard Constants.Credentials.rampApiKey.nonEmpty else { return nil }
-        return "https://buy.ramp.network/?hostApiKey=\(Constants.Credentials.rampApiKey)&hostLogoUrl=https%3A%2F%2FGo23Wallet.com%2Fwp-content%2Fthemes%2Falphawallet%2Fimg%2Flogo-horizontal-new.svg&hostAppName=AlphaWallet&swapAsset=\(asset)&userAddress=\(wallet.address.eip55String)"
+        return "https://buy.ramp.network/?hostApiKey=\(Constants.Credentials.rampApiKey)&hostLogoUrl=https%3A%2F%2FGo23Wallet.com%2Fwp-content%2Fthemes%2Falphawallet%2Fimg%2Flogo-horizontal-new.svg&hostAppName=Go23Wallet&swapAsset=\(asset)&userAddress=\(wallet.address.eip55String)"
     }
 
     static func buyWithCoinbaseUrl(blockchain: String, wallet: Wallet) -> String? {

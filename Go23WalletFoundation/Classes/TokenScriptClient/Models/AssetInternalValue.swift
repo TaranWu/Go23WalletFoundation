@@ -4,6 +4,7 @@ import Foundation
 import Go23WalletOpenSea
 import BigInt
 import PromiseKit
+import Go23WalletAddress
 
 public enum AssetInternalValue: Codable {
     public var description: String {

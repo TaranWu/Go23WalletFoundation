@@ -2,10 +2,11 @@
 //  ContractMethodCall.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 09.01.2023.
 //
 
 import Foundation
+import Go23WalletAddress
 
 public protocol ContractMethodCall: CustomStringConvertible {
     associatedtype Response
@@ -17,7 +18,7 @@ public protocol ContractMethodCall: CustomStringConvertible {
     /// Special flag for token script
     var shouldDelayIfCached: Bool { get }
 
-    func response(from resultObject: Any) throws -> Response
+    func response(from dictionary: [String: Any]) throws -> Response
 }
 
 extension ContractMethodCall {

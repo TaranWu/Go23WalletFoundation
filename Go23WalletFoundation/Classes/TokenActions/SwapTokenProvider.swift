@@ -2,7 +2,7 @@
 //  SwapTokenProvider.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 24.08.2022.
 //
 
 import Foundation

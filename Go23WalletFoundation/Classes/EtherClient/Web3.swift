@@ -2,7 +2,7 @@
 //  Web3.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 14.09.2022.
 //
 
 import Foundation
@@ -10,6 +10,7 @@ import Go23Web3Swift
 import BigInt
 
 extension Web3.Utils {
+
     public static func recoverPublicKey(message: Data, v: UInt8, r: [UInt8], s: [UInt8]) -> Data? {
         Web3.Utils.personalECRecoverPublicKey(message: message, r: r, s: s, v: v)
     }

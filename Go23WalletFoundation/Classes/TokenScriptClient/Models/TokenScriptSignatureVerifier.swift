@@ -119,7 +119,6 @@ public final class TokenScriptSignatureVerifier: TokenScriptSignatureVerifieble 
             }
 
             guard Features.default.isAvailable(.isTokenScriptSignatureStatusEnabled) else {
-                //We call the completion handler so that if the caller is a `Promise`, it will resolve, in order to avoid the warning: "PromiseKit: warning: pending promise deallocated"
                 seal.fulfill(.verified(domainName: ""))
                 return
             }

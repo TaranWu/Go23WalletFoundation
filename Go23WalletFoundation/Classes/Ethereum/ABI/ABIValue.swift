@@ -7,6 +7,7 @@
 import BigInt
 import Foundation
 import Go23TrustKeystore
+import Go23WalletAddress
 
 public indirect enum ABIValue: Equatable {
     /// Unsigned integer with `0 < bits <= 256`, `bits % 8 == 0`

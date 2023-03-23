@@ -2,7 +2,7 @@
 //  Erc20AllowanceMethodCall.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.01.2023.
 //
 
 import Foundation
@@ -25,11 +25,7 @@ struct Erc20AllowanceMethodCall: ContractMethodCall {
         self.spender = spender
     }
 
-    func response(from resultObject: Any) throws -> BigUInt {
-        guard let dictionary = resultObject as? [String: AnyObject] else {
-            throw CastError(actualValue: resultObject, expectedType: [String: AnyObject].self)
-        }
-
+    func response(from dictionary: [String: Any]) throws -> BigUInt {
         guard let allowance = dictionary["0"] as? BigUInt else {
             throw CastError.init(actualValue: dictionary["0"], expectedType: BigUInt.self)
         }

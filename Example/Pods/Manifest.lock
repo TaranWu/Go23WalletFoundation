@@ -33,13 +33,13 @@ PODS:
     - Go23WalletCore
     - Go23Web3Swift
     - PromiseKit
-  - Go23WalletFoundation (1.0.9):
+  - Go23WalletFoundation (1.1.0):
     - APIKit (= 5.1.0)
     - Apollo (= 0.53.0)
-    - BigInt (~> 3.1)
+    - BigInt
     - BlockiesSwift
     - CombineExt (= 1.8.0)
-    - CryptoSwift (~> 1.4)
+    - CryptoSwift
     - Go23EthereumABI
     - Go23JSONRPCKit
     - Go23TrustKeystore
@@ -53,8 +53,8 @@ PODS:
     - PromiseKit/CorePromise
     - RealmSwift
     - SwiftProtobuf (~> 1.18.0)
-    - SwiftyJSON (= 5.0.0)
-    - TrustWalletCore (= 2.6.34)
+    - SwiftyJSON
+    - TrustWalletCore
   - Go23WalletGoBack (1.0.0)
   - Go23WalletOpenSea (1.0.1):
     - Go23WalletAddress
@@ -146,7 +146,7 @@ SPEC CHECKSUMS:
   Go23WalletAddress: 5d6da09725bab0233ec01daf4dceed4e52ad79fc
   Go23WalletCore: ac87f9f87651aa105ac33d611705480247032ca3
   Go23WalletENS: e41c847ba8ad83194dea028a0e4e56ebc86f48b9
-  Go23WalletFoundation: 394202f2ac310cb06445824ea268e762d76b2d90
+  Go23WalletFoundation: 23adcfaddc48a34d9ead7af9560ae89aef70d1a7
   Go23WalletGoBack: e039a83f128a88e4e94d18edf98520223eb3a081
   Go23WalletOpenSea: 62673d0f2bdfe80aad6e77733b3728cca447b4d5
   Go23Web3Swift: a2b151b6042392804bbf542c0cccac7a12cc804e

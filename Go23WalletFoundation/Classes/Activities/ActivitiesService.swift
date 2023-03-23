@@ -2,13 +2,14 @@
 //  ActivitiesService.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.05.2021.
 //
 
 import Foundation
 import CoreFoundation
 import Combine
 import CombineExt
+import Go23WalletAddress
 
 public protocol ActivitiesServiceType: AnyObject {
     var activitiesPublisher: AnyPublisher<[ActivityCollection.MappedToDateActivityOrTransaction], Never> { get }

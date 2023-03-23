@@ -2,11 +2,12 @@
 //  Erc20Approve.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 08.11.2022.
 //
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public struct Erc20Approve: ContractMethod {
     let spender: Go23Wallet.Address

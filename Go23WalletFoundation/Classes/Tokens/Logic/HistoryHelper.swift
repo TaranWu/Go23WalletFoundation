@@ -2,7 +2,7 @@
 //  HistoryHelper.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 20.05.2022.
 //
 
 import Foundation

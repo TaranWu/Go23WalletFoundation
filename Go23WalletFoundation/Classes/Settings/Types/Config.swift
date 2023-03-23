@@ -3,6 +3,7 @@
 import Foundation
 import ObjectiveC
 import Combine
+import Go23WalletAddress
 
 public struct Config {
     public struct Development {

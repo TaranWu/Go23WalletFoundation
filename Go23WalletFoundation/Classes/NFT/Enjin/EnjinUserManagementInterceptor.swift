@@ -2,7 +2,7 @@
 //  EnjinAuthorization.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 05.11.2021.
 //
 
 import Apollo

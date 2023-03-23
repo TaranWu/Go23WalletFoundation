@@ -2,7 +2,7 @@
 //  ActivityOrTransactionInstance.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 18.02.2022.
 //
 
 import Foundation

@@ -2,6 +2,7 @@
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public struct UnconfirmedTransaction {
     public let transactionType: TransactionType

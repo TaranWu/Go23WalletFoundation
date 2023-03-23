@@ -2,10 +2,11 @@
 //  Erc721ScriptUriMethodCall.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.01.2023.
 //
 
 import Foundation
+import Go23WalletAddress
 
 struct GetScriptUri {
     let abi = """
@@ -44,11 +45,7 @@ struct Erc721ScriptUriMethodCall: ContractMethodCall {
         self.contract = contract
     }
 
-    func response(from resultObject: Any) throws -> URL {
-        guard let dictionary = resultObject as? [String: AnyObject] else {
-            throw CastError(actualValue: resultObject, expectedType: [String: AnyObject].self)
-        }
-
+    func response(from dictionary: [String: Any]) throws -> URL {
         guard let urlString = dictionary["0"] as? String, let url = URL(string: urlString) else {
             throw CastError(actualValue: dictionary["0"], expectedType: URL.self)
         }

@@ -3,6 +3,7 @@
 import Foundation
 import Go23WalletOpenSea
 import BigInt
+import Go23WalletAddress
 
 public struct AssetAttributeSyntaxValue: Hashable {
     public static func == (lhs: AssetAttributeSyntaxValue, rhs: AssetAttributeSyntaxValue) -> Bool {

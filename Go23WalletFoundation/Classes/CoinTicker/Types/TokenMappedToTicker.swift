@@ -2,10 +2,11 @@
 //  TokenMappedToTicker.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 29.03.2022.
 //
 
 import Foundation
+import Go23WalletAddress
 
 public struct TokenMappedToTicker {
     public let symbol: String

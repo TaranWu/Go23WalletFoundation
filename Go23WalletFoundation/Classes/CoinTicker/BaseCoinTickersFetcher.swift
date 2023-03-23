@@ -2,12 +2,13 @@
 //  BaseCoinTickersFetcher.swift
 //  Alamofire
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 16.09.2022.
 //
 
 import Foundation
 import Combine
 import Go23WalletCore
+import Go23WalletAddress
 
 public class BaseCoinTickersFetcher {
     private let pricesCacheLifetime: TimeInterval = 60 * 60

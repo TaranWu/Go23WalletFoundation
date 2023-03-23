@@ -2,12 +2,13 @@
 //  CovalentNetworkProvider.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 30.03.2022.
 //
 
 import SwiftyJSON 
 import Combine
 import Go23WalletCore
+import Go23WalletAddress
 
 public class CovalentApiNetworking: ApiNetworking {
     private let server: RPCServer

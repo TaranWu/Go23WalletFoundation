@@ -4,6 +4,7 @@ import Foundation
 import BigInt
 import Go23TrustKeystore
 import Go23Web3Swift
+import Go23WalletAddress
 
 public enum AssetAttributeValueUsableAsFunctionArguments {
     case address(Go23Wallet.Address)

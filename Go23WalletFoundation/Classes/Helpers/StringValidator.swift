@@ -2,7 +2,7 @@
 //  StringValidator.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Jerome Chan on 2/12/21.
 //
 
 import Foundation

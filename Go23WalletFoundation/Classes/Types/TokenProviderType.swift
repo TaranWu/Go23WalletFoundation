@@ -2,12 +2,13 @@
 //  TokenProviderType.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 27.08.2021.
 //
 
 import Go23WalletCore
 import BigInt
 import Combine
+import Go23WalletAddress
 
 // NOTE: Think about the name, more fittable name is needed
 public protocol TokenProviderType: AnyObject {
@@ -16,7 +17,7 @@ public protocol TokenProviderType: AnyObject {
     func getDecimals(for address: Go23Wallet.Address) -> AnyPublisher<Int, SessionTaskError>
     func getTokenType(for address: Go23Wallet.Address) -> AnyPublisher<TokenType, SessionTaskError>
     func getEthBalance(for address: Go23Wallet.Address) -> AnyPublisher<Balance, SessionTaskError>
-    func getErc20Balance(for address: Go23Wallet.Address) -> AnyPublisher<BigInt, SessionTaskError>
+    func getErc20Balance(for address: Go23Wallet.Address) -> AnyPublisher<BigUInt, SessionTaskError>
     func getErc875TokenBalance(for address: Go23Wallet.Address, contract: Go23Wallet.Address) -> AnyPublisher<[String], SessionTaskError>
     func getErc721ForTicketsBalance(for address: Go23Wallet.Address) -> AnyPublisher<[String], SessionTaskError>
     func getErc721Balance(for address: Go23Wallet.Address) -> AnyPublisher<[String], SessionTaskError>
@@ -60,7 +61,7 @@ public class TokenProvider: TokenProviderType {
         getTokenType.getTokenType(for: address)
     }
 
-    public func getErc20Balance(for address: Go23Wallet.Address) -> AnyPublisher<BigInt, SessionTaskError> {
+    public func getErc20Balance(for address: Go23Wallet.Address) -> AnyPublisher<BigUInt, SessionTaskError> {
         getErc20Balance.getErc20Balance(for: account.address, contract: address)
     }
 

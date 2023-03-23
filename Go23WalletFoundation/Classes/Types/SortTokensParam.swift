@@ -2,7 +2,7 @@
 //  SortTokensParam.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 10.08.2021.
 //
 
 import Foundation

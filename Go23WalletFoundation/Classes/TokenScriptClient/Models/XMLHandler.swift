@@ -8,6 +8,7 @@
 import Foundation
 import Kanna
 import PromiseKit
+import Go23WalletAddress
 
 // swiftlint:disable file_length
 public enum SingularOrPlural {
@@ -82,6 +83,7 @@ public enum TokenScriptSignatureVerificationType: Codable {
     }
 }
 
+//https://github.com/AlphaWallet/TokenScript/wiki/Visual-representation-of-the-validity-of-TokenScript-files
 public enum TokenLevelTokenScriptDisplayStatus {
     case type0NoTokenScript
     case type1GoodTokenScriptSignatureGoodOrOptional(isDebugMode: Bool, isSigned: Bool, validatedDomain: String?, error: SignatureValidationError)
@@ -93,7 +95,7 @@ public enum TokenLevelTokenScriptDisplayStatus {
         case invalidSignature
     }
 
-    public enum SignatureValidationError: LocalizedError {
+    public enum SignatureValidationError: Error {
         case tokenScriptType1SupportedNotCanonicalizedAndUnsigned
         case tokenScriptType1SupportedAndSigned
         case tokenScriptType2InvalidSignature

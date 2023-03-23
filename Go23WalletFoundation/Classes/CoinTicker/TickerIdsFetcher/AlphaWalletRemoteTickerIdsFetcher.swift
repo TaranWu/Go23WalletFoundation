@@ -2,7 +2,7 @@
 //  Go23WalletRemoteTickerIdsFetcher.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 05.09.2022.
 //
 
 import Foundation
@@ -15,7 +15,7 @@ import Go23WalletCore
 /// - Finds appropriate group for token
 /// - Resolves ticker id, for each token in group
 /// - Returns first matching ticker id
-public class Go23RemoteTickerIdsFetcher: TickerIdsFetcher {
+public class Go23WalletRemoteTickerIdsFetcher: TickerIdsFetcher {
     private let provider: TokenEntriesProvider
     private let tickerIdsFetcher: SupportedTickerIdsFetcher
     private let queue = DispatchQueue(label: "org.Go23Wallet.swift.remoteTickerIdsFetcher")

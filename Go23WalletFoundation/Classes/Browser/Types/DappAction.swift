@@ -4,7 +4,6 @@ import Foundation
 import BigInt
 import WebKit
 
-
 public enum DappAction {
     case signMessage(String)
     case signPersonalMessage(String)

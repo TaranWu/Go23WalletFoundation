@@ -2,7 +2,7 @@
 //  AnalyticsServiceType.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 07.09.2022.
 //
 
 import Foundation

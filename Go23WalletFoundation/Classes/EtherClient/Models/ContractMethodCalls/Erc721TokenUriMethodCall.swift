@@ -2,11 +2,12 @@
 //  Erc721TokenUriMethodCall.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.01.2023.
 //
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 enum TokenUriData {
     case uri(URL)
@@ -25,13 +26,9 @@ struct TokenUriDecoder {
         case decodeFailure
     }
 
-    func decode(from resultObject: Any) throws -> TokenUriData {
-        guard let dictionary = resultObject as? [String: AnyObject] else {
-            throw CastError(actualValue: resultObject, expectedType: [String: AnyObject].self)
-        }
-
+    func decode(from dictionary: [String: Any]) throws -> TokenUriData {
         guard let string = dictionary["0"] as? String else {
-            throw CastError(actualValue: resultObject, expectedType: String.self)
+            throw CastError(actualValue: dictionary, expectedType: String.self)
         }
 
         if let data = base64Decoder.decode(string: string) {
@@ -75,8 +72,8 @@ struct Erc721TokenUriMethodCall: ContractMethodCall {
         self.decoder = TokenUriDecoder(tokenId: tokenId)
     }
 
-    func response(from resultObject: Any) throws -> TokenUriData {
-        return try decoder.decode(from: resultObject)
+    func response(from dictionary: [String: Any]) throws -> TokenUriData {
+        return try decoder.decode(from: dictionary)
     }
 }
 
@@ -98,8 +95,8 @@ struct Erc721UriMethodCall: ContractMethodCall {
         self.decoder = TokenUriDecoder(tokenId: tokenId)
     }
 
-    func response(from resultObject: Any) throws -> TokenUriData {
-        return try decoder.decode(from: resultObject)
+    func response(from dictionary: [String: Any]) throws -> TokenUriData {
+        return try decoder.decode(from: dictionary)
     }
 }
 

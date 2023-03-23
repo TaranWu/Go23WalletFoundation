@@ -2,12 +2,13 @@
 //  Erc721BalanceOfMethodCall.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.01.2023.
 //
 
 import Foundation
 import Go23Web3Swift
 import BigInt
+import Go23WalletAddress
 
 struct Erc721BalanceOfMethodCall: ContractMethodCall {
     typealias Response = [String]
@@ -25,11 +26,7 @@ struct Erc721BalanceOfMethodCall: ContractMethodCall {
         self.contract = contract
     }
 
-    func response(from resultObject: Any) throws -> [String] {
-        guard let dictionary = resultObject as? [String: AnyObject] else {
-            throw CastError(actualValue: resultObject, expectedType: [String: AnyObject].self)
-        }
-
+    func response(from dictionary: [String: Any]) throws -> [String] {
         let balance = Erc721BalanceOfMethodCall.adapt(dictionary["0"] as Any)
         if balance >= Int.max {
             throw CastError(actualValue: dictionary["0"], expectedType: Int.self)

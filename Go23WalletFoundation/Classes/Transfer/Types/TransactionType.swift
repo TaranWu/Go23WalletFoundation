@@ -1,5 +1,6 @@
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public enum FungibleAmount {
 

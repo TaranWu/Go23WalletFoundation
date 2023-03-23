@@ -2,6 +2,7 @@
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public struct FunctionCall {
     public struct Argument: CustomStringConvertible {

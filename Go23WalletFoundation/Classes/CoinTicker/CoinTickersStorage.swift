@@ -2,7 +2,7 @@
 //  CoinTickersFetcherCache.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 11.06.2021.
 //
 
 import Combine
@@ -47,7 +47,7 @@ extension RealmStore: TickerIdsStorage {
                     switch changeset {
                     case .error, .initial:
                         return nil
-                    case .update(let values, let deletions, let insertions, let modifications):
+                    case .update(let values, _, let insertions, let modifications):
                         let objects = insertions.map { values[$0] } + modifications.map { values[$0] }
                         return objects.map { AssignedCoinTickerId(tickerId: $0.tickerIdString, primaryToken: .init(address: $0.contractAddress, server: $0.server)) }
                     }
@@ -201,7 +201,7 @@ extension RealmStore: CoinTickersStorage {
             let primaryKey = ContractAddressObject.generatePrimaryKey(fromContract: key.address, server: key.server)
             let obj = realm.object(ofType: AssignedCoinTickerIdObject.self, forPrimaryKey: primaryKey)
             let historiesToCurrencies = obj?.chartHistory?.map { $0.value } ?? []
-            if let anyHistory = historiesToCurrencies.compactMap { $0[currency] }.first {
+            if let anyHistory = historiesToCurrencies.compactMap({ $0[currency] }).first {
                 updatedAt = anyHistory.fetchDate
             }
         }

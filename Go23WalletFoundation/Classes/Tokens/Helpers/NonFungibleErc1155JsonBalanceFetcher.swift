@@ -2,7 +2,7 @@
 //  NonFungibleErc1155JsonBalanceFetcher.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 20.07.2022.
 //
 
 import Foundation
@@ -11,6 +11,7 @@ import Go23WalletCore
 import Go23WalletOpenSea
 import BigInt
 import SwiftyJSON
+import Go23WalletAddress
 
 //TODO: think about the name, remove queue later, replace with any publisher
 class NonFungibleErc1155JsonBalanceFetcher {

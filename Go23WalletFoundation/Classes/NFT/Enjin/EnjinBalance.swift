@@ -2,11 +2,12 @@
 //  EnjinBalance.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 09.02.2023.
 //
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public struct EnjinError: Error {
     let localizedDescription: String

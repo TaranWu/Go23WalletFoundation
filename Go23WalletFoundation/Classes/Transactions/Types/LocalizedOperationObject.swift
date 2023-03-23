@@ -2,6 +2,7 @@
 
 import Foundation
 import RealmSwift
+import Go23WalletAddress
 
 class LocalizedOperationObject: Object {
     //TODO good to have getters/setter computed properties for `from` and `to` too that is typed Go23Wallet.Address. But have to be careful and check if they can be empty or "0x"

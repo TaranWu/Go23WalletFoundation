@@ -2,10 +2,11 @@
 //  ContractToImportStorage.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 10.11.2022.
 //
 
 import Foundation
+import Go23WalletAddress
 
 //TODO: Update with priority field for being able to order operation
 struct ContractToImport: Codable {

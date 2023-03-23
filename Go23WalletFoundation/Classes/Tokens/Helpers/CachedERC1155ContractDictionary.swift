@@ -2,10 +2,11 @@
 //  CachedERC1155ContractDictionary.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Jerome Chan on 12/4/22.
 //
 
 import Foundation
+import Go23WalletAddress
 
 public class CachedERC1155ContractDictionary {
     private let fileUrl: URL
@@ -39,7 +40,6 @@ public class CachedERC1155ContractDictionary {
         do {
             try FileManager.default.removeItem(at: fileUrl)
         } catch {
-            // Do nothing
         }
     }
 

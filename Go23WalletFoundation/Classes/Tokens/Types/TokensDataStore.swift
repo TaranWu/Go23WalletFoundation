@@ -176,7 +176,7 @@ public enum NonFungibleBalance {
 }
 
 public enum TokenFieldUpdate {
-    case value(BigInt)
+    case value(BigUInt)
     case isDisabled(Bool)
     case nonFungibleBalance(NonFungibleBalance)
     case name(String)
@@ -190,13 +190,9 @@ public enum TokenFieldUpdate {
 open class MultipleChainsTokensDataStore: NSObject, TokensDataStore {
     private let store: RealmStore
 
-    public init(store: RealmStore, servers: [RPCServer]) {
+    public init(store: RealmStore) {
         self.store = store
         super.init()
-
-        for each in servers {
-            addEthToken(forServer: each)
-        }
 
         MultipleChainsTokensDataStore.functional.recreateMissingInfoTokenObjects(for: store)
     }
@@ -520,7 +516,7 @@ open class MultipleChainsTokensDataStore: NSObject, TokensDataStore {
         return result
     }
 
-    private func updateFungibleBalance(balance value: BigInt, token: TokenObject) -> Bool {
+    private func updateFungibleBalance(balance value: BigUInt, token: TokenObject) -> Bool {
         if token.value != value.description {
             token.value = value.description
             return true

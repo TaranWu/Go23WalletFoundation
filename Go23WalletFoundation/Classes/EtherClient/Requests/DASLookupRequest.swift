@@ -2,11 +2,12 @@
 //  DASLookupRequest.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 08.10.2021.
 //
 
 import Go23JSONRPCKit
 import Foundation
+import Go23WalletAddress
 
 struct DASLookupRequest: Go23JSONRPCKit.Request {
     typealias Response = DASLookupResponse

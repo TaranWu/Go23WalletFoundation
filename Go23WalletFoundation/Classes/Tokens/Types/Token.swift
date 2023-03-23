@@ -2,12 +2,13 @@
 //  Token.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 18.05.2022.
 //
 
 import Foundation
 import Go23WalletOpenSea
 import BigInt
+import Go23WalletAddress
 
 public struct Token: Equatable, Hashable {
     public let primaryKey: String
@@ -17,7 +18,7 @@ public struct Token: Equatable, Hashable {
     public let server: RPCServer
     public let type: TokenType
     public let name: String
-    public let value: BigInt
+    public let value: BigUInt
     public let balance: [TokenBalanceValue]
     public let shouldDisplay: Bool
     public let info: TokenInfo
@@ -43,20 +44,19 @@ public struct Token: Equatable, Hashable {
         balance.compactMap { $0.nonFungibleBalance }
     }
 
-    public init(
-            contract: Go23Wallet.Address = Constants.nullAddress,
-            server: RPCServer = .main,
-            name: String = "",
-            symbol: String = "",
-            decimals: Int = 0,
-            value: BigInt = .zero,
-            isCustom: Bool = false,
-            isDisabled: Bool = false,
-            shouldDisplay: Bool = false,
-            type: TokenType = .erc20,
-            balance: [TokenBalanceValue] = [],
-            sortIndex: Int? = nil
-    ) {
+    public init(contract: Go23Wallet.Address = Constants.nullAddress,
+                server: RPCServer = .main,
+                name: String = "",
+                symbol: String = "",
+                decimals: Int = 0,
+                value: BigUInt = .zero,
+                isCustom: Bool = false,
+                isDisabled: Bool = false,
+                shouldDisplay: Bool = false,
+                type: TokenType = .erc20,
+                balance: [TokenBalanceValue] = [],
+                sortIndex: Int? = nil) {
+
         self.primaryKey = TokenObject.generatePrimaryKey(fromContract: contract, server: server)
         self.contractAddress = contract
         self.server = server
@@ -92,7 +92,7 @@ extension Token {
 }
 
 extension Token: TokenScriptSupportable {
-    public var valueBI: BigInt { value }
+    public var valueBI: BigUInt { value }
     public var balanceNft: [TokenBalanceValue] { balance }
 }
 extension Token: TokenFilterable { }

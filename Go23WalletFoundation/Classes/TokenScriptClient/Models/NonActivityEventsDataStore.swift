@@ -3,6 +3,7 @@
 import Foundation
 import RealmSwift
 import Combine
+import Go23WalletAddress
 
 public protocol NonActivityEventsDataStore {
     func getLastMatchingEventSortedByBlockNumber(for contract: Go23Wallet.Address, tokenContract: Go23Wallet.Address, server: RPCServer, eventName: String) -> EventInstanceValue?

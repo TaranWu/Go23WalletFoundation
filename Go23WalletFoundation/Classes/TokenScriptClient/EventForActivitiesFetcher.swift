@@ -2,7 +2,7 @@
 //  EventForActivitiesFetcher.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 24.10.2022.
 //
 
 import Foundation
@@ -91,6 +91,8 @@ final class EventForActivitiesFetcher {
 
                     }.handleEvents(receiveCompletion: { result in
                         guard case .failure(let e) = result else { return }
+
+                        logError(e, rpcServer: token.server, address: token.contractAddress)
                     }).eraseToAnyPublisher()
             }.eraseToAnyPublisher()
     }

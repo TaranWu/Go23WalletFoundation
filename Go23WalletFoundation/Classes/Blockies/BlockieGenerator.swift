@@ -2,7 +2,7 @@
 //  BlockieGenerator.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 20.11.2020.
 //
 
 import Foundation
@@ -11,6 +11,7 @@ import UIKit.UIImage
 import Combine
 import Go23WalletENS
 import Go23WalletCore
+import Go23WalletAddress
 
 public protocol NftAssetImageProvider: AnyObject {
     func assetImageUrl(for url: Eip155URL) -> AnyPublisher<URL, PromiseError>

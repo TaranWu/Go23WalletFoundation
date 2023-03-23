@@ -2,7 +2,7 @@
 //  TokenViewModel.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 14.07.2022.
 //
 
 import Foundation
@@ -59,11 +59,11 @@ extension TokenScriptOverrides: Hashable { }
 
 extension TokenViewModel: TokenFilterable {
     public var balanceNft: [TokenBalanceValue] { balance.balance }
-    public var valueBI: BigInt { balance.value }
+    public var valueBI: BigUInt { balance.value }
 }
 
 extension TokenViewModel: TokenSortable {
-    public var value: BigInt { balance.value }
+    public var value: BigUInt { balance.value }
 }
 
 extension TokenViewModel: TokenScriptOverridesSupportable { }

@@ -1,8 +1,9 @@
 //
 //  Event.swift
-//  Go23Wallet
+//  Alpha-Wallet
 //
-//  Created by Taran.
+//  Created by Oguzhan Gungor on 3/11/18.
+//  Copyright © 2018 Alpha-Wallet. All rights reserved.
 //
 
 import Foundation

@@ -2,7 +2,7 @@
 //  xDaiBridge.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 04.10.2021.
 //
 
 import Foundation

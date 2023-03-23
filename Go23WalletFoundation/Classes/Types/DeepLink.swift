@@ -2,11 +2,12 @@
 //  DeepLink.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 14.01.2022.
 //
 
 import Foundation
 import SwiftyJSON
+import Go23WalletAddress
 
 public enum DeepLink {
     static let walletConnectPath = "/wc"
@@ -200,6 +201,11 @@ extension DeepLink.functional {
         return (result.server, urlToOpen)
     }
 
+    //Multiple formats:
+    //From WalletConnect mobile linking: e.g. https://aw.app/wc?uri=wc%3A588422fd-929d-438a-b337-31c3c9184d9b%401%3Fbridge%3Dhttps%253A%252F%252Fbridge.walletconnect.org%26key%3D8f9459f72aed0790282c47fe45f37ed5cb121bc17795f8f2a229a910bc447202
+    //From AlphaWallet iOS Safari extension's rewriting: eg. https://aw.app/wc:f607884e-63a5-4fa3-8e7d-af6f6fa9b51f@1?bridge=https%3A%2F%2Fn.bridge.walletconnect.org&key=cff9abba23cb9f843e9d623b891a5f8948b41f7d4afc7f7155aa252504cd8264
+
+    //awallet://wc?uri=wc%3A5f577f99-2f54-40f7-9463-7ff640772090%401%3Fbridge%3Dhttps%253A%252F%252Fwalletconnect.depay.com%26key%3D1938aa2c9d4104c91cbc60e94631cf769c96ebad1ea2fc30e18ba09e39bc3c0b
     public static func extractWalletConnectUrlMaybeEmbedded(in url: URL) -> (url: Go23Wallet.WalletConnect.ConnectionUrl, source: DeepLink.WalletConnectSource)? {
         if url.scheme == "wc", let wcUrl = Go23Wallet.WalletConnect.ConnectionUrl(url.absoluteString) {
             return (wcUrl, .mobileLinking)

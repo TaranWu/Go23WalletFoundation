@@ -2,6 +2,7 @@
 
 import Combine
 import PromiseKit
+import Go23WalletAddress
 
 public typealias XMLFile = String
 
@@ -173,6 +174,7 @@ public class AssetDefinitionStore: NSObject {
         baseXmlHandlers[key] = baseXmlHandler
     }
 
+    //Calling this in >= iOS 14 will trigger a scary "AlphaWallet pasted from <app>" message
     public func enableFetchXMLForContractInPasteboard() {
         NotificationCenter.default.addObserver(self, selector: #selector(fetchXMLForContractInPasteboard), name: UIApplication.didBecomeActiveNotification, object: nil)
     }
@@ -213,7 +215,7 @@ public class AssetDefinitionStore: NSObject {
         urlToFetch(contract: contract, server: server)
             .receive(on: RunLoop.main)
             .sinkAsync(receiveCompletion: { result in
-                guard case .failure(_) = result else { return }
+                guard case .failure(let error) = result else { return }
             }, receiveValue: { result in
                 guard let (url, isScriptUri) = result else { return }
                 self.fetchXML(contract: contract, server: server, url: url, useCacheAndFetch: useCacheAndFetch) { result in

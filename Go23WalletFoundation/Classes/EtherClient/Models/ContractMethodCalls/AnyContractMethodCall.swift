@@ -2,10 +2,11 @@
 //  AnyContractMethodCall.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.01.2023.
 //
 
 import Foundation
+import Go23WalletAddress
 
 struct AnyContractMethodCall: ContractMethodCall {
     typealias Response = [String: Any]
@@ -22,11 +23,7 @@ struct AnyContractMethodCall: ContractMethodCall {
         self.parameters = parameters
     }
 
-    func response(from resultObject: Any) throws -> [String: Any] {
-        guard let dictionary = resultObject as? [String: Any] else {
-            throw CastError(actualValue: resultObject, expectedType: [String: AnyObject].self)
-        }
-
+    func response(from dictionary: [String: Any]) throws -> [String: Any] {
         return dictionary
     }
 }

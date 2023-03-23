@@ -2,7 +2,7 @@
 //  WeakRef.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 27.04.2022.
 //
 
 import Foundation

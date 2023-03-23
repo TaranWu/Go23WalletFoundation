@@ -2,7 +2,7 @@
 //  AddCustomChainNetworking.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 16.12.2022.
 //
 
 import Combine

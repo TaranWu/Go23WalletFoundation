@@ -3,6 +3,7 @@
 import Foundation
 import Go23WalletENS
 import Combine
+import Go23WalletAddress
 
 class EnsReverseResolver {
     private let storage: EnsRecordsStorage

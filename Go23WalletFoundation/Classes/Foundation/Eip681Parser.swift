@@ -3,6 +3,7 @@
 import Foundation
 import BigInt
 import PromiseKit
+import Go23WalletAddress
 
 //TODO: In the future, this can include invoking functions other than for sending of Ether and tokens
 //TODO: apply FungibleAmount instead of String

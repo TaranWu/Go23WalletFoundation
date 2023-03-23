@@ -2,7 +2,7 @@
 //  BlockchainProvider.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 18.01.2023.
 //
 
 import Foundation
@@ -10,6 +10,7 @@ import Combine
 import Go23Web3Swift
 import BigInt
 import Go23WalletCore
+import Go23WalletAddress
 
 public protocol BlockchainProvider {
     var server: RPCServer { get }
@@ -117,14 +118,14 @@ public final class RpcBlockchainProvider: BlockchainProvider {
 
     public func gasEstimates() -> AnyPublisher<GasEstimates, PromiseError> {
         return getGasPrice.getGasEstimates()
-            .handleEvents(receiveOutput: { estimate in
+            .handleEvents(receiveOutput: { [server] estimate in
             }).map { [params] gasPrice in
                 if (gasPrice + GasPriceConfiguration.oneGwei) > params.maxPrice {
                     // Guard against really high prices
                     return GasEstimates(standard: params.maxPrice)
                 } else {
-                    if params.canUserChangeGas && params.shouldAddBufferWhenEstimatingGasPrice {
-                        //Add an extra gwei because the estimate is sometimes too low
+                    if params.canUserChangeGas && params.shouldAddBufferWhenEstimatingGasPrice, gasPrice > GasPriceConfiguration.oneGwei {
+                        //Add an extra gwei because the estimate is sometimes too low. We mustn't do this if the gas price estimated is lower than 1gwei since chains like Arbitrum is cheap (0.1gwei as of 20230320)
                         return GasEstimates(standard: gasPrice + GasPriceConfiguration.oneGwei)
                     } else {
                         return GasEstimates(standard: gasPrice)

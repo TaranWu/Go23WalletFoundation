@@ -2,7 +2,7 @@
 //  CoinGeckoTickersFetcher.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 24.05.2022.
 //
 
 import Combine
@@ -24,7 +24,7 @@ public final class CoinGeckoTickersFetcher: BaseCoinTickersFetcher, CoinTickersF
         let tickerIdsFetcher: TickerIdsFetcher = TickerIdsFetcherImpl(providers: [
             InMemoryTickerIdsFetcher(storage: storage),
             supportedTickerIdsFetcher,
-            Go23RemoteTickerIdsFetcher(provider: fileTokenEntriesProvider, tickerIdsFetcher: supportedTickerIdsFetcher)
+            Go23WalletRemoteTickerIdsFetcher(provider: fileTokenEntriesProvider, tickerIdsFetcher: supportedTickerIdsFetcher)
         ])
 
         self.init(networkProvider: networkProvider, storage: storage, tickerIdsFetcher: tickerIdsFetcher)

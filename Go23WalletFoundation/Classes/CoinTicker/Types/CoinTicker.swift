@@ -115,7 +115,6 @@ extension CoinTicker: Codable {
         self.primaryKey = "\(id)-\(currency)"
         lastUpdatedAt = Date()
     }
-
 }
 
 extension KeyedDecodingContainer where Key: Hashable {

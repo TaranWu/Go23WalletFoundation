@@ -10,6 +10,7 @@ import Foundation
 import Go23WalletOpenSea
 import BigInt
 import Combine
+import Go23WalletAddress
 
 public protocol TokenHolderState {
     func tokenHolders(for token: TokenIdentifiable) -> [TokenHolder]

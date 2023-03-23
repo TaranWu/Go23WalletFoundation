@@ -11,7 +11,7 @@ public enum TokenScript {
 
 extension TokenScript {
     public static let repoServer = "https://repo.tokenscript.org/\(supportedTokenScriptNamespaceVersion)"
-    public static let repoClientName = "Go23Wallet"
+    public static let repoClientName = "AlphaWallet"
     public static let repoPlatformName = "iOS"
     public static let tokenScriptNamespacePrefix = "http://tokenscript.org/"
     public static let tokenScriptSite = URL(string: "http://tokenscript.org")!

@@ -2,7 +2,7 @@
 //  GetErc20Allowance.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 08.11.2022.
 //
 
 import Foundation

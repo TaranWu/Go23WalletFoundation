@@ -4,6 +4,7 @@ import Foundation
 import SwiftyJSON
 import Combine
 import Go23WalletCore
+import Go23WalletAddress
 
 public class BlockscanChat {
     private var lastKnownCount: Int?
@@ -33,7 +34,7 @@ public class BlockscanChat {
                 } catch {
                     return .fail(.statusCode(response.response.statusCode))
                 }
-            }.handleEvents(receiveOutput: { [weak self] in
+            }.handleEvents(receiveOutput: { [weak self, address] in
                 self?.lastKnownCount = $0
             })
             .receive(on: RunLoop.main)

@@ -2,13 +2,12 @@
 //  ConnectionUrl.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 31.08.2022.
 //
 
 import Foundation
 
 extension Go23Wallet {
-
     public enum WalletConnect {
 
         public enum ConnectionUrl: Codable {

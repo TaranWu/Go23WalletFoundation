@@ -5,6 +5,7 @@ import PromiseKit
 import Go23WalletCore
 import Go23WalletOpenSea
 import Combine
+import Go23WalletAddress
 
 public typealias Stats = Go23WalletOpenSea.NftCollectionStats
 

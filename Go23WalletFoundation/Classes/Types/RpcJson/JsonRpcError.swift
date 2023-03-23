@@ -2,7 +2,7 @@
 //  JsonRpcError.swift
 //  Alamofire
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 16.02.2023.
 //
 
 import Foundation
@@ -32,5 +32,11 @@ public extension JsonRpcError {
 
     static func internalError(message: String) -> JsonRpcError {
         JsonRpcError(code: -32603, message: message)
+    }
+}
+
+extension JsonRpcError: LocalizedError {
+    public var errorDescription: String? {
+        return message
     }
 }

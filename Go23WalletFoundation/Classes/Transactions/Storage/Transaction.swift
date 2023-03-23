@@ -3,6 +3,7 @@
 import Foundation
 import BigInt
 import RealmSwift
+import Go23WalletAddress
 
 class Transaction: Object {
     static func generatePrimaryKey(for id: String, server: RPCServer) -> String {

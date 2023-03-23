@@ -3,11 +3,16 @@
 import Foundation
 import BigInt
 import Combine
+import Go23WalletAddress
 
 final class NonFungibleContract {
     private let blockchainProvider: BlockchainProvider
+    private let uriMapper: TokenUriMapSupportable
 
-    public init(blockchainProvider: BlockchainProvider) {
+    public init(blockchainProvider: BlockchainProvider,
+                uriMapper: TokenUriMapSupportable) {
+
+        self.uriMapper = uriMapper
         self.blockchainProvider = blockchainProvider
     }
 
@@ -17,6 +22,13 @@ final class NonFungibleContract {
             .catch { [blockchainProvider] _ -> AnyPublisher<TokenUriData, SessionTaskError> in
                 return blockchainProvider
                     .call(Erc721UriMethodCall(contract: contract, tokenId: tokenId))
+            }.map { [uriMapper] data -> TokenUriData in
+                switch data {
+                case .data, .json, .string:
+                    return data
+                case .uri(let uri):
+                    return .uri(uriMapper.map(uri: uri) ?? uri)
+                }
             }.eraseToAnyPublisher()
     }
 }

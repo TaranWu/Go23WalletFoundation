@@ -2,11 +2,12 @@
 //  TickerId.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 29.03.2022.
 //
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public struct TickerId: Codable, Hashable {
     let id: String

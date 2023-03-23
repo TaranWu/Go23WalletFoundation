@@ -2,7 +2,7 @@
 //  RealmStore.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 06.04.2022.
 //
 
 import Realm

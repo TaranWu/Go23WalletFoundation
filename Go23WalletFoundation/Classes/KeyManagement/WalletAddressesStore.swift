@@ -2,11 +2,12 @@
 //  WalletStore.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 21.01.2022.
 //
 
 import Foundation
 import Combine
+import Go23WalletAddress
 
 public protocol WalletAddressesStoreMigration {
     func migrate(to store: WalletAddressesStore) -> WalletAddressesStore

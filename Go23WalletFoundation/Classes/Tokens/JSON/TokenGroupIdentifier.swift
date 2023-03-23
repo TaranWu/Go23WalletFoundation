@@ -2,7 +2,7 @@
 //  TokenGroupIdentifier.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Jerome Chan on 24/3/22.
 //
 
 import Foundation

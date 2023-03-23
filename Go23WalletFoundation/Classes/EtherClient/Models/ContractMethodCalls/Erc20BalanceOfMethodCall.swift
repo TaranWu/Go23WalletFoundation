@@ -2,15 +2,16 @@
 //  Erc20BalanceOfMethodCall.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.01.2023.
 //
 
 import Foundation
 import Go23Web3Swift
 import BigInt
+import Go23WalletAddress
 
 struct Erc20BalanceOfMethodCall: ContractMethodCall {
-    typealias Response = BigInt
+    typealias Response = BigUInt
 
     let contract: Go23Wallet.Address
     let name: String = "balanceOf"
@@ -24,13 +25,9 @@ struct Erc20BalanceOfMethodCall: ContractMethodCall {
         self.address = address
     }
 
-    func response(from resultObject: Any) throws -> BigInt {
-        guard let dictionary = resultObject as? [String: AnyObject] else {
-            throw CastError(actualValue: resultObject, expectedType: BigInt.self)
-        }
-
-        guard let balanceOfUnknownType = dictionary["0"], let balance = BigInt(String(describing: balanceOfUnknownType)) else {
-            throw CastError(actualValue: dictionary["0"], expectedType: BigInt.self)
+    func response(from dictionary: [String: Any]) throws -> BigUInt {
+        guard let balanceOfUnknownType = dictionary["0"], let balance = BigUInt(String(describing: balanceOfUnknownType)) else {
+            throw CastError(actualValue: dictionary["0"], expectedType: BigUInt.self)
         }
         return balance
     }

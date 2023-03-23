@@ -9,6 +9,7 @@
 import Foundation
 import Go23WalletOpenSea
 import BigInt
+import Go23WalletAddress
 
 public struct TokenSelection: Equatable, Hashable {
     public let tokenId: TokenId

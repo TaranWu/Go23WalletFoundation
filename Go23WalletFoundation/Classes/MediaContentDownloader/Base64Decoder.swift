@@ -2,7 +2,7 @@
 //  Base64Decoder.swift
 //  Alamofire
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 23.02.2023.
 //
 
 import Foundation

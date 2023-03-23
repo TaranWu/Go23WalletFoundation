@@ -2,7 +2,7 @@
 //  SwapSlippage.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 14.03.2022.
 //
 
 import Foundation

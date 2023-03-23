@@ -2,11 +2,12 @@
 //  TokensService.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 08.07.2022.
 //
 
 import Foundation
 import Combine
+import Go23WalletAddress
 
 public protocol TokenProvidable {
     func token(for contract: Go23Wallet.Address) -> Token?

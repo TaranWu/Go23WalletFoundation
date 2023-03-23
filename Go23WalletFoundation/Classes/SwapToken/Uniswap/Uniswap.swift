@@ -2,11 +2,12 @@
 //  Uniswap.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 21.08.2020.
 //
 
 import Foundation
 import Combine
+import Go23WalletAddress
 
 public struct Uniswap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
     public var objectWillChange: AnyPublisher<Void, Never> {

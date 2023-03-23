@@ -2,12 +2,13 @@
 //  Go23WalletTokensService.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 08.07.2022.
 //
 
 import Foundation
 import Combine
 import CombineExt
+import Go23WalletAddress
 
 public class Go23WalletTokensService: TokensService {
     private var cancelable = Set<AnyCancellable>()
@@ -124,18 +125,17 @@ public class Go23WalletTokensService: TokensService {
                     providers[session.key] = provider
                 }
             }
-
+            
             return providers
         }.assign(to: \.value, on: providers, ownership: .weak)
         .store(in: &cancelable)
     }
 
     private func buildTokenSource(session: WalletSession) -> TokenSourceProvider {
-        let etherToken = MultipleChainsTokensDataStore.functional.etherToken(forServer: session.server)
         let balanceFetcher = TokenBalanceFetcher(
             session: session,
             tokensService: self,
-            etherToken: etherToken,
+            etherToken: MultipleChainsTokensDataStore.functional.etherToken(forServer: session.server),
             assetDefinitionStore: assetDefinitionStore,
             analytics: analytics,
             networkService: networkService)

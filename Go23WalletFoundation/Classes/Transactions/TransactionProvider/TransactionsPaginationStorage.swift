@@ -2,10 +2,11 @@
 //  TransactionsPaginationStorage.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 09.03.2023.
 //
 
 import Foundation
+import Go23WalletAddress
 
 protocol TransactionsPaginationStorage {
     func transactionsPagination(server: RPCServer, fetchType: TransactionFetchType) -> TransactionsPagination?

@@ -2,11 +2,12 @@
 //  WalletStorage.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 22.06.2022.
 //
 
 import Foundation
 import Go23WalletCore
+import Go23WalletAddress
 
 public protocol WalletStorage {
     func name(for address: Go23Wallet.Address) -> String?

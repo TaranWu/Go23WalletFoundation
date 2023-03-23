@@ -2,12 +2,12 @@
 //  SwapError.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 11.05.2022.
 //
 
 import Foundation
 
-public enum SwapError: Error {
+public enum SwapError: LocalizedError {
     case unableToBuildSwapUnsignedTransactionFromSwapProvider
     case unableToBuildSwapUnsignedTransaction(message: String)
     case invalidJson
@@ -16,7 +16,15 @@ public enum SwapError: Error {
     case inner(Error)
     case unknownError
 
-    public var localizedDescription: String {
+    init(error: Error) {
+        if let e = error as? SwapError {
+            self = e
+        } else {
+            self = .inner(error)
+        }
+    }
+
+    public var errorDescription: String? {
         switch self {
         case .unableToBuildSwapUnsignedTransaction(let message):
             return "Unable To Build Swap Unsigned Transaction: \(message)"

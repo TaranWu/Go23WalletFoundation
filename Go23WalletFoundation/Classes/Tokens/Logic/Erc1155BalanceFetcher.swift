@@ -4,7 +4,7 @@ import Foundation
 import BigInt
 import Go23Web3Swift
 import Combine
-
+import Go23WalletAddress
 ///Fetching ERC1155 tokens in 2 steps:
 ///
 ///A. Fetch known contracts and tokenIds owned (now or previously) for each, writing them to JSON. tokenIds are never removed (so we can easily discover their balance is 0 in the next step)

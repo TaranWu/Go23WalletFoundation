@@ -2,13 +2,14 @@
 //  ENSDelegateImpl.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Hwee-Boon Yar on Apr/7/22.
 //
 
 import Foundation
 import Go23WalletENS
 import PromiseKit
 import Combine
+import Go23WalletAddress
 
 class ENSDelegateImpl: ENSDelegate {
     private let blockchainProvider: BlockchainProvider

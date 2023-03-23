@@ -56,7 +56,7 @@ open class TokenSwapper: ObservableObject {
         guard Features.default.isAvailable(.isSwapEnabled) else { return }
 
         reachabilityManager.networkBecomeReachablePublisher
-            .combineLatest(serversProvider.servers, reloadSubject)
+            .combineLatest(serversProvider.enabledServersPublisher, reloadSubject)
             .map { (_, servers, _) in servers }
             .receive(on: RunLoop.main)
             .flatMap { self.fetchAllSupportedTokens(servers: $0) }
@@ -222,9 +222,27 @@ extension TokenSwapper {
 }
 
 fileprivate extension TokenSwapper.functional {
-    static func buildSwapTransaction(unsignedTransaction: UnsignedSwapTransaction, fromToken: TokenToSwap, fromAmount: BigUInt, toToken: TokenToSwap, toAmount: BigUInt) -> (UnconfirmedTransaction, TransactionType.Configuration) {
-        let configuration: TransactionType.Configuration = .swapTransaction(fromToken: fromToken, fromAmount: fromAmount, toToken: toToken, toAmount: toAmount)
-        let transaction: UnconfirmedTransaction = .init(transactionType: .prebuilt(unsignedTransaction.server), value: unsignedTransaction.value, recipient: nil, contract: unsignedTransaction.to, data: unsignedTransaction.data, gasLimit: unsignedTransaction.gasLimit, gasPrice: unsignedTransaction.gasPrice)
+
+    static func buildSwapTransaction(unsignedTransaction: UnsignedSwapTransaction,
+                                     fromToken: TokenToSwap,
+                                     fromAmount: BigUInt,
+                                     toToken: TokenToSwap,
+                                     toAmount: BigUInt) -> (UnconfirmedTransaction, TransactionType.Configuration) {
+
+        let configuration: TransactionType.Configuration = .swapTransaction(
+            fromToken: fromToken,
+            fromAmount: fromAmount,
+            toToken: toToken,
+            toAmount: toAmount)
+
+        let transaction: UnconfirmedTransaction = .init(
+            transactionType: .prebuilt(unsignedTransaction.server),
+            value: unsignedTransaction.value,
+            recipient: nil,
+            contract: unsignedTransaction.to,
+            data: unsignedTransaction.data,
+            gasLimit: unsignedTransaction.gasLimit,
+            gasPrice: unsignedTransaction.gasPrice)
 
         return (transaction, configuration)
     }

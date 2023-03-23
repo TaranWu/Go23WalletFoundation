@@ -2,11 +2,12 @@
 //  Erc20DecimalsMethodCall.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.01.2023.
 //
 
 import Foundation
 import Go23Web3Swift
+import Go23WalletAddress
 
 struct Erc20DecimalsMethodCall: ContractMethodCall {
     typealias Response = Int
@@ -20,11 +21,7 @@ struct Erc20DecimalsMethodCall: ContractMethodCall {
         self.contract = contract
     }
 
-    func response(from resultObject: Any) throws -> Int {
-        guard let dictionary = resultObject as? [String: AnyObject] else {
-            throw CastError(actualValue: resultObject, expectedType: [String: AnyObject].self)
-        }
-
+    func response(from dictionary: [String: Any]) throws -> Int {
         guard let decimalsOfUnknownType = dictionary["0"], let decimals = Int(String(describing: decimalsOfUnknownType)) else {
             throw CastError(actualValue: dictionary["0"], expectedType: Int.self)
         }

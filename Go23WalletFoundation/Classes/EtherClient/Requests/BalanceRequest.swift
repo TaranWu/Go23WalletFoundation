@@ -3,6 +3,7 @@
 import BigInt
 import Foundation
 import Go23JSONRPCKit
+import Go23WalletAddress
 
 struct BalanceRequest: Go23JSONRPCKit.Request {
     typealias Response = Balance
@@ -18,7 +19,7 @@ struct BalanceRequest: Go23JSONRPCKit.Request {
     }
 
     func response(from resultObject: Any) throws -> Response {
-        if let response = resultObject as? String, let value = BigInt(response.drop0x, radix: 16) {
+        if let response = resultObject as? String, let value = BigUInt(response.drop0x, radix: 16) {
             return Balance(value: value)
         } else {
             throw CastError(actualValue: resultObject, expectedType: Response.self)

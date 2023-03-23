@@ -2,7 +2,7 @@
 //  GetGasLimit.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 18.08.2022.
 //
 
 import Foundation

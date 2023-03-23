@@ -2,6 +2,7 @@
 
 import Foundation
 import RealmSwift
+import Go23WalletAddress
 
 class DeletedContract: Object {
     @objc dynamic var primaryKey: String = ""

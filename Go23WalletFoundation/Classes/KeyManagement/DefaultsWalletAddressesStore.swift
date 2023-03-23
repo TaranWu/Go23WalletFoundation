@@ -2,11 +2,12 @@
 //  DefaultsWalletAddressesStore.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 22.01.2022.
 //
 
 import Foundation
 import Combine
+import Go23WalletAddress
 
 public struct DefaultsWalletAddressesStore: WalletAddressesStore {
     private struct Keys {
@@ -92,6 +93,8 @@ public struct DefaultsWalletAddressesStore: WalletAddressesStore {
             addToListOfEthereumAddressesWithSeed(wallet.address)
         case .privateKey:
             addToListOfEthereumAddressesWithPrivateKeys(wallet.address)
+        case .hardware:
+            preconditionFailure("Since we only support hardware wallet *after* we stop using this form of persisting wallets, so hardware wallets never get added here")
         case .watch:
             addToListOfWatchEthereumAddresses(wallet.address)
         }

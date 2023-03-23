@@ -2,6 +2,7 @@
 
 import Combine
 import Foundation
+import Go23WalletAddress
 
 public protocol BlockscanChatServiceDelegate: AnyObject {
     func openBlockscanChat(url: URL, for: BlockscanChatService)
@@ -120,6 +121,7 @@ public class BlockscanChatService {
     }
 
     private func periodicallyRefreshUnreadCountForCurrentWallet() {
+        //TODO refresh for all wallets (maybe less often as the current wallet). Not doing it yet because we don't have a way to show the unread count for inactive wallets
         refreshUnreadCountForCurrentWallet()
     }
 

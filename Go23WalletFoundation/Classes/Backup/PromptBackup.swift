@@ -2,7 +2,7 @@
 //  PromptBackup.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 29.12.2022.
 //
 
 import Foundation

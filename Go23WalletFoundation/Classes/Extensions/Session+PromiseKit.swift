@@ -92,6 +92,7 @@ extension APIKitSession {
                         //Spotted for Palm chain (mainnet)
                         return SendTransactionNotRetryableError(type: .insufficientFunds(message: message), server: server)
                     } else {
+                        RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.responseError | code: \(code) | message: \(message)", url: baseUrl.absoluteString)
                         return SendTransactionNotRetryableError(type: .unknown(code: code, message: message), server: server)
                     }
                 case .responseNotFound(_, let object):break
@@ -107,7 +108,8 @@ extension APIKitSession {
 
             if let apiKitError = e as? APIKit.ResponseError {
                 switch apiKitError {
-                case .nonHTTPURLResponse:break
+                case .nonHTTPURLResponse:
+                    RemoteLogger.instance.logRpcOrOtherWebError("APIKit.ResponseError.nonHTTPURLResponse", url: baseUrl.absoluteString)
                 case .unacceptableStatusCode(let statusCode):
                     if statusCode == 401 {
                         return RpcNodeRetryableRequestError.invalidApiKey(server: server, domainName: baseUrl.host ?? "")
@@ -123,6 +125,8 @@ extension APIKitSession {
                 //This is potentially Binance testnet timing out
                 return RpcNodeRetryableRequestError.possibleBinanceTestnetTimeout
             }
+
+            RemoteLogger.instance.logRpcOrOtherWebError("Other Error: \(e) | \(e.localizedDescription)", url: baseUrl.absoluteString)
             return nil
         }
     }

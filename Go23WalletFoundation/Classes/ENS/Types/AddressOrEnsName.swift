@@ -1,6 +1,7 @@
 // Copyright © 2019 Stormbird PTE. LTD.
 
 import Foundation
+import Go23WalletAddress
 
 //TODO this should probably be part of Go23Wallet.Address functionality instead, but narrowing the scope of the current change when we added this
 public enum AddressOrEnsName: Equatable {

@@ -2,11 +2,12 @@
 //  HoneySwap.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 19.02.2021.
 //
 
 import Foundation
 import Combine
+import Go23WalletAddress
 
 public class HoneySwap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
     public var objectWillChange: AnyPublisher<Void, Never> {

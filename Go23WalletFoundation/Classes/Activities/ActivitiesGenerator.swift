@@ -2,13 +2,14 @@
 //  ActivitiesGenerator.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran
+//  Created by Vladyslav Shepitko on 08.03.2023.
 //
 
 import Foundation
 import CoreFoundation
 import Combine
 import CombineExt
+import Go23WalletAddress
 
 class ActivitiesGenerator {
     private let sessionsProvider: SessionsProvider

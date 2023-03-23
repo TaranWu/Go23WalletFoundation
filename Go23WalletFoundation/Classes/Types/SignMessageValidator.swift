@@ -2,7 +2,7 @@
 //  SignMessageValidator.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 21.02.2023.
 //
 
 import Foundation

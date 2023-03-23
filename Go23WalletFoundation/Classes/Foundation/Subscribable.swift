@@ -2,7 +2,7 @@
 //  Subscribable.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 02.03.2023.
 //
 
 import Foundation

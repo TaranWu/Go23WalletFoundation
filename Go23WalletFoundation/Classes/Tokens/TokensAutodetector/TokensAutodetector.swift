@@ -2,13 +2,14 @@
 //  TokensAutodetector.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 23.02.2022.
 //
 
 import Foundation
 import Go23WalletCore
 import PromiseKit
 import Combine
+import Go23WalletAddress
 
 public protocol TokensAutodetector: NSObjectProtocol {
     var tokensOrContractsDetected: AnyPublisher<[TokenOrContract], Never> { get }

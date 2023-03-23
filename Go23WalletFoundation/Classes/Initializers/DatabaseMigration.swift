@@ -2,6 +2,7 @@
 
 import Foundation
 import RealmSwift
+import Go23WalletAddress
 
 public class DatabaseMigration: Initializer {
     let account: Wallet
@@ -221,7 +222,6 @@ extension DatabaseMigration {
 
     public func oneTimeCreationOfOneDatabaseToHoldAllChains(assetDefinitionStore: AssetDefinitionStore) {
         let migration = self
-
         let exists: Bool
         if let path = migration.config.fileURL?.path {
             exists = FileManager.default.fileExists(atPath: path)

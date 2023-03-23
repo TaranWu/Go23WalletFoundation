@@ -2,7 +2,7 @@
 //  WalletSummary.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 26.05.2021.
 //
 
 import Foundation

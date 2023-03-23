@@ -1,6 +1,7 @@
 // Copyright © 2020 Stormbird PTE. LTD.
 
 import Foundation
+import Go23WalletAddress
 
 public protocol AnalyticsEventPropertyValue {
     var value: Any { get }

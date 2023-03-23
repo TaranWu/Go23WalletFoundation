@@ -2,7 +2,7 @@
 //  AssetDefinitionNetworking.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 19.12.2022.
 //
 
 import Foundation
@@ -58,10 +58,10 @@ extension AssetDefinitionNetworking {
         }
 
         public func asURLRequest() throws -> URLRequest {
-            guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-            else { throw URLError(.badURL) }
+            guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { throw URLError(.badURL) }
 
             var request = try URLRequest(url: components.asURL(), method: .get)
+
             //TODO improve check. We should store the IPFS hash, if the hash is different, download the new file, otherwise it has not changed
             //IPFS, at least on Infura returns a `304` even though we pass in a timestamp that is older than the creation date for the "IF-Modified-Since" header. So we always download the entire file. This only works decently when we don't have many TokenScript using EIP-5169/`scriptURI()`
             request.allHTTPHeaderFields = httpHeadersWithLastModifiedTimestamp(

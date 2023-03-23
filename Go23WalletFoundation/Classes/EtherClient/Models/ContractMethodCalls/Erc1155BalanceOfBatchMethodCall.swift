@@ -2,12 +2,13 @@
 //  Erc1155BalanceOfBatchMethodCall.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.01.2023.
 //
 
 import Foundation
 import BigInt
 import Go23Web3Swift
+import Go23WalletAddress
 
 struct Erc1155BalanceOfBatchMethodCall: ContractMethodCall {
     typealias Response = [BigInt: BigUInt]
@@ -30,11 +31,7 @@ struct Erc1155BalanceOfBatchMethodCall: ContractMethodCall {
         self.tokenIds = tokenIds
     }
 
-    func response(from resultObject: Any) throws -> [BigInt: BigUInt] {
-        guard let dictionary = resultObject as? [String: AnyObject] else {
-            throw CastError(actualValue: resultObject, expectedType: [String: AnyObject].self)
-        }
-
+    func response(from dictionary: [String: Any]) throws -> [BigInt: BigUInt] {
         guard let balances = dictionary["0"] as? [BigUInt], balances.count == tokenIds.count else {
             throw CastError(actualValue: dictionary["0"], expectedType: [BigUInt].self)
         }

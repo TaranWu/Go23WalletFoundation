@@ -2,10 +2,11 @@
 //  TokenToSwap.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 11.05.2022.
 //
 
 import Foundation
+import Go23WalletAddress
 
 public struct TokenToSwap {
     public let address: Go23Wallet.Address

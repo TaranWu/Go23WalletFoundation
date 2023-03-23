@@ -2,7 +2,7 @@
 //  ABI.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 11.05.2021.
 //
 
 import Foundation

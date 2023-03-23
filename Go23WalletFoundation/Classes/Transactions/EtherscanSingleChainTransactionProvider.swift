@@ -109,6 +109,9 @@ class EtherscanSingleChainTransactionProvider: SingleChainTransactionProvider {
         autoDetectErc20TransactionsOperation = transactionsNetworkProvider
             .getErc20Transactions(startBlock: startBlock)
             .sink(receiveCompletion: { [weak self] result in
+                if case .failure(let e) = result {
+                    logError(e, function: #function, rpcServer: server, address: wallet)
+                }
                 self?.autoDetectErc20TransactionsOperation = nil
             }, receiveValue: { [weak self] transactions, maxBlockNumber in
                 guard let strongSelf = self else { return }
@@ -130,6 +133,9 @@ class EtherscanSingleChainTransactionProvider: SingleChainTransactionProvider {
         autoDetectErc721TransactionsOperation = transactionsNetworkProvider
             .getErc721Transactions(startBlock: startBlock)
             .sink(receiveCompletion: { [weak self] result in
+                if case .failure(let e) = result {
+                    logError(e, function: #function, rpcServer: server, address: wallet)
+                }
                 self?.autoDetectErc721TransactionsOperation = nil
             }, receiveValue: { [weak self] transactions, maxBlockNumber in
                 guard let strongSelf = self else { return }

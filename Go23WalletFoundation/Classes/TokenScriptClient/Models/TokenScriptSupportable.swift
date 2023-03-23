@@ -2,7 +2,7 @@
 //  TokenScriptSupportable.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 18.05.2022.
 //
 
 import Foundation
@@ -15,7 +15,7 @@ public protocol TokenScriptSupportable {
     var type: TokenType { get }
     var decimals: Int { get }
     var server: RPCServer { get }
-    var valueBI: BigInt { get }
+    var valueBI: BigUInt { get }
     var balanceNft: [TokenBalanceValue] { get }
 }
 

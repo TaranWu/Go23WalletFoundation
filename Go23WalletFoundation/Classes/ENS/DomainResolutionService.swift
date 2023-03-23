@@ -2,13 +2,14 @@
 //  DomainResolutionServiceType.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 27.01.2022.
 //
 
 import Foundation
 import Combine
 import Go23WalletENS
 import Go23WalletCore
+import Go23WalletAddress
 
 public class DomainResolutionService {
     private let storage: EnsRecordsStorage

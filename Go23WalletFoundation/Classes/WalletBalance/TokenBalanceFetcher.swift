@@ -2,7 +2,7 @@
 //  TokenBalanceFetcher.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 26.05.2021.
 //
 
 import Foundation
@@ -12,6 +12,7 @@ import Go23WalletOpenSea
 import BigInt
 import PromiseKit
 import SwiftyJSON
+import Go23WalletAddress
 
 public protocol TokenBalanceFetcherDelegate: AnyObject {
     func didUpdateBalance(value operations: [AddOrUpdateTokenAction], in fetcher: TokenBalanceFetcher)

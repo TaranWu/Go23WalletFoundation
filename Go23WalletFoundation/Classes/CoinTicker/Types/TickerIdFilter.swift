@@ -2,10 +2,11 @@
 //  TickerIdFilter.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 29.03.2022.
 //
 
 import Foundation
+import Go23WalletAddress
 
 public class TickerIdFilter {
     //TODO remove if we don't use it for debugging anymore

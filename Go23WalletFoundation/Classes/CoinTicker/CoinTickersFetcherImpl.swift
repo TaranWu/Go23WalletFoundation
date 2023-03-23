@@ -2,12 +2,13 @@
 //  BaseCoinTickersFetcher.swift
 //  Alamofire
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 15.09.2022.
 //
 
 import Foundation
 import Combine
 import Go23WalletCore
+import Go23WalletAddress
 
 public protocol CoinTickersFetcherProvider {
     func fetchTickers(for tokens: [TokenMappedToTicker], force: Bool, currency: Currency)
@@ -133,7 +134,7 @@ private protocol CoinTickerServiceIdentifieble {
 extension CoinTickerServiceIdentifieble {
     var coinTickerProviderType: CoinTickersFetcherProvider.Type {
         switch server {
-        case .main, .classic, .callisto, .custom, .goerli, .xDai, .artis_sigma1, .binance_smart_chain, .binance_smart_chain_testnet, .artis_tau1, .heco, .heco_testnet, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .polygon, .mumbai_testnet, .optimistic, .cronosTestnet, .arbitrum, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .ioTeX, .ioTeXTestnet, .optimismGoerli, .arbitrumGoerli, .cronosMainnet, .okx:
+        case .main, .classic, .callisto, .custom, .goerli, .xDai, .artis_sigma1, .binance_smart_chain, .binance_smart_chain_testnet, .artis_tau1, .heco, .heco_testnet, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .polygon, .mumbai_testnet, .optimistic, .cronosTestnet, .arbitrum, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .ioTeX, .ioTeXTestnet, .optimismGoerli, .arbitrumGoerli, .cronosMainnet, .okx, .sepolia:
             return CoinGeckoTickersFetcher.self
         }
     }

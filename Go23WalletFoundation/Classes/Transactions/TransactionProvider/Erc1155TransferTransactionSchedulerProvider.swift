@@ -2,7 +2,7 @@
 //  Erc1155TransferTransactionSchedulerProvider.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran 
+//  Created by Vladyslav Shepitko on 08.03.2023.
 //
 
 import Foundation

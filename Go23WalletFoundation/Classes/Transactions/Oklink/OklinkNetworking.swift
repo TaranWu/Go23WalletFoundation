@@ -1,14 +1,15 @@
 //
 //  OklinkNetworking.swift
-//  Go23Wallet
+//  Alamofire
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 07.03.2023.
 //
 
 import Foundation
 import Go23WalletCore
 import Combine
 import SwiftyJSON
+import Go23WalletAddress
 
 //NOTE: as api dosn't return localized operation contract, symbol and decimal for transfer transactions, fetch them from rpc node
 public class OklinkApiNetworking: ApiNetworking {
@@ -165,7 +166,7 @@ public class OklinkApiNetworking: ApiNetworking {
                     .setFailureType(to: PromiseError.self)
                     .map { operations -> TransactionsResponse<TransactionInstance> in
                         let transactions = self.map(erc1155TokenTransferTransactions: response.transactions, operations: operations)
-                        let mergedTransactions = Covalent.ToNativeTransactionMapper.mergeTransactionOperationsIntoSingleTransaction(transactions)
+                        _ = Covalent.ToNativeTransactionMapper.mergeTransactionOperationsIntoSingleTransaction(transactions)
                         return TransactionsResponse<TransactionInstance>(transactions: transactions, pagination: response.pagination)
                     }.eraseToAnyPublisher()
             }.eraseToAnyPublisher()
@@ -425,6 +426,7 @@ private extension RPCServer {
         case .optimismGoerli: return ""
         case .arbitrumGoerli: return ""
         case .okx: return "OKC"
+        case .sepolia: return ""
         }
     }
 }

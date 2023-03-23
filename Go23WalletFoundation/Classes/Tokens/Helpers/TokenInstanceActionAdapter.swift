@@ -2,7 +2,7 @@
 //  TokenInstanceActionAdapter.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 01.03.2023.
 //
 
 import Foundation
@@ -92,7 +92,7 @@ public struct TokenInstanceActionAdapter {
     }
 
     public func state(for action: TokenInstanceAction,
-                      fungibleBalance: BigInt?) -> TokenInstanceActionAdapter.ActionState {
+                      fungibleBalance: BigUInt?) -> TokenInstanceActionAdapter.ActionState {
 
         state(
             for: action,
@@ -101,7 +101,7 @@ public struct TokenInstanceActionAdapter {
     }
 
     public func tokenScriptWarningMessage(for action: TokenInstanceAction,
-                                          fungibleBalance: BigInt?) -> TokenInstanceActionAdapter.TokenScriptWarningMessage? {
+                                          fungibleBalance: BigUInt?) -> TokenInstanceActionAdapter.TokenScriptWarningMessage? {
 
         tokenScriptWarningMessage(
             for: action,
@@ -111,7 +111,7 @@ public struct TokenInstanceActionAdapter {
 
     private func tokenScriptWarningMessage(for action: TokenInstanceAction,
                                            selectedTokenHolders: [TokenHolder],
-                                           fungibleBalance: BigInt?) -> TokenInstanceActionAdapter.TokenScriptWarningMessage? {
+                                           fungibleBalance: BigUInt?) -> TokenInstanceActionAdapter.TokenScriptWarningMessage? {
 
         if let selection = action.activeExcludingSelection(selectedTokenHolders: [tokenHolder], forWalletAddress: session.account.address) {
             if let denialMessage = selection.denial {
@@ -127,7 +127,7 @@ public struct TokenInstanceActionAdapter {
 
     private func state(for action: TokenInstanceAction,
                        selectedTokenHolders: [TokenHolder],
-                       fungibleBalance: BigInt?) -> TokenInstanceActionAdapter.ActionState {
+                       fungibleBalance: BigUInt?) -> TokenInstanceActionAdapter.ActionState {
 
         func _configButton(action: TokenInstanceAction) -> TokenInstanceActionAdapter.ActionState {
             if let selection = action.activeExcludingSelection(selectedTokenHolders: [tokenHolder], forWalletAddress: session.account.address, fungibleBalance: fungibleBalance) {

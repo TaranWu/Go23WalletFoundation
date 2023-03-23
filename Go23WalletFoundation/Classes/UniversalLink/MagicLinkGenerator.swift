@@ -2,11 +2,12 @@
 //  MagicLinkGenerator.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 01.03.2023.
 //
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public class MagicLinkGenerator {
     private let keystore: Keystore
@@ -20,7 +21,7 @@ public class MagicLinkGenerator {
     }
 
     public func generateTransferLink(magicLinkData: MagicLinkGenerator.MagicLinkData,
-                                     linkExpiryDate: Date) throws -> String {
+                                     linkExpiryDate: Date) async throws -> String {
 
         let order = Order(
             price: BigUInt(0),
@@ -33,7 +34,7 @@ public class MagicLinkGenerator {
             spawnable: false,
             nativeCurrencyDrop: false)
 
-        let signedOrders = try OrderHandler(keystore: keystore, prompt: prompt).signOrders(
+        let signedOrders = try await OrderHandler(keystore: keystore, prompt: prompt).signOrders(
             orders: [order],
             account: session.account.address,
             tokenType: magicLinkData.tokenType)
@@ -46,7 +47,7 @@ public class MagicLinkGenerator {
         //note that the price must be in szabo for a sell link, price must be rounded
     public func generateSellLink(magicLinkData: MagicLinkGenerator.MagicLinkData,
                                  linkExpiryDate: Date,
-                                 ethCost: Double) throws -> String {
+                                 ethCost: Double) async throws -> String {
 
         let ethCostRoundedTo5dp = String(format: "%.5f", Float(String(ethCost))!)
         let cost = Decimal(string: ethCostRoundedTo5dp)! * Decimal(string: "1000000000000000000")!
@@ -63,7 +64,7 @@ public class MagicLinkGenerator {
             spawnable: false,
             nativeCurrencyDrop: false)
 
-        let signedOrders = try OrderHandler(keystore: keystore, prompt: prompt).signOrders(
+        let signedOrders = try await OrderHandler(keystore: keystore, prompt: prompt).signOrders(
             orders: [order],
             account: session.account.address,
             tokenType: magicLinkData.tokenType)

@@ -7,7 +7,7 @@ import Go23Web3Swift
 import Go23WalletCore
 
 final class GetErc20Balance {
-    private var inFlightPublishers: [String: AnyPublisher<BigInt, SessionTaskError>] = [:]
+    private var inFlightPublishers: [String: AnyPublisher<BigUInt, SessionTaskError>] = [:]
     private let queue = DispatchQueue(label: "org.Go23Wallet.swift.getErc20Balance")
     private let blockchainProvider: BlockchainProvider
 
@@ -15,11 +15,11 @@ final class GetErc20Balance {
         self.blockchainProvider = blockchainProvider
     }
 
-    func getErc20Balance(for address: Go23Wallet.Address, contract: Go23Wallet.Address) -> AnyPublisher<BigInt, SessionTaskError> {
+    func getErc20Balance(for address: Go23Wallet.Address, contract: Go23Wallet.Address) -> AnyPublisher<BigUInt, SessionTaskError> {
         Just(contract)
             .setFailureType(to: SessionTaskError.self)
             .receive(on: queue)
-            .flatMap { [weak self, queue, blockchainProvider] contract -> AnyPublisher<BigInt, SessionTaskError> in
+            .flatMap { [weak self, queue, blockchainProvider] contract -> AnyPublisher<BigUInt, SessionTaskError> in
                 let key = "\(address.eip55String)-\(contract.eip55String)"
 
                 if let publisher = self?.inFlightPublishers[key] {

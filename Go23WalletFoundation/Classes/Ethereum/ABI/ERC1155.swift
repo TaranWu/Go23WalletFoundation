@@ -1,4 +1,5 @@
 import Foundation
+import Go23WalletAddress
 
 extension Go23Wallet.Ethereum.ABI {
     public static let erc1155String: String = {

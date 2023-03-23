@@ -2,11 +2,12 @@
 //  ContractAddressObject.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 05.09.2022.
 //
 
 import Foundation
 import RealmSwift
+import Go23WalletAddress
 
 class ContractAddressObject: Object {
     static func generatePrimaryKey(fromContract contract: Go23Wallet.Address, server: RPCServer) -> String {

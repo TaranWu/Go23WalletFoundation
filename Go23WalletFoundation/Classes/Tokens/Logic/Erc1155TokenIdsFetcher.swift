@@ -4,6 +4,7 @@ import Foundation
 import BigInt
 import Go23Web3Swift
 import Combine
+import Go23WalletAddress
 
 struct Erc1155TokenIds: Codable {
     typealias ContractsAndTokenIds = [Go23Wallet.Address: Set<BigUInt>]

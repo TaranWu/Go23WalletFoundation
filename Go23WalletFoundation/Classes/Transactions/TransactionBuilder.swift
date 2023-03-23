@@ -2,12 +2,13 @@
 //  TransactionBuilder.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 21.01.2023.
 //
 
 import Foundation
 import BigInt
 import Combine
+import Go23WalletAddress
 
 public final class TransactionBuilder {
     private typealias LocalizedOperation = (name: String, symbol: String, decimals: Int, tokenType: TokenType)
@@ -61,11 +62,26 @@ public final class TransactionBuilder {
             }.eraseToAnyPublisher()
     }
 
-    private func fetchLocalizedOperation(value: BigUInt, from: String, contract: Go23Wallet.Address, to recipient: Go23Wallet.Address, functionCall: DecodedFunctionCall) -> AnyPublisher<[LocalizedOperationObjectInstance], Never> {
+    private func fetchLocalizedOperation(value: BigUInt,
+                                         from: String,
+                                         contract: Go23Wallet.Address,
+                                         to recipient: Go23Wallet.Address,
+                                         functionCall: DecodedFunctionCall) -> AnyPublisher<[LocalizedOperationObjectInstance], Never> {
+
         fetchLocalizedOperation(contract: contract)
             .map { token -> [LocalizedOperationObjectInstance] in
                 let operationType = self.mapTokenTypeToTransferOperationType(token.tokenType, functionCall: functionCall)
-                let result = LocalizedOperationObjectInstance(from: from, to: recipient.eip55String, contract: contract, type: operationType.rawValue, value: String(value), tokenId: "", symbol: token.symbol, name: token.name, decimals: token.decimals)
+                let result = LocalizedOperationObjectInstance(
+                    from: from,
+                    to: recipient.eip55String,
+                    contract: contract,
+                    type: operationType.rawValue,
+                    value: String(value),
+                    tokenId: "",
+                    symbol: token.symbol,
+                    name: token.name,
+                    decimals: token.decimals)
+
                 return [result]
             }.replaceError(with: [])
             .eraseToAnyPublisher()

@@ -2,7 +2,7 @@
 //  WalletBalanceFetcherType.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 28.05.2021.
 //
 
 import Foundation

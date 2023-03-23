@@ -5,6 +5,7 @@
 import Foundation
 import Combine
 import Go23WalletCore
+import Go23WalletAddress
 
 public class IsInterfaceSupported165 {
     private let fileName: String

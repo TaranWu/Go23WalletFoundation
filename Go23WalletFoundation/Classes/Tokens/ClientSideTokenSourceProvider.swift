@@ -2,7 +2,7 @@
 //  ClientSideTokenSourceProvider.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 08.07.2022.
 //
 
 import Foundation
@@ -74,10 +74,10 @@ public class ClientSideTokenSourceProvider: TokenSourceProvider {
     }
 
     private func startTokenAutodetection() {
-        tokensAutodetector.tokensOrContractsDetected
-            .sink { [tokensDataStore] tokensOrContracts in
-                tokensDataStore.addOrUpdate(tokensOrContracts: tokensOrContracts)
-            }.store(in: &cancelable)
+        tokensAutodetector
+            .tokensOrContractsDetected
+            .sink { [tokensDataStore] in tokensDataStore.addOrUpdate(tokensOrContracts: $0) }
+            .store(in: &cancelable)
 
         tokensAutodetector.start()
     }
@@ -117,6 +117,7 @@ public class ClientSideTokenSourceProvider: TokenSourceProvider {
 
 extension ClientSideTokenSourceProvider: TokenBalanceFetcherDelegate {
     public func didUpdateBalance(value actions: [AddOrUpdateTokenAction], in fetcher: TokenBalanceFetcher) {
+        crashlytics.logLargeNftJsonFiles(for: actions, fileSizeThreshold: 10)
         tokensDataStore.addOrUpdate(with: actions)
     }
 }

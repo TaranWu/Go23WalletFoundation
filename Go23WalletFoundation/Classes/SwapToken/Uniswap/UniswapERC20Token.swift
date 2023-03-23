@@ -2,10 +2,11 @@
 //  UniswapERC20Token.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 25.08.2020.
 //
 
 import Foundation
+import Go23WalletAddress
 
 struct UniswapERC20Token {
     let name: String

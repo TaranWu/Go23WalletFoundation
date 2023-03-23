@@ -2,6 +2,7 @@
 
 import Foundation
 import RealmSwift
+import Go23WalletAddress
 
 class HiddenContract: Object {
     @objc dynamic var primaryKey: String = ""

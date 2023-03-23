@@ -2,7 +2,7 @@
 //  ImageOrWebImageUrl.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 13.05.2022.
 //
 
 import UIKit

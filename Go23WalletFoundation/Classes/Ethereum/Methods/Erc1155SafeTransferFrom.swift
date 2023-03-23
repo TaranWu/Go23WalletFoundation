@@ -2,10 +2,11 @@
 //  Erc1155SafeTransferFrom.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 08.11.2022.
 //
 
 import Foundation
+import Go23WalletAddress
 
 public struct Erc1155SafeTransferFrom: ContractMethod {
     let recipient: Go23Wallet.Address

@@ -2,11 +2,12 @@
 //  UniqueNonEmptyContracts.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 06.03.2023.
 //
 
 import Foundation
 import SwiftyJSON
+import Go23WalletAddress
 
 public struct UniqueNonEmptyContracts {
     let uniqueNonEmptyContracts: [Go23Wallet.Address]

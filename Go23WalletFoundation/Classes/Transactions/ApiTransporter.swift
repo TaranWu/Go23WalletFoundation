@@ -2,7 +2,7 @@
 //  ApiTransporter.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 28.02.2023.
 //
 
 import Foundation

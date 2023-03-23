@@ -2,6 +2,7 @@
 
 import Foundation
 import Combine
+import Go23WalletAddress
 
 public class IsErc721ForTicketsContract {
     private let blockchainProvider: BlockchainProvider

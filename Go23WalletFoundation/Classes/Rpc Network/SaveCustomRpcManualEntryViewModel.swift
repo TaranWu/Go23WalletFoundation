@@ -2,7 +2,7 @@
 //  SaveCustomRpcViewModel.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Jerome Chan on 7/11/21.
 //
 
 import Foundation

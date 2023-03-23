@@ -2,10 +2,11 @@
 //  Erc721TokenTransferTransaction.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 07.03.2023.
 //
 
 import Foundation
+import Go23WalletAddress
 
 struct Erc721TokenTransferTransaction {
     let hash: String

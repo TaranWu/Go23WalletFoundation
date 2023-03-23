@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'Go23WalletFoundation'
-  s.version          = '1.0.9'
+  s.version          = '1.1.0'
   s.summary          = 'Go23Wallet functionality'
 
   s.description      = <<-DESC
@@ -35,17 +35,17 @@ Pod::Spec.new do |s|
   # s.public_header_files = 'Pod/Classes/**/*.h'
   # s.frameworks = 'UIKit', 'MapKit'
   
-  s.dependency 'BigInt', '~> 3.1'
+  s.dependency 'BigInt'
   s.dependency 'Go23JSONRPCKit'
   s.dependency 'APIKit', '5.1.0'
   s.dependency 'RealmSwift'
-  s.dependency 'CryptoSwift', '~> 1.4'
+  s.dependency 'CryptoSwift'
   s.dependency 'Go23TrustKeystore'
-  s.dependency 'SwiftyJSON', '5.0.0'
+  s.dependency 'SwiftyJSON'
   s.dependency 'Go23Web3Swift'
   s.dependency 'PromiseKit/CorePromise'
   s.dependency 'Kanna'
-  s.dependency 'TrustWalletCore', '2.6.34'
+  s.dependency 'TrustWalletCore'
   s.dependency 'Go23EthereumABI'
   s.dependency 'BlockiesSwift'
   s.dependency 'Go23WalletAddress'

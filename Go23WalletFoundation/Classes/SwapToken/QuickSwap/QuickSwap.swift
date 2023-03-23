@@ -2,7 +2,7 @@
 //  QuickSwap.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 21.08.2020.
 //
 
 import Foundation

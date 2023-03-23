@@ -2,7 +2,7 @@
 //  Formatters.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Jerome Chan on 17/1/22.
 //
 
 import Foundation

@@ -23,6 +23,7 @@ struct GetTransactionRequest: Go23JSONRPCKit.Request {
         guard let dict = resultObject as? [String: AnyObject] else {
             throw CastError(actualValue: resultObject, expectedType: Response.self)
         }
-        return EthereumTransaction(dict)
+        
+        return EthereumTransaction(dictionary: dict)
     }
 }

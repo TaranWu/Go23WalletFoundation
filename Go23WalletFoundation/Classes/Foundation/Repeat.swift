@@ -2,7 +2,7 @@
 //  Repeat.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Jerome Chan on 14/3/22.
 //
 
 import Foundation

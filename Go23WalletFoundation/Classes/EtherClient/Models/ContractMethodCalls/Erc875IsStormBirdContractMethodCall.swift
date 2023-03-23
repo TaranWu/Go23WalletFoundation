@@ -2,7 +2,7 @@
 //  Erc875IsStormBirdContractMethodCall.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.01.2023.
 //
 
 import Foundation
@@ -20,11 +20,7 @@ struct Erc875IsStormBirdContractMethodCall: ContractMethodCall {
         self.contract = contract
     }
 
-    func response(from resultObject: Any) throws -> Bool {
-        guard let dictionary = resultObject as? [String: AnyObject] else {
-            throw CastError(actualValue: resultObject, expectedType: [String: AnyObject].self)
-        }
-
+    func response(from dictionary: [String: Any]) throws -> Bool {
         guard let isErc875 = dictionary["0"] as? Bool else {
             throw CastError(actualValue: dictionary["0"], expectedType: Bool.self)
         }

@@ -7,7 +7,7 @@
 import BigInt
 import Foundation
 import Go23TrustKeystore
-
+import Go23WalletAddress
 /// Encodes fields according to Ethereum's Application Binary Interface Specification
 ///
 /// - SeeAlso: https://solidity.readthedocs.io/en/develop/abi-spec.html

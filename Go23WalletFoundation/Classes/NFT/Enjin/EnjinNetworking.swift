@@ -2,13 +2,14 @@
 //  EnjinNetworking.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 27.04.2022.
 //
 
 import Foundation
 import Go23WalletCore
 import Apollo
 import Combine
+import Go23WalletAddress
 
 final class EnjinNetworking {
 

@@ -13,10 +13,10 @@ public protocol TransactionConfiguratorDelegate: AnyObject {
     func updateNonce(to nonce: Int, in configurator: TransactionConfigurator)
 }
 
-public enum TransactionConfiguratorError: Error {
+public enum TransactionConfiguratorError: LocalizedError {
     case impossibleToBuildConfiguration
 
-    var localizedDescription: String {
+    public var errorDescription: String? {
         return "Impossible To Build Configuration"
     }
 }
@@ -105,6 +105,7 @@ public class TransactionConfigurator {
             .gasLimit(wallet: session.account.address, value: value, toAddress: toAddress, data: currentConfiguration.data)
             .sink(receiveCompletion: { result in
                 guard case .failure(let e) = result else { return }
+                logError(e, rpcServer: self.session.server)
             }, receiveValue: { gasLimit in
                 var customConfig = self.configurations.custom
                 customConfig.setEstimated(gasLimit: gasLimit)
@@ -125,10 +126,9 @@ public class TransactionConfigurator {
     }
 
     private func estimateGasPrice() {
-        gasPriceEstimator.estimateGasPrice()
-            .sink(receiveCompletion: { [session] result in
-                guard case .failure(let e) = result else { return }
-            }, receiveValue: { estimates in
+        Task { @MainActor in
+            do {
+                let estimates = try await gasPriceEstimator.estimateGasPrice()
                 let standard = estimates.standard
                 var customConfig = self.configurations.custom
                 customConfig.setEstimated(gasPrice: standard)
@@ -149,7 +149,10 @@ public class TransactionConfigurator {
                 }
 
                 self.delegate?.gasPriceEstimateUpdated(to: standard, in: self)
-            }).store(in: &cancelable)
+            } catch {
+                logError(error, rpcServer: session.server)
+            }
+        }.store(in: &cancelable)
     }
 
     public func shouldUseEstimatedGasPrice(_ estimatedGasPrice: BigUInt) -> Bool {
@@ -247,6 +250,7 @@ public class TransactionConfigurator {
                 .nextNonce(wallet: session.account.address)
                 .sink(receiveCompletion: { [session] result in
                     guard case .failure(let e) = result else { return }
+                    logError(e, rpcServer: session.server)
                 }, receiveValue: {
                     self.useNonce($0)
                 }).store(in: &cancelable)

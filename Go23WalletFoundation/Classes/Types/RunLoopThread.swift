@@ -2,7 +2,7 @@
 //  RunLoopThread.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 25.05.2022.
 //
 
 import UIKit
@@ -18,7 +18,6 @@ public class RunLoopThread: Thread {
     }
 
     deinit {
-        
     }
 
     public override func main() {

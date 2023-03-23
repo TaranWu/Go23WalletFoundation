@@ -2,7 +2,7 @@
 //  ReachabilityManager.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 31.03.2022.
 //
 
 import Alamofire

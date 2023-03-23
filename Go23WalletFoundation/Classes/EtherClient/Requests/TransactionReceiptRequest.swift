@@ -2,7 +2,7 @@
 //  TransactionReceiptRequest.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 28.10.2022.
 //
 
 import Foundation

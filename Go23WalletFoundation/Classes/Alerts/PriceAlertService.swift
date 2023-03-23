@@ -2,7 +2,7 @@
 //  PriceAlertServiceType.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.09.2021.
 //
 
 import Foundation

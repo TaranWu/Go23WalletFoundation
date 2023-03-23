@@ -2,7 +2,7 @@
 //  CurrencyService.swift
 //  Alamofire
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 09.07.2022.
 //
 
 import Combine

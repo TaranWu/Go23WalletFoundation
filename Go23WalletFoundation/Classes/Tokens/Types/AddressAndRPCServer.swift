@@ -2,10 +2,11 @@
 //  AddressAndRPCServer.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 30.03.2021.
 //
 
 import Foundation
+import Go23WalletAddress
 
 public struct AddressAndRPCServer: Hashable, Codable, CustomStringConvertible {
     public let address: Go23Wallet.Address

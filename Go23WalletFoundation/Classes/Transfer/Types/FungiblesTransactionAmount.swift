@@ -2,7 +2,7 @@
 //  FungiblesTransactionAmount.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 10.12.2021.
 //
 
 import Foundation

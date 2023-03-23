@@ -2,7 +2,7 @@
 //  ChartHistory.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 30.03.2021.
 //
 
 import Foundation

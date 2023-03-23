@@ -2,7 +2,7 @@
 //  JsonFromTokenUri.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 20.07.2022.
 //
 
 import Foundation
@@ -11,6 +11,7 @@ import Go23WalletOpenSea
 import SwiftyJSON
 import Combine
 import BigInt
+import Go23WalletAddress
 
 final class JsonFromTokenUri {
     typealias Publisher = AnyPublisher<NonFungibleBalanceAndItsSource<JsonString>, SessionTaskError>
@@ -30,7 +31,13 @@ final class JsonFromTokenUri {
         self.networkService = networkService
         self.blockchainProvider = blockchainProvider
         self.tokensService = tokensService
-        self.getTokenUri = NonFungibleContract(blockchainProvider: blockchainProvider)
+        self.getTokenUri = NonFungibleContract(
+            blockchainProvider: blockchainProvider,
+            uriMapper: TokenUriMapper(hostMappers: [
+                HostBasedTokenUriMapper(host: "api.mintkudos.xyz"),
+                HostBasedTokenUriMapper(host: "api.walletads.io"),
+                HostBasedTokenUriMapper(host: "gateway.pinata.cloud")
+            ]))
     }
 
     func clear() {
@@ -118,7 +125,6 @@ final class JsonFromTokenUri {
                          tokenType: NonFungibleFromJsonTokenType,
                          uri originalUri: URL?,
                          address: Go23Wallet.Address) throws -> NonFungibleBalanceAndItsSource<JsonString> {
-
         if json["error"] == "Internal Server Error" {
             throw SessionTaskError(error: JsonFromTokenUriError(message: json["error"].stringValue))
         } else {
@@ -153,7 +159,6 @@ final class JsonFromTokenUri {
                                 address: Go23Wallet.Address) -> Publisher {
         
         let uri = originalUri.rewrittenIfIpfs
-
         return networkService
             .dataTaskPublisher(UrlRequest(url: uri))
             .receive(on: queue)

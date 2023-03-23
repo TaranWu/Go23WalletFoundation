@@ -1,7 +1,7 @@
 //
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 24.09.2021.
 //
 
 import Foundation
@@ -75,7 +75,7 @@ extension GetEnsTextRecord {
 
         return publisher.flatMap { _url -> AnyPublisher<Eip155URLOrWebImageURL, SmartContractError> in
             //NOTE: once open sea image url cached it will be here as `url`, so the next time we willn't decode it as eip155 and return it as it is
-            guard let result = eip155URLCoder.decode(from: _url) else {
+            guard let result = Eip155UrlCoder.decode(from: _url) else {
                 guard let url = URL(string: _url) else {
                     return .fail(.embeded(AnyError.blockieCreateFailure))
                 }

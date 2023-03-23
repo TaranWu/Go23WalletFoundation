@@ -2,12 +2,13 @@
 //  TokenActionsService.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 26.11.2020.
 //
 
 import Foundation
 import Combine
 import CombineExt
+import Go23WalletAddress
 
 public protocol TokenActionsIdentifiable {
     var contractAddress: Go23Wallet.Address { get }

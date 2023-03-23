@@ -2,12 +2,13 @@
 //  DomainResolutionServiceType.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 30.08.2022.
 //
 
 import Foundation 
 import Combine
 import Go23WalletCore
+import Go23WalletAddress
 
 public protocol DomainResolutionServiceType {
     func resolveAddress(string value: String) -> AnyPublisher<Go23Wallet.Address, PromiseError>

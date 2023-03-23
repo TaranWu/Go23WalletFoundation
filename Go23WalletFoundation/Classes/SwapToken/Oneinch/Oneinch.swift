@@ -2,12 +2,13 @@
 //  OneinchHolder.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 11.11.2020.
 //
 
 import Foundation
 import Combine
 import Go23WalletCore
+import Go23WalletAddress
 
 public class Oneinch: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
     private (set) public var assets: Swift.Result<[Go23Wallet.Address: Oneinch.Asset], Error> = .failure(OneinchError())
@@ -58,6 +59,7 @@ public class Oneinch: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
 
                 guard case .failure(let error) = result else { return }
                 let request = RampNetworkProvider.RampRequest()
+                RemoteLogger.instance.logRpcOrOtherWebError("Oneinch error | \(error)", url: request.urlRequest?.url?.absoluteString ?? "")
             } receiveValue: { assets in
                 var newAssets: [Go23Wallet.Address: Oneinch.Asset] = [:]
                 for asset in self.predefinedAssets + assets {

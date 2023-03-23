@@ -2,12 +2,13 @@
 //  JsonWalletAddressesStore.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 22.01.2022.
 //
 
 import Foundation
 import Combine
 import Go23WalletCore
+import Go23WalletAddress
 
 public struct JsonWalletAddressesStore: WalletAddressesStore {
     private static let walletsFolderForTests = "testSuiteWalletsForWalletAddresses"
@@ -84,6 +85,18 @@ public struct JsonWalletAddressesStore: WalletAddressesStore {
         }
     }
 
+    //TODO have proper storage. Maybe a dictionary since we want to support more than 1 type of hardware wallet
+    public var ethereumAddressesWithHardwareWallet: [String] {
+        get {
+            walletAddresses.ethereumAddressesWithHardwareWallet ?? []
+        }
+        set {
+            guard walletAddresses.ethereumAddressesWithHardwareWallet != newValue else { return }
+            walletAddresses.ethereumAddressesWithHardwareWallet = newValue
+            saveWalletCollectionToFile()
+        }
+    }
+
     public var ethereumAddressesWithPrivateKeys: [String] {
         get {
             walletAddresses.ethereumAddressesWithPrivateKeys ?? []
@@ -140,6 +153,8 @@ public struct JsonWalletAddressesStore: WalletAddressesStore {
             addToListOfEthereumAddressesWithPrivateKeys(wallet.address)
         case .watch:
             addToListOfWatchEthereumAddresses(wallet.address)
+        case .hardware:
+            addToListOfEthereumAddressesWithHardwareWallet(wallet.address)
         }
     }
 
@@ -162,10 +177,15 @@ public struct JsonWalletAddressesStore: WalletAddressesStore {
         ethereumAddressesProtectedByUserPresence = updated
     }
 
+    mutating private func addToListOfEthereumAddressesWithHardwareWallet(_ address: Go23Wallet.Address) {
+        ethereumAddressesWithHardwareWallet = [ethereumAddressesWithHardwareWallet, [address.eip55String]].flatMap { $0 }
+    }
+
     mutating public func removeAddress(_ account: Wallet) {
         ethereumAddressesWithPrivateKeys = ethereumAddressesWithPrivateKeys.filter { $0 != account.address.eip55String }
         ethereumAddressesWithSeed = ethereumAddressesWithSeed.filter { $0 != account.address.eip55String }
         ethereumAddressesProtectedByUserPresence = ethereumAddressesProtectedByUserPresence.filter { $0 != account.address.eip55String }
+        ethereumAddressesWithHardwareWallet = ethereumAddressesWithHardwareWallet.filter { $0 != account.address.eip55String }
         watchAddresses = watchAddresses.filter { $0 != account.address.eip55String }
     }
 
@@ -198,6 +218,7 @@ private struct WalletAddresses: Codable {
     var ethereumAddressesWithPrivateKeys: [String]?
     var ethereumAddressesWithSeed: [String]?
     var ethereumAddressesProtectedByUserPresence: [String]?
+    var ethereumAddressesWithHardwareWallet: [String]?
     var recentlyUsedWallet: String?
 
     init() {
@@ -205,6 +226,7 @@ private struct WalletAddresses: Codable {
         ethereumAddressesWithPrivateKeys = []
         ethereumAddressesWithSeed = []
         ethereumAddressesProtectedByUserPresence = []
+        ethereumAddressesWithHardwareWallet = []
         recentlyUsedWallet = nil
     }
 
@@ -212,7 +234,8 @@ private struct WalletAddresses: Codable {
         let watchAddresses = (watchAddresses ?? []).compactMap { Go23Wallet.Address(string: $0) }.map { Wallet(address: $0, origin: .watch) }
         let addressesWithPrivateKeys = (ethereumAddressesWithPrivateKeys ?? []).compactMap { Go23Wallet.Address(string: $0) }.map { Wallet(address: $0, origin: .privateKey) }
         let addressesWithSeed = (ethereumAddressesWithSeed ?? []).compactMap { Go23Wallet.Address(string: $0) }.map { Wallet(address: $0, origin: .hd) }
+        let ethereumAddressesWithHardwareWallet = (ethereumAddressesWithHardwareWallet ?? []).compactMap { Go23Wallet.Address(string: $0) }.map { Wallet(address: $0, origin: .hardware) }
 
-        return Set(addressesWithSeed + addressesWithPrivateKeys + watchAddresses)
+        return Set(addressesWithSeed + addressesWithPrivateKeys + watchAddresses + ethereumAddressesWithHardwareWallet)
     }
 }

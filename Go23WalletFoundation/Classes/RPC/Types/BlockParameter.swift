@@ -2,7 +2,7 @@
 //  BlockParameter.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 17.12.2022.
 //
 
 import Foundation

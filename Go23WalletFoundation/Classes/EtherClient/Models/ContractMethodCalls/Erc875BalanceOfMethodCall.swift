@@ -2,10 +2,11 @@
 //  Erc875BalanceOfMethodCall.swift
 //  Go23WalletFoundation
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 20.01.2023.
 //
 
 import Foundation
+import Go23WalletAddress
 
 struct Erc875BalanceOfMethodCall: ContractMethodCall {
     typealias Response = [String]
@@ -23,11 +24,8 @@ struct Erc875BalanceOfMethodCall: ContractMethodCall {
         self.contract = contract
     }
 
-    func response(from resultObject: Any) throws -> [String] {
-        guard let dictionary = resultObject as? [String: AnyObject] else {
-            throw CastError(actualValue: resultObject, expectedType: [String: AnyObject].self)
-        }
-        return Erc875BalanceOfMethodCall.adapt(dictionary)
+    func response(from dictionary: [String: Any]) throws -> [String] {
+        return Erc875BalanceOfMethodCall.adapt(dictionary["0"])
     }
 
     private static func adapt(_ values: Any?) -> [String] {

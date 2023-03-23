@@ -2,13 +2,14 @@
 //  Klaytn.swift
 //  Go23Wallet
 //
-//  Created by Taran.
+//  Created by Vladyslav Shepitko on 30.03.2022.
 //
 
 import Foundation
 import PromiseKit
 import SwiftyJSON
 import BigInt
+import Go23WalletAddress
 
 public enum Covalent {}
 

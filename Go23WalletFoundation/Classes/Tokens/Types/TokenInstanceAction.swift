@@ -2,6 +2,7 @@
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 extension TokenInstanceAction.ActionType: Equatable {
     public static func == (lhs: TokenInstanceAction.ActionType, rhs: TokenInstanceAction.ActionType) -> Bool {
@@ -111,7 +112,7 @@ public struct TokenInstanceAction {
         }
     }
 
-    public func activeExcludingSelection(selectedTokenHolders: [TokenHolder], forWalletAddress walletAddress: Go23Wallet.Address, fungibleBalance: BigInt? = nil) -> TokenScriptSelection? {
+    public func activeExcludingSelection(selectedTokenHolders: [TokenHolder], forWalletAddress walletAddress: Go23Wallet.Address, fungibleBalance: BigUInt? = nil) -> TokenScriptSelection? {
         switch type {
         case .erc20Send, .erc20Receive, .swap, .buy, .bridge:
             return nil
@@ -131,7 +132,7 @@ public struct TokenInstanceAction {
         }
     }
 
-    public func activeExcludingSelection(selectedTokenHolder tokenHolder: TokenHolder, tokenId: TokenId, forWalletAddress walletAddress: Go23Wallet.Address, fungibleBalance: BigInt? = nil) -> TokenScriptSelection? {
+    public func activeExcludingSelection(selectedTokenHolder tokenHolder: TokenHolder, tokenId: TokenId, forWalletAddress walletAddress: Go23Wallet.Address, fungibleBalance: BigUInt? = nil) -> TokenScriptSelection? {
         switch type {
         case .erc20Send, .erc20Receive, .swap, .buy, .bridge:
             return nil
