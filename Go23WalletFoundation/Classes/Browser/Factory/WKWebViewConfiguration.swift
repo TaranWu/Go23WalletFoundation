@@ -5,6 +5,8 @@ import WebKit
 import JavaScriptCore
 import Go23WalletAddress
 
+class WebviewConfiguration: NSObject {}
+
 public enum WebViewType {
     case dappBrowser(RPCServer)
     case tokenScriptRenderer
