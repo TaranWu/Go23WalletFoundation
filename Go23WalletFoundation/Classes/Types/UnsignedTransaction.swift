@@ -2,29 +2,19 @@
 
 import Foundation
 import BigInt
-import Go23WalletAddress
 
 public struct UnsignedTransaction {
-    public let value: BigUInt
-    public let account: Go23Wallet.Address
-    public let to: Go23Wallet.Address?
+    public let value: BigInt
+    public let account: DerbyWallet.Address
+    public let to: DerbyWallet.Address?
     public let nonce: Int
     public let data: Data
-    public let gasPrice: BigUInt
-    public let gasLimit: BigUInt
+    public let gasPrice: BigInt
+    public let gasLimit: BigInt
     public let server: RPCServer
     public let transactionType: TransactionType
 
-    public init(value: BigUInt,
-                account: Go23Wallet.Address,
-                to: Go23Wallet.Address?,
-                nonce: Int,
-                data: Data,
-                gasPrice: BigUInt,
-                gasLimit: BigUInt,
-                server: RPCServer,
-                transactionType: TransactionType) {
-        
+    public init(value: BigInt, account: DerbyWallet.Address, to: DerbyWallet.Address?, nonce: Int, data: Data, gasPrice: BigInt, gasLimit: BigInt, server: RPCServer, transactionType: TransactionType) {
         self.value = value
         self.account = account
         self.to = to
@@ -35,18 +25,4 @@ public struct UnsignedTransaction {
         self.server = server
         self.transactionType = transactionType
     }
-
-    public func updating(nonce: Int) -> UnsignedTransaction {
-        return UnsignedTransaction(
-            value: value,
-            account: account,
-            to: to,
-            nonce: nonce,
-            data: data,
-            gasPrice: gasPrice,
-            gasLimit: gasLimit,
-            server: server,
-            transactionType: transactionType)
-    }
-
 }

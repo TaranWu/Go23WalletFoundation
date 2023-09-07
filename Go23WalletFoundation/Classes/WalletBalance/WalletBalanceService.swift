@@ -1,6 +1,6 @@
 //
 //  MultiWalletBalanceService.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 25.05.2021.
 //
@@ -22,27 +22,64 @@ public protocol WalletBalanceService {
 
     func walletBalance(for wallet: Wallet) -> AnyPublisher<WalletBalance, Never>
     func refreshBalance(updatePolicy: TokenBalanceFetcher.RefreshBalancePolicy, wallets: [Wallet])
-    func start(fetchers: [Wallet: WalletBalanceFetcherType])
 }
 
 open class MultiWalletBalanceService: WalletBalanceService {
+    private let walletAddressesStore: WalletAddressesStore
+    private var cancelable = Set<AnyCancellable>()
     private let fetchers = CurrentValueSubject<[Wallet: WalletBalanceFetcherType], Never>([:])
-    private let currencyService: CurrencyService
+    private let dependencyContainer: WalletDependencyContainer
+    private let walletsSummarySubject = CurrentValueSubject<WalletSummary, Never>(WalletSummary(balances: []))
+
     public var walletsSummary: AnyPublisher<WalletSummary, Never> {
-        fetchers.map { $0.values }
-            .flatMapLatest { $0.map { $0.walletBalance }.combineLatest() }
-            .map { WalletSummary(balances: $0) }
+        return walletsSummarySubject
             .removeDuplicates()
-            .prepend(WalletSummary(balances: []))
             .eraseToAnyPublisher()
     }
 
-    public init(currencyService: CurrencyService) {
-        self.currencyService = currencyService
+    public init(walletAddressesStore: WalletAddressesStore, dependencyContainer: WalletDependencyContainer) {
+        self.walletAddressesStore = walletAddressesStore
+        self.dependencyContainer = dependencyContainer
     }
 
-    public func start(fetchers: [Wallet: WalletBalanceFetcherType]) {
-        self.fetchers.send(fetchers)
+    public func start() {
+        walletAddressesStore
+            .walletsPublisher
+            .receive(on: RunLoop.main) //NOTE: async to avoid `swift_beginAccess` crash
+            .map { [dependencyContainer, weak self] wallets -> [Wallet: WalletBalanceFetcherType] in
+                guard let strongSelf = self else { return [:] }
+                var fetchers: [Wallet: WalletBalanceFetcherType] = [:]
+
+                for wallet in wallets {
+                    if let fetcher = strongSelf.fetchers.value[wallet] {
+                        fetchers[wallet] = fetcher
+                    } else {
+                        let dep = dependencyContainer.makeDependencies(for: wallet)
+                        dep.sessionsProvider.start(wallet: wallet)
+                        dep.fetcher.start()
+                        dep.pipeline.start()
+
+                        fetchers[wallet] = dep.fetcher
+                    }
+                }
+
+                return fetchers
+            }.sink { [weak self, dependencyContainer] newFetchers in
+                guard let strongSelf = self else { return }
+
+                let fetchersToDelete = strongSelf.fetchers.value.keys.filter({ !newFetchers.keys.contains($0) })
+                for wallet in fetchersToDelete {
+                    dependencyContainer.destroy(for: wallet)
+                }
+
+                strongSelf.fetchers.send(newFetchers)
+            }.store(in: &cancelable)
+
+        fetchers.map { $0.values }
+            .flatMapLatest { $0.map { $0.walletBalance }.combineLatest() }
+            .map { WalletSummary(balances: $0) }
+            .assign(to: \.value, on: walletsSummarySubject, ownership: .weak)
+            .store(in: &cancelable)
     }
 
     ///Refreshes available wallets balances
@@ -54,12 +91,9 @@ open class MultiWalletBalanceService: WalletBalanceService {
     }
 
     public func walletBalance(for wallet: Wallet) -> AnyPublisher<WalletBalance, Never> {
-        let walletBalance = fetchers
-            .compactMap { fetchers in fetchers[wallet] }
+        return Just(wallet).combineLatest(fetchers)
+            .compactMap { wallet, fetchers in fetchers[wallet] }
             .flatMapLatest { $0.walletBalance }
-
-        let initial = Just(WalletBalance(wallet: wallet, tokens: [], currency: currencyService.currency))
-
-        return Publishers.Merge(initial, walletBalance).eraseToAnyPublisher()
+            .eraseToAnyPublisher()
     }
 }

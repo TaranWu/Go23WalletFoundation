@@ -1,12 +1,12 @@
 //
 //  UniversalLinkService.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 11.11.2020.
 //
 
 import UIKit
-import Go23WalletAddress
+import Go23WalletFoundation
 
 public enum UrlSource {
     case deeplink
@@ -16,10 +16,12 @@ public enum UrlSource {
 }
 
 public protocol UrlSchemeResolver: AnyObject {
+    var service: TokenViewModelState & TokenProvidable & TokenAddable { get }
+    var sessions: ServerDictionary<WalletSession> { get }
     var presentationNavigationController: UINavigationController { get }
 
     func openURLInBrowser(url: URL)
-    func openWalletConnectSession(url: Go23Wallet.WalletConnect.ConnectionUrl)
+    func openWalletConnectSession(url: DerbyWallet.WalletConnect.ConnectionUrl)
     func showPaymentFlow(for type: PaymentFlow, server: RPCServer, navigationController: UINavigationController)
 }
 

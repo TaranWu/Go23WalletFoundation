@@ -2,12 +2,10 @@
 
 import Foundation
 import BigInt
-import Go23TrustKeystore
-import Go23Web3Swift
-import Go23WalletAddress
+import Go23TrustKeystore 
 
 public enum AssetAttributeValueUsableAsFunctionArguments {
-    case address(Go23Wallet.Address)
+    case address(DerbyWallet.Address)
     case string(String)
     case int(BigInt)
     case uint(BigUInt)
@@ -43,21 +41,21 @@ public enum AssetAttributeValueUsableAsFunctionArguments {
         case .address:
             return coerceToAddress(forFunctionType: functionType)
         case .bool:
-            return coerceToBool(forFunctionType: functionType) as AnyObject
+            return coerceToBool(forFunctionType: functionType)
         case .int, .int8, .int16, .int24, .int32, .int40, .int48, .int56, .int64, .int72, .int80, .int88, .int96, .int104, .int112, .int120, .int128, .int136, .int144, .int152, .int160, .int168, .int176, .int184, .int192, .int200, .int208, .int216, .int224, .int232, .int240, .int248, .int256:
-            return coerceToInt(forFunctionType: functionType) as AnyObject
+            return coerceToInt(forFunctionType: functionType)
         case .string, .bytes:
-            return coerceToString(forFunctionType: functionType) as AnyObject
+            return coerceToString(forFunctionType: functionType)
         case .bytes1, .bytes2, .bytes3, .bytes4, .bytes5, .bytes6, .bytes7, .bytes8, .bytes9, .bytes10, .bytes11, .bytes12, .bytes13, .bytes14, .bytes15, .bytes16, .bytes17, .bytes18, .bytes19, .bytes20, .bytes21, .bytes22, .bytes23, .bytes24, .bytes25, .bytes26, .bytes27, .bytes28, .bytes29, .bytes30, .bytes31, .bytes32:
-            return coerceToBytes(forFunctionType: functionType) as AnyObject
+            return coerceToBytes(forFunctionType: functionType)
         case .uint, .uint8, .uint16, .uint24, .uint32, .uint40, .uint48, .uint56, .uint64, .uint72, .uint80, .uint88, .uint96, .uint104, .uint112, .uint120, .uint128, .uint136, .uint144, .uint152, .uint160, .uint168, .uint176, .uint184, .uint192, .uint200, .uint208, .uint216, .uint224, .uint232, .uint240, .uint248, .uint256:
-            return coerceToUInt(forFunctionType: functionType) as AnyObject
+            return coerceToUInt(forFunctionType: functionType)
         case .void:
             return nil
         }
     }
 
-    public func coerceToArgumentTypeForEventFilter(_ parameterType: SolidityType) -> EventFilterable? {
+    public func coerceToArgumentTypeForEventFilter(_ parameterType: SolidityType) -> Web3.EventFilterable? {
         guard let value = coerce(toArgumentType: parameterType, forFunctionType: .eventFiltering) else { return nil }
         //Need to perform an intermediate cast to BigInt, Data, etc before returning (and hence "casting" as `EventFilterable`)
         switch value {
@@ -69,7 +67,7 @@ public enum AssetAttributeValueUsableAsFunctionArguments {
             return data
         case let string as String:
             return string
-        case let address as EthereumAddress:
+        case let address as Web3.EthereumAddress:
             return address
         default:
             return nil
@@ -85,52 +83,52 @@ public enum AssetAttributeValueUsableAsFunctionArguments {
             case .functionTransaction, .paymentTransaction:
                 return Address(address: address) as AnyObject
             case .eventFiltering:
-                return EthereumAddress(address: address) as AnyObject
+                return Web3.EthereumAddress(address: address) as AnyObject
             }
         case .string(let string):
             switch functionType {
             case .functionCall:
                 //Not use .init(string:) so that addresses like "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" can go through
-                return Go23Wallet.Address(uncheckedAgainstNullAddress: string)?.eip55String as AnyObject
+                return DerbyWallet.Address(uncheckedAgainstNullAddress: string)?.eip55String as AnyObject
             case .functionTransaction, .paymentTransaction:
                 //Not use .init(string:) so that addresses like "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" can go through
                 return Address(uncheckedAgainstNullAddress: string) as AnyObject
             case .eventFiltering:
-                return EthereumAddress(string) as AnyObject
+                return Web3.EthereumAddress(string) as AnyObject
             }
         case .int, .uint, .generalisedTime, .bool, .bytes:
             return nil
         }
     }
 
-    private func coerceToBool(forFunctionType functionType: FunctionOrigin.FunctionType) -> Bool? {
+    private func coerceToBool(forFunctionType functionType: FunctionOrigin.FunctionType) -> AnyObject? {
         switch self {
         case .bool(let bool):
-            return bool
+            return bool as AnyObject
         case .string(let string):
             switch string {
             case "TRUE", "true":
-                return true
+                return true as AnyObject
             case "FALSE", "false":
-                return false
+                return false as AnyObject
             default:
                 return nil
             }
         case .int(let int):
             switch int {
             case 1:
-                return true
+                return true as AnyObject
             case 0:
-                return false
+                return false as AnyObject
             default:
                 return nil
             }
         case .uint(let uint):
             switch uint {
             case 1:
-                return true
+                return true as AnyObject
             case 0:
-                return false
+                return false as AnyObject
             default:
                 return nil
             }
@@ -138,9 +136,9 @@ public enum AssetAttributeValueUsableAsFunctionArguments {
             let dataAsBigUInt = BigUInt(data)
             switch dataAsBigUInt {
             case 1:
-                return true
+                return true as AnyObject
             case 0:
-                return false
+                return false as AnyObject
             default:
                 return nil
             }
@@ -149,67 +147,67 @@ public enum AssetAttributeValueUsableAsFunctionArguments {
         }
     }
 
-    private func coerceToInt(forFunctionType functionType: FunctionOrigin.FunctionType) -> BigInt? {
+    private func coerceToInt(forFunctionType functionType: FunctionOrigin.FunctionType) -> AnyObject? {
         switch self {
         case .int(let int):
-            return int
+            return int as AnyObject
         case .uint(let uint):
-            return BigInt(uint)
+            return BigInt(uint) as AnyObject
         case .string(let string):
-            return BigInt(string)
+            return BigInt(string) as AnyObject
         case .address, .generalisedTime, .bool, .bytes:
             return nil
         }
     }
 
-    private func coerceToString(forFunctionType functionType: FunctionOrigin.FunctionType) -> String {
+    private func coerceToString(forFunctionType functionType: FunctionOrigin.FunctionType) -> AnyObject? {
         switch self {
         case .address(let address):
-            return address.eip55String
+            return address.eip55String as AnyObject
         case .string(let string):
-            return string
+            return string as AnyObject
         case .bytes(let bytes):
-            return bytes.hexEncoded
+            return bytes.hexEncoded as AnyObject
         case .int(let int):
-            return int.description
+            return int.description as AnyObject
         case .uint(let uint):
-            return uint.description
+            return uint.description as AnyObject
         case .generalisedTime(let generalisedTime):
-            return generalisedTime.formatAsGeneralisedTime
+            return generalisedTime.formatAsGeneralisedTime as AnyObject
         case .bool(let bool):
-            return bool.description
+            return bool.description as AnyObject
         }
     }
 
-    private func coerceToUInt(forFunctionType functionType: FunctionOrigin.FunctionType) -> BigUInt? {
+    private func coerceToUInt(forFunctionType functionType: FunctionOrigin.FunctionType) -> AnyObject? {
         switch self {
         case .int(let int):
-            return BigUInt(int)
+            return BigUInt(int) as AnyObject
         case .uint(let uint):
-            return uint
+            return uint as AnyObject
         case .string(let string):
-            return BigUInt(string)
+            return BigUInt(string) as AnyObject
         case .bytes(let data):
-            return BigUInt(data)
+            return BigUInt(data) as AnyObject
         case .address, .generalisedTime, .bool:
             return nil
         }
     }
 
-    private func coerceToBytes(forFunctionType functionType: FunctionOrigin.FunctionType) -> Data? {
+    private func coerceToBytes(forFunctionType functionType: FunctionOrigin.FunctionType) -> AnyObject? {
         switch self {
         case .int(let int):
-            return BigUInt(int).serialize()
+            return BigUInt(int).serialize() as AnyObject
         case .uint(let uint):
-            return uint.serialize()
+            return uint.serialize() as AnyObject
         case .string(let string):
             if string.hasPrefix("0x"), string.count > 2, string.count % 2 == 0 {
-                return Data(_hex: string)
+                return Data(_hex: string) as AnyObject
             } else {
-                return string.data(using: .utf8)
+                return string.data(using: .utf8) as AnyObject
             }
         case .bytes(let data):
-            return data
+            return data as AnyObject
         case .address, .generalisedTime, .bool:
             return nil
         }

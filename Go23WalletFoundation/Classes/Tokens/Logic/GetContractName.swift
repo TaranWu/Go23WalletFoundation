@@ -2,40 +2,22 @@
 
 import Foundation
 import PromiseKit
-import Go23Web3Swift
-import Go23WalletCore
-import Combine
 
-final class GetContractName {
-    private let blockchainProvider: BlockchainProvider
-    private var inFlightPromises: [String: AnyPublisher<String, SessionTaskError>] = [:]
-    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.getContractName")
+public class GetContractName {
+    private let server: RPCServer
 
-    init(blockchainProvider: BlockchainProvider) {
-        self.blockchainProvider = blockchainProvider
+    public init(forServer server: RPCServer) {
+        self.server = server
     }
 
-    func getName(for contract: Go23Wallet.Address) -> AnyPublisher<String, SessionTaskError> {
-        return Just(contract)
-            .receive(on: queue)
-            .setFailureType(to: SessionTaskError.self)
-            .flatMap { [weak self, queue, blockchainProvider] contract -> AnyPublisher<String, SessionTaskError> in
-                let key = contract.eip55String
-
-                if let promise = self?.inFlightPromises[key] {
-                    return promise
-                } else {
-                    let promise = blockchainProvider
-                        .call(Erc20NameMethodCall(contract: contract))
-                        .receive(on: queue)
-                        .handleEvents(receiveCompletion: { _ in self?.inFlightPromises[key] = .none })
-                        .share()
-                        .eraseToAnyPublisher()
-
-                    self?.inFlightPromises[key] = promise
-
-                    return promise
-                }
-            }.eraseToAnyPublisher()
+    public func getName(for contract: DerbyWallet.Address) -> Promise<String> {
+        let functionName = "name"
+        return callSmartContract(withServer: server, contract: contract, functionName: functionName, abiString: Web3.Utils.erc20ABI).map { nameResult -> String in
+            if let name = nameResult["0"] as? String {
+                return name
+            } else {
+                throw createSmartContractCallError(forContract: contract, functionName: functionName)
+            }
+        }
     }
 }

@@ -2,45 +2,28 @@
 
 import Foundation
 import Go23WalletCore
-import Combine
 
-public protocol BlockNumberStorage {
-    func latestBlock(server: RPCServer) -> BlockNumber
-    func set(latestBlock: BlockNumber, for server: RPCServer)
-}
-
-public final class BlockNumberProvider {
-
-    private lazy var provider: BlockNumberSchedulerProvider = {
-        let provider = BlockNumberSchedulerProvider(blockchainProvider: blockchainProvider)
+public final class ChainState {
+    private let server: RPCServer
+    private let analytics: AnalyticsLogger
+    private lazy var provider: ChainStateSchedulerProvider = {
+        let provider = ChainStateSchedulerProvider(server: server, analytics: analytics)
         provider.delegate = self
 
         return provider
     }()
-    private let blockchainProvider: BlockchainProvider
     private lazy var scheduler = Scheduler(provider: provider)
-    private var storage: BlockNumberStorage
+    private var config: Config
+
     public var latestBlock: Int {
-        get { return storage.latestBlock(server: blockchainProvider.server) }
-        set {
-            storage.set(latestBlock: newValue, for: blockchainProvider.server)
-            latestBlockSubject.send(newValue)
-        }
+        get { return config.latestBlock(server: server) }
+        set { config.set(latestBlock: newValue, for: server) }
     }
 
-    public var latestBlockPublisher: AnyPublisher<Int, Never> {
-        latestBlockSubject.eraseToAnyPublisher()
-    }
-
-    private lazy var latestBlockSubject: CurrentValueSubject<Int, Never> = .init(latestBlock)
-
-    public init(storage: BlockNumberStorage, blockchainProvider: BlockchainProvider) {
-        self.storage = storage
-        self.blockchainProvider = blockchainProvider
-    }
-
-    deinit {
-        scheduler.cancel()
+    public init(config: Config, server: RPCServer, analytics: AnalyticsLogger) {
+        self.config = config
+        self.server = server
+        self.analytics = analytics
     }
 
     public func start() {
@@ -59,11 +42,11 @@ public final class BlockNumberProvider {
     }
 }
 
-extension BlockNumberProvider: BlockNumberSchedulerProviderDelegate {
-    public func didReceive(result: Result<BlockNumber, PromiseError>) {
+extension ChainState: ChainStateSchedulerProviderDelegate {
+    public func didReceive(result: Result<Int, PromiseError>) {
         switch result {
-        case .success(let blockNumber):
-            latestBlock = blockNumber
+        case .success(let block):
+            latestBlock = block
         case .failure(let error):
             //We need to catch (and since we can make a good guess what it might be, capture it below) it instead of `.cauterize()` because the latter would log a scary message about malformed JSON in the console.
             guard case .some(let error) = error else { return }
@@ -74,19 +57,18 @@ extension BlockNumberProvider: BlockNumberSchedulerProviderDelegate {
     }
 }
 
-extension Config: BlockNumberStorage {
+fileprivate extension Config {
     private static func chainStateKey(server: RPCServer) -> String {
         return "\(server.chainID)-" + "chainID"
     }
 
-    public func latestBlock(server: RPCServer) -> BlockNumber {
+    func latestBlock(server: RPCServer) -> Int {
         let latestBlockKey = Config.chainStateKey(server: server)
         return defaults.integer(forKey: latestBlockKey)
     }
 
-    public func set(latestBlock: BlockNumber, for server: RPCServer) {
+    func set(latestBlock: Int, for server: RPCServer) {
         let latestBlockKey = Config.chainStateKey(server: server)
         defaults.set(latestBlock, forKey: latestBlockKey)
     }
 }
-

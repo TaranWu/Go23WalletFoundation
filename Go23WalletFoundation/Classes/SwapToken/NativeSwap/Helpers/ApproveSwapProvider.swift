@@ -1,21 +1,19 @@
 //
 //  ApproveSwapProvider.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 07.04.2022.
 //
 
 import Foundation
-import BigInt
-import Combine
-import Go23WalletCore
-import Go23WalletAddress
+import PromiseKit
+import BigInt 
 
-public protocol ApproveSwapProviderDelegate: AnyObject {
+public protocol ApproveSwapProviderDelegate: class {
     func promptToSwap(unsignedTransaction: UnsignedSwapTransaction, fromToken: TokenToSwap, fromAmount: BigUInt, toToken: TokenToSwap, toAmount: BigUInt, in provider: ApproveSwapProvider)
-    func promptForErc20Approval(token: Go23Wallet.Address, server: RPCServer, owner: Go23Wallet.Address, spender: Go23Wallet.Address, amount: BigUInt, in provider: ApproveSwapProvider) -> AnyPublisher<String, PromiseError>
+    func promptForErc20Approval(token: DerbyWallet.Address, server: RPCServer, owner: DerbyWallet.Address, spender: DerbyWallet.Address, amount: BigUInt, in provider: ApproveSwapProvider) -> Promise<EthereumTransaction.Hash>
     func changeState(in approveSwapProvider: ApproveSwapProvider, state: ApproveSwapState)
-    func didFailure(in approveSwapProvider: ApproveSwapProvider, error: SwapError)
+    func didFailure(in approveSwapProvider: ApproveSwapProvider, error: Error)
 }
 
 public enum ApproveSwapState {
@@ -29,19 +27,9 @@ public enum ApproveSwapState {
 public final class ApproveSwapProvider {
     private let configurator: SwapOptionsConfigurator
     private let analytics: AnalyticsLogger
-    private lazy var getErc20Allowance = GetErc20Allowance(blockchainProvider: configurator.session.blockchainProvider)
-    private var cancellable = Set<AnyCancellable>()
-    private let transactionDataStore: TransactionDataStore
-    private let provider: WaitTillTransactionCompleted
-
     public weak var delegate: ApproveSwapProviderDelegate?
 
-    public init(configurator: SwapOptionsConfigurator,
-                analytics: AnalyticsLogger,
-                transactionDataStore: TransactionDataStore) {
-
-        self.provider = WaitTillTransactionCompleted(transactionDataStore: transactionDataStore, server: configurator.server)
-        self.transactionDataStore = transactionDataStore
+    public init(configurator: SwapOptionsConfigurator, analytics: AnalyticsLogger) {
         self.configurator = configurator
         self.analytics = analytics
     }
@@ -49,58 +37,70 @@ public final class ApproveSwapProvider {
     public func approveSwap(swapQuote: SwapQuote, fromAmount: BigUInt) {
         delegate?.changeState(in: self, state: .checkingForEnoughAllowance)
 
-        getErc20Allowance.hasEnoughAllowance(
-            tokenAddress: swapQuote.action.fromToken.address,
-            owner: configurator.session.account.address,
-            spender: swapQuote.estimate.spender,
-            amount: fromAmount)
-        .map { (swapQuote, $0.hasEnough, $0.shortOf) }
-        .mapError { SwapError(error: $0.unwrapped) }
-        .flatMap { [configurator] swapQuote, isApproved, shortOf -> AnyPublisher<SwapQuote, SwapError> in
+        Erc20.hasEnoughAllowance(server: configurator.server, tokenAddress: swapQuote.action.fromToken.address, owner: configurator.session.account.address, spender: swapQuote.estimate.spender, amount: fromAmount)
+            .map { (swapQuote, $0.hasEnough, $0.shortOf) }
+        .then { swapQuote, isApproved, shortOf -> Promise<SwapQuote> in
             if isApproved {
-                return .just(swapQuote)
+                return Promise.value(swapQuote)
             } else {
                 self.delegate?.changeState(in: self, state: .waitingForUsersAllowanceApprove)
-
-                return self.promptApproval(unsignedSwapTransaction: swapQuote.unsignedSwapTransaction, token: swapQuote.action.fromToken.address, server: configurator.server, owner: configurator.session.account.address, spender: swapQuote.estimate.spender, amount: shortOf)
-                .flatMap { isApproved -> AnyPublisher<SwapQuote, SwapError> in
+                return self.promptApproval(unsignedSwapTransaction: swapQuote.unsignedSwapTransaction, token: swapQuote.action.fromToken.address, server: self.configurator.server, owner: self.configurator.session.account.address, spender: swapQuote.estimate.spender, amount: shortOf).map { isApproved in
                     if isApproved {
-                        return .just(swapQuote)
+                        return swapQuote
                     } else {
-                        return .fail(SwapError.userCancelledApproval)
+                        throw SwapError.userCancelledApproval
                     }
-                }.eraseToAnyPublisher()
+                }
             }
-        }.sink(receiveCompletion: { result in
-            guard case .failure(let error) = result else { return }
-            self.delegate?.didFailure(in: self, error: error)
-        }, receiveValue: { [weak self] swapQuote in
+        }.done { [weak self] swapQuote in
             guard let strongSelf = self else { return }
-
             strongSelf.delegate?.changeState(in: strongSelf, state: .waitingForUsersSwapApprove)
             let fromToken = TokenToSwap(tokenFromQuate: swapQuote.action.fromToken)
             let toToken = TokenToSwap(tokenFromQuate: swapQuote.action.toToken)
-
             strongSelf.delegate?.promptToSwap(unsignedTransaction: swapQuote.unsignedSwapTransaction, fromToken: fromToken, fromAmount: fromAmount, toToken: toToken, toAmount: swapQuote.estimate.toAmount, in: strongSelf)
-        }).store(in: &cancellable)
+        }.catch { error in
+            if let _error = error as? SwapError {
+                switch _error {
+                case .unableToBuildSwapUnsignedTransaction, .unableToBuildSwapUnsignedTransactionFromSwapProvider, .userCancelledApproval, .approveTransactionNotCompleted, .tokenOrSwapQuoteNotFound:
+                    break
+                case .unknownError, .invalidJson:
+                    self.delegate?.didFailure(in: self, error: _error)
+                }
+            } else {
+                self.delegate?.didFailure(in: self, error: error)
+            }
+        }
     }
 
-    private func promptApproval(unsignedSwapTransaction: UnsignedSwapTransaction, token: Go23Wallet.Address, server: RPCServer, owner: Go23Wallet.Address, spender: Go23Wallet.Address, amount: BigUInt) -> AnyPublisher<Bool, SwapError> {
+    private func promptApproval(unsignedSwapTransaction: UnsignedSwapTransaction, token: DerbyWallet.Address, server: RPCServer, owner: DerbyWallet.Address, spender: DerbyWallet.Address, amount: BigUInt) -> Promise<Bool> {
         guard let delegate = delegate else {
-            return .fail(SwapError.unknownError)
+            return Promise(error: SwapError.unknownError)
         }
 
-        return delegate
-            .promptForErc20Approval(token: token, server: server, owner: owner, spender: spender, amount: amount, in: self)
-            .mapError { SwapError(error: $0.embedded) }
-            .flatMap { [provider] hash -> AnyPublisher<Bool, SwapError> in
-                self.delegate?.changeState(in: self, state: .waitTillApproveCompleted)
+        let provider = WaitTillTransactionCompleted(server: server, analytics: analytics)
 
-                return provider.transaction(hash: hash, for: .completed, timeout: 3600)
-                    .map { _ in return true }
-                    .catch { _ -> AnyPublisher<Bool, SwapError> in
-                        return .just(false)
-                    }.eraseToAnyPublisher()
-            }.eraseToAnyPublisher()
+        return firstly {
+            delegate.promptForErc20Approval(token: token, server: server, owner: owner, spender: spender, amount: amount, in: self)
+        }.then { [provider] transactionId -> Promise<Bool> in
+            self.delegate?.changeState(in: self, state: .waitTillApproveCompleted)
+            return firstly {
+                provider.waitTillCompleted(hash: transactionId)
+            }.map {
+                return true
+            }.recover { error -> Promise<Bool> in
+                if error is EthereumTransaction.NotCompletedYet {
+                    throw SwapError.approveTransactionNotCompleted
+                } else if let error = error as? SwapError {
+                    switch error {
+                    case .userCancelledApproval:
+                        return .value(false)
+                    case .unableToBuildSwapUnsignedTransactionFromSwapProvider, .invalidJson, .unableToBuildSwapUnsignedTransaction, .approveTransactionNotCompleted, .unknownError, .tokenOrSwapQuoteNotFound:
+                        throw error
+                    }
+                }
+                //Exists to make compiler happy
+                return .value(false)
+            }
+        }
     }
 }

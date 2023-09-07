@@ -7,7 +7,7 @@
 import BigInt
 import Foundation
 import Go23TrustKeystore
-import Go23WalletAddress
+
 /// Encodes fields according to Ethereum's Application Binary Interface Specification
 ///
 /// - SeeAlso: https://solidity.readthedocs.io/en/develop/abi-spec.html
@@ -39,8 +39,8 @@ public final class ABIEncoder {
             try encode(value)
         case .bytes(let data):
             try encode(data, static: true)
-        case .function(let f, let args):
-            try encode(signature: f.description)
+        case .function(let funcname, let args):
+            try encode(signature: funcname.description)
             try encode(tuple: args)
         case .array(let type, let array):
             precondition(!array.contains(where: { $0.type != type }), "Array can only contain values of type \(type)")
@@ -158,7 +158,7 @@ public final class ABIEncoder {
         data.append(Data(repeating: 0, count: padding))
     }
 
-    //TODO change this to use Go23Wallet.Address?
+    //TODO change this to use DerbyWallet.Address?
     /// Encodes an address
     public func encode(_ address: Address) throws {
         let padding = ((address.data.count + 31) / 32) * 32 - address.data.count
@@ -166,7 +166,7 @@ public final class ABIEncoder {
         data.append(address.data)
     }
 
-    public func encode(_ address: Go23Wallet.Address) throws {
+    public func encode(_ address: DerbyWallet.Address) throws {
         let padding = ((address.data.count + 31) / 32) * 32 - address.data.count
         data.append(Data(repeating: 0, count: padding))
         data.append(address.data)

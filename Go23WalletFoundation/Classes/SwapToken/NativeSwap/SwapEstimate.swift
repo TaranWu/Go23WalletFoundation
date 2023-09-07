@@ -4,7 +4,7 @@ import Foundation
 import BigInt
 
 public struct SwapEstimate {
-    public let spender: Go23Wallet.Address
+    public let spender: DerbyWallet.Address
     public let toAmount: BigUInt
     public let toAmountMin: BigUInt
     public let feeCosts: [FeeCost]
@@ -21,18 +21,9 @@ public struct SwapEstimate {
         public let type: String
         public let amount: BigUInt
         public let amountUsd: String
-        public let estimate: BigUInt?
-        public let limit: BigUInt?
+        public let estimate: BigUInt
+        public let limit: BigUInt
         public let token: SwapQuote.Token
-        
-        public init(type: String, amount: BigUInt, amountUsd: String, estimate: BigUInt?, limit: BigUInt?, token: SwapQuote.Token) {
-            self.type = type
-            self.amount = amount
-            self.amountUsd = amountUsd
-            self.estimate = estimate
-            self.limit = limit
-            self.token = token
-        }
     }
 
     public struct SwapStep {
@@ -62,13 +53,13 @@ extension SwapEstimate: Decodable {
         let container = try decoder.container(keyedBy: Keys.self)
 
         let spenderString = try container.decode(String.self, forKey: .approvalAddress)
-        spender = try Go23Wallet.Address(string: spenderString) ?? { throw ParsingError(fieldName: .approvalAddress) }()
+        spender = try DerbyWallet.Address(string: spenderString) ?? { throw ParsingError(fieldName: .approvalAddress) }()
         let toAmountString = try container.decode(String.self, forKey: .toAmount)
         toAmount = try BigUInt(toAmountString) ?? { throw ParsingError(fieldName: .toAmount) }()
         let toAmountMinString = try container.decode(String.self, forKey: .toAmountMin)
         toAmountMin = try BigUInt(toAmountMinString) ?? { throw ParsingError(fieldName: .toAmountMin) }()
-        feeCosts = try container.decode([SwapEstimate.FeeCost].self, forKey: .feeCosts, defaultValue: [])
-        gasCosts = try container.decode([SwapEstimate.GasCost].self, forKey: .gasCosts, defaultValue: [])
+        feeCosts = try container.decode([SwapEstimate.FeeCost].self, forKey: .feeCosts)
+        gasCosts = try container.decode([SwapEstimate.GasCost].self, forKey: .gasCosts)
     }
 }
 

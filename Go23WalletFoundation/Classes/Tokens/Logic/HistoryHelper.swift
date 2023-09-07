@@ -1,6 +1,6 @@
 //
 //  HistoryHelper.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 20.05.2022.
 //

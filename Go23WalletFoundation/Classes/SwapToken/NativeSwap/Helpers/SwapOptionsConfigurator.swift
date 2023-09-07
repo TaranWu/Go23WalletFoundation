@@ -1,12 +1,12 @@
 //
 //  SwapOptionsConfigurator.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 14.03.2022.
 //
 
 import Foundation
-import Combine
+import Combine 
 import BigInt
 import CombineExt
 
@@ -22,16 +22,15 @@ public final class SwapOptionsConfigurator {
     private var errorSubject: PassthroughSubject<TokenSwapper.TokenSwapperError?, Never> = .init()
     private var cancelable = Set<AnyCancellable>()
     private let tokenCollection: TokenCollection
-    private var fromAmountSubject: CurrentValueSubject<BigUInt?, Never> = .init(nil)
+    private var fromAmountSubject: CurrentValueSubject<BigInt?, Never> = .init(nil)
     private var fetchSwapQuoteStateSubject: CurrentValueSubject<SwapQuoteState, Never> = .init(.pendingInput)
     @Published public private(set) var sessions: [WalletSession]
     @Published public private(set) var server: RPCServer
     @Published public private(set) var swapPair: SwapPair
-    public var lastSwapQuote: SwapQuote? {
-        tokenSwapper.storage.swapQuote
-    }
+    public private (set) var lastSwapQuote: SwapQuote?
+
     public var fromAmount: BigUInt? {
-        fromAmountSubject.value.flatMap { BigUInt($0) }
+        fromAmountSubject.value.flatMap({ BigUInt($0) })
     }
 
     public var activeValidServer: RPCServer {
@@ -65,7 +64,7 @@ public final class SwapOptionsConfigurator {
         let hasFromAndToSwapTokens = fromAndToTokensPublisher
             .map { $0 != nil }
 
-        return fromAmountSubject.combineLatest(hasFromAndToSwapTokens) { amount, hasSwapToken -> BigUInt? in
+        return fromAmountSubject.combineLatest(hasFromAndToSwapTokens) { amount, hasSwapToken -> BigInt? in
             return hasSwapToken ? amount : nil
         }.compactMap { $0.flatMap { BigUInt($0) } }
         .removeDuplicates()
@@ -76,20 +75,16 @@ public final class SwapOptionsConfigurator {
         //NOTE: here we use debounce to reduce requests calls when user quickly switches beetwen tokens, or types amount to swap
         let amount = validatedAmount.debounce(for: .milliseconds(250), scheduler: RunLoop.main)
         let fromAndToTokens = fromAndToTokensPublisher.compactMap { $0 }
+
         let slippage = slippage.map { String($0.doubleValue).droppedTrailingZeros }
-        let exchanges = tokenSwapper.storage.selectedTools.map { $0.map { $0.key }.filter { $0.nonEmpty } }
-        let swapParams = Publishers.CombineLatest4(fromAndToTokens, amount, slippage, exchanges)
+            .eraseToAnyPublisher()
 
-        let prefferedExchange = tokenSwapper.storage.prefferedExchange
-            .removeDuplicates()
-            .debounce(for: .milliseconds(250), scheduler: RunLoop.main)
-
-        return Publishers.CombineLatest(swapParams, prefferedExchange)
-            .compactMap { [weak self] (params, prefferedExchange) -> AnyPublisher<SwapQuote?, Never>? in
-                if params.1 == .zero {
-                    return .just(nil)
+        return Publishers.CombineLatest3(amount, fromAndToTokens, slippage)
+            .compactMap { [weak self] (amount, tokens, slippage) -> AnyPublisher<SwapQuote?, Never>? in
+                if amount == .zero {
+                    return Just<SwapQuote?>(nil).eraseToAnyPublisher()
                 } else {
-                    return self?.fetchSwapQuote(tokens: params.0, amount: params.1, slippage: params.2, exchanges: params.3, prefferedExchange: prefferedExchange)
+                    return self?.fetchSwapQuote(tokens: tokens, amount: amount, slippage: slippage)
                 }
             }.switchToLatest()
             .share()
@@ -97,11 +92,7 @@ public final class SwapOptionsConfigurator {
             .eraseToAnyPublisher()
     }()
 
-    public init(sessionProvider: SessionsProvider,
-                swapPair: SwapPair,
-                tokenCollection: TokenCollection,
-                tokenSwapper: TokenSwapper) {
-
+    public init(sessionProvider: SessionsProvider, swapPair: SwapPair, tokenCollection: TokenCollection, reachabilityManager: ReachabilityManagerProtocol, tokenSwapper: TokenSwapper) {
         self.tokenSwapper = tokenSwapper
         self.sessions = sessionProvider.activeSessions.values.sorted(by: { $0.server.displayOrderPriority < $1.server.displayOrderPriority })
         self.server = swapPair.from.server
@@ -111,7 +102,7 @@ public final class SwapOptionsConfigurator {
         invalidateSessionsWhenSupportedTokensChanged()
         fetchSupportedTokensForSelectedServer()
         resetToTokenForNonSupportedSwapPair()
-    }
+    } 
 
     public func set(token: Token, selection: SwapTokens.TokenSelection) {
         var pair = swapPair
@@ -141,7 +132,7 @@ public final class SwapOptionsConfigurator {
         tokenSwapper.reload()
     }
 
-    public func set(fromAmount amount: BigUInt?) {
+    public func set(fromAmount amount: BigInt?) {
         fromAmountSubject.value = amount
     }
 
@@ -203,38 +194,39 @@ public final class SwapOptionsConfigurator {
             }.store(in: &cancelable)
     }
 
-    /// Fetches swap quote for selected swap parameters, skips fetching swap routes for predefined `prefferedExchange`
-    private func fetchSwapQuote(tokens: FromAndToTokens, amount: BigUInt, slippage: String, exchanges: [String], prefferedExchange: String?) -> AnyPublisher<SwapQuote?, Never> {
+    private func fetchSwapQuote(tokens: FromAndToTokens, amount: BigUInt, slippage: String) -> AnyPublisher<SwapQuote?, Never> {
         let wallet = session.account.address
         fetchSwapQuoteStateSubject.send(.fetching)
 
         return Just(tokens)
-            .flatMapLatest { [tokenSwapper] tokens -> AnyPublisher<String?, Never> in
-                if let exchange = prefferedExchange {
-                    return .just(exchange)
-                } else {
-                    return tokenSwapper.fetchSwapRoute(fromToken: tokens.from, toToken: tokens.to, slippage: slippage, fromAmount: amount, exchanges: exchanges)
-                }
-            }.flatMapLatest { [tokenSwapper] exchange -> AnyPublisher<Result<SwapQuote, SwapError>, Never> in
-                guard let exchange = exchange else { return .just(.failure(.tokenOrSwapQuoteNotFound)) }
-                return tokenSwapper.fetchSwapQuote(fromToken: tokens.from, toToken: tokens.to, wallet: wallet, slippage: slippage, fromAmount: amount, exchange: exchange)
-            }.handleEvents(receiveOutput: { [weak fetchSwapQuoteStateSubject, weak errorSubject] result in
+            .flatMapLatest { [tokenSwapper] tokens in
+                tokenSwapper.fetchSwapQuote(fromToken: tokens.from, toToken: tokens.to, wallet: wallet, slippage: slippage, fromAmount: amount)
+            }.handleEvents(receiveOutput: { [weak fetchSwapQuoteStateSubject, weak errorSubject, weak self] result in
                 switch result {
                 case .success(let swapQuote):
+                    self?.set(swapQuote: swapQuote)
                     fetchSwapQuoteStateSubject?.send(.completed(error: nil))
                 case .failure(let error):
                     fetchSwapQuoteStateSubject?.send(.completed(error: error))
                     errorSubject?.send(.general(error: error))
                 }
-            }).map { try? $0.get() }
-            .eraseToAnyPublisher()
+            }).map { result -> SwapQuote? in
+                switch result {
+                case .success(let swapQuote): return swapQuote
+                case .failure: return nil
+                }
+            }.eraseToAnyPublisher()
+    }
+
+    private func set(swapQuote: SwapQuote) {
+        lastSwapQuote = swapQuote
     }
 
     private func validateSwapPair(forServer server: RPCServer, isInitialServerValidation: Bool) {
         do {
             let tokens = try supportedTokens(forServer: server)
             let token = try firstSupportedFromToken(forServer: server, tokens: tokens)
-            if isInitialServerValidation && swapPair.from.contractAddress != token.contractAddress {
+            if isInitialServerValidation && !swapPair.from.contractAddress.sameContract(as: token.contractAddress) {
                 let _ = try firstSupportedFromToken(forServer: server, tokens: [swapPair.from])
                 //NOTE: no changes needed as current swapPair.from supports
             } else {
@@ -277,10 +269,9 @@ public final class SwapOptionsConfigurator {
 public extension SwapOptionsConfigurator {
     var tokensWithTheirSwapQuote: AnyPublisher<(swapQuote: SwapQuote, tokens: FromAndToTokens)?, Never> {
         return swapQuote.combineLatest(fromAndToTokensPublisher)
-            .map { (swapRoutes, tokens) -> (swapRoutes: SwapQuote, tokens: FromAndToTokens)? in
-                guard let swapQuote = swapRoutes, let tokens = tokens, swapQuote.action.fromToken == tokens.from && swapQuote.action.toToken == tokens.to else { return nil }
+            .map { (swapQuote, tokens) -> (swapQuote: SwapQuote, tokens: FromAndToTokens)? in
+                guard let swapQuote = swapQuote, let tokens = tokens, swapQuote.action.fromToken == tokens.from && swapQuote.action.toToken == tokens.to else { return nil }
                 return (swapQuote, tokens)
             }.eraseToAnyPublisher()
-        return .just(nil)
     }
 }

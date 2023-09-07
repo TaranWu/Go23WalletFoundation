@@ -5,39 +5,30 @@
 
 import Foundation
 import BigInt
-import Combine
-import Go23WalletCore
+import PromiseKit
 
-final class GetErc721Balance {
-    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.getErc721Balance")
-    private var inFlightPublishers: [String: AnyPublisher<[String], SessionTaskError>] = [:]
-    private let blockchainProvider: BlockchainProvider
+public class GetErc721Balance {
+    private let queue: DispatchQueue?
+    private let server: RPCServer
 
-    init(blockchainProvider: BlockchainProvider) {
-        self.blockchainProvider = blockchainProvider
+    public init(forServer server: RPCServer, queue: DispatchQueue? = nil) {
+        self.server = server
+        self.queue = queue
     }
 
-    func getErc721TokenBalance(for address: Go23Wallet.Address, contract: Go23Wallet.Address) -> AnyPublisher<[String], SessionTaskError> {
-        return Just(contract)
-            .receive(on: queue)
-            .setFailureType(to: SessionTaskError.self)
-            .flatMap { [weak self, queue, blockchainProvider] contract -> AnyPublisher<[String], SessionTaskError> in
-                let key = "\(address.eip55String)-\(contract.eip55String)"
+    public func getERC721TokenBalance(for address: DerbyWallet.Address, contract: DerbyWallet.Address) -> Promise<BigUInt> {
+        let function = GetERC721Balance()
+        return callSmartContract(withServer: server, contract: contract, functionName: function.name, abiString: function.abi, parameters: [address.eip55String] as [AnyObject], queue: queue).map(on: queue, { balanceResult -> BigUInt in
+                let balance = GetErc721Balance.adapt(balanceResult["0"] as Any)
+                return balance
+            })
+    }
 
-                if let publisher = self?.inFlightPublishers[key] {
-                    return publisher
-                } else {
-                    let publisher = blockchainProvider
-                        .call(Erc721BalanceOfMethodCall(contract: contract, address: address))
-                        .receive(on: queue)
-                        .handleEvents(receiveCompletion: { _ in self?.inFlightPublishers[key] = .none })
-                        .share()
-                        .eraseToAnyPublisher()
-
-                    self?.inFlightPublishers[key] = publisher
-
-                    return publisher
-                }
-            }.eraseToAnyPublisher()
+    private static func adapt(_ value: Any) -> BigUInt {
+        if let value = value as? BigUInt {
+            return value
+        } else {
+            return BigUInt(0)
+        }
     }
 }

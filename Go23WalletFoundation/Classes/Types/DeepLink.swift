@@ -1,13 +1,12 @@
 //
 //  DeepLink.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 14.01.2022.
 //
 
 import Foundation
 import SwiftyJSON
-import Go23WalletAddress
 
 public enum DeepLink {
     static let walletConnectPath = "/wc"
@@ -21,7 +20,7 @@ public enum DeepLink {
     }
 
     case eip681(url: URL)
-    case walletConnect(url: Go23Wallet.WalletConnect.ConnectionUrl, source: WalletConnectSource)
+    case walletConnect(url: DerbyWallet.WalletConnect.ConnectionUrl, source: WalletConnectSource)
     case embeddedUrl(server: RPCServer, url: URL)
     case shareContentAction(action: ShareContentAction)
     case magicLink(signedOrder: SignedOrder, server: RPCServer, url: URL)
@@ -31,17 +30,17 @@ public enum DeepLink {
     public init?(url: URL, supportedServers: [RPCServer] = [.main]) {
         if url.isFileURL {
             self = .maybeFileUrl(url: url)
-        } else if let eip681Url = functional.extractEip681UrlMaybeEmbedded(in: url, supportedServers: supportedServers) {
+        } else if let eip681Url = Self.Functional.extractEip681UrlMaybeEmbedded(in: url, supportedServers: supportedServers) {
             self  = .eip681(url: eip681Url)
-        } else if let (wcUrl, source) = functional.extractWalletConnectUrlMaybeEmbedded(in: url) {
+        } else if let (wcUrl, source) = Self.Functional.extractWalletConnectUrlMaybeEmbedded(in: url) {
             self = .walletConnect(url: wcUrl, source: source)
-        } else if let (server, url) = functional.extractEmbeddedUrl(in: url, supportedServers: supportedServers) {
+        } else if let (server, url) = Self.Functional.extractEmbeddedUrl(in: url, supportedServers: supportedServers) {
             self = .embeddedUrl(server: server, url: url)
         } else if let value = ShareContentAction(url) {
             self = .shareContentAction(action: value)
-        } else if let (server, signedOrder) = functional.extractEmbeddedMagicLinkData(url: url) {
+        } else if let (server, signedOrder) = Self.Functional.extractEmbeddedMagicLinkData(url: url) {
             self = .magicLink(signedOrder: signedOrder, server: server, url: url)
-        } else if let value = functional.extractEmbeddedWalletApiCall(url: url, supportedServers: []) {
+        } else if let value = Self.Functional.extractEmbeddedWalletApiCall(url: url, supportedServers: []) {
             self = .walletApi(value)
         } else {
             return nil
@@ -54,12 +53,12 @@ public enum DeepLink {
 }
 
 extension DeepLink {
-    public class functional {}
+    public class Functional {}
 }
 
 extension DeepLink {
     public enum WalletApi {
-        case signPersonalMessage(address: Go23Wallet.Address?, server: RPCServer, redirectUrl: URL, version: String, metadata: Metadata, message: String)
+        case signPersonalMessage(address: DerbyWallet.Address?, server: RPCServer, redirectUrl: URL, version: String, metadata: Metadata, message: String)
         case connect(redirectUrl: URL, version: String, metadata: Metadata)
 
         public enum Action: String {
@@ -94,7 +93,7 @@ extension DeepLink {
     }
 }
 
-extension DeepLink.functional {
+extension DeepLink.Functional {
     //E.g. https://aw.app/wallet/v1/connect?redirecturl=https%3A%2F%2Fmyapp.com&metadata=%7B%22name%22%3A%22Some%20app%22%2C%22iconurl%22%3A%22https%3A%2F%2Fimg.icons8.com%2Fnolan%2F344%2Fethereum.png%22%2C%20%22appurl%22%3A%20%22https%3A%2F%2Funiswap.org%2F%22%2C%20%22note%22%3A%22This%20will%20inform%20them%20your%20wallet%20address%20is%200x2322%E2%80%A62324%22%7D
     //E.g https://aw.app/wallet/v1/signpersonalmessage?redirecturl=https%3A%2F%2Fmyapp.com%3Fparam_1%3Dnope%26param_2%3D34&metadata=%7B%22name%22%3A%22Some%20app%22%2C%22iconurl%22%3A%22https%3A%2F%2Fimg.icons8.com%2Fnolan%2F344%2Fethereum.png%22%2C%20%22appurl%22%3A%20%22https%3A%2F%2Funiswap.org%2F%22%2C%20%22note%22%3A%22This%20will%20inform%20them%20your%20wallet%20address%20is%200x2322%E2%80%A62324%22%7D&message=0x48656c6c6f20416c7068612057616c6c6574
 
@@ -131,7 +130,7 @@ extension DeepLink.functional {
 
             guard let metadata = DeepLink.Metadata(json: json) else { return nil }
             guard let message = queryItems[DeepLink.WalletApi.Params.message] else { return nil }
-            let address = components.queryItemsDictionary[DeepLink.WalletApi.Params.address].flatMap({ Go23Wallet.Address(string: $0) })
+            let address = components.queryItemsDictionary[DeepLink.WalletApi.Params.address].flatMap({ DerbyWallet.Address(string: $0) })
 
             return .signPersonalMessage(address: address, server: result.server, redirectUrl: redirectUrl, version: version, metadata: metadata, message: message)
         case .none:
@@ -164,8 +163,8 @@ extension DeepLink.functional {
     //E.g. https://aw.app/ethereum:0x89205a3a3b2a69de6dbf7f01ed13b2108b2c43e7/transfer?address=0x8e23ee67d1332ad560396262c48ffbb01f93d052&uint256=1
     public static func extractEip681UrlMaybeEmbedded(in url: URL, supportedServers: [RPCServer]) -> URL? {
         let rawEip681Url: URL? = {
-            guard let scheme = url.scheme, scheme == Eip681Parser.scheme, AddressOrEip681Parser.from(string: url.absoluteString) != nil else { return nil }
-            switch AddressOrEip681Parser.from(string: url.absoluteString) {
+            guard let scheme = url.scheme, scheme == Eip681Parser.scheme, QRCodeValueParser.from(string: url.absoluteString) != nil else { return nil }
+            switch QRCodeValueParser.from(string: url.absoluteString) {
             case .none, .address:
                 return nil
             case .eip681:
@@ -178,7 +177,7 @@ extension DeepLink.functional {
                 return nil
             }
             let eip681Url = result.path
-            switch AddressOrEip681Parser.from(string: eip681Url) {
+            switch QRCodeValueParser.from(string: eip681Url) {
             case .address, .none:
                 return nil
             case .eip681:
@@ -201,13 +200,8 @@ extension DeepLink.functional {
         return (result.server, urlToOpen)
     }
 
-    //Multiple formats:
-    //From WalletConnect mobile linking: e.g. https://aw.app/wc?uri=wc%3A588422fd-929d-438a-b337-31c3c9184d9b%401%3Fbridge%3Dhttps%253A%252F%252Fbridge.walletconnect.org%26key%3D8f9459f72aed0790282c47fe45f37ed5cb121bc17795f8f2a229a910bc447202
-    //From AlphaWallet iOS Safari extension's rewriting: eg. https://aw.app/wc:f607884e-63a5-4fa3-8e7d-af6f6fa9b51f@1?bridge=https%3A%2F%2Fn.bridge.walletconnect.org&key=cff9abba23cb9f843e9d623b891a5f8948b41f7d4afc7f7155aa252504cd8264
-
-    //awallet://wc?uri=wc%3A5f577f99-2f54-40f7-9463-7ff640772090%401%3Fbridge%3Dhttps%253A%252F%252Fwalletconnect.depay.com%26key%3D1938aa2c9d4104c91cbc60e94631cf769c96ebad1ea2fc30e18ba09e39bc3c0b
-    public static func extractWalletConnectUrlMaybeEmbedded(in url: URL) -> (url: Go23Wallet.WalletConnect.ConnectionUrl, source: DeepLink.WalletConnectSource)? {
-        if url.scheme == "wc", let wcUrl = Go23Wallet.WalletConnect.ConnectionUrl(url.absoluteString) {
+    public static func extractWalletConnectUrlMaybeEmbedded(in url: URL) -> (url: DerbyWallet.WalletConnect.ConnectionUrl, source: DeepLink.WalletConnectSource)? {
+        if url.scheme == "wc", let wcUrl = DerbyWallet.WalletConnect.ConnectionUrl(url.absoluteString) {
             return (wcUrl, .mobileLinking)
         } else if url.path.starts(with: DeepLink.walletConnectPath) {
             if let url = extractWalletConnectUrlFromSafariExtensionRewrittenUrl(url) {
@@ -217,39 +211,36 @@ extension DeepLink.functional {
             } else {
                 return nil
             }
-        } else if url.host == "wc", let url = extractWalletConnectUrlFromWalletConnectMobileLinking(url) {
-            return (url, .mobileLinking)
         } else {
             return nil
         }
     }
 
-    private static func extractWalletConnectUrlFromSafariExtensionRewrittenUrl(_ url: URL) -> Go23Wallet.WalletConnect.ConnectionUrl? {
+    private static func extractWalletConnectUrlFromSafariExtensionRewrittenUrl(_ url: URL) -> DerbyWallet.WalletConnect.ConnectionUrl? {
         guard let magicLinkServer = RPCServer(withMagicLink: url) else { return nil }
         let _url: URL? = url
         let wcUrl = _url
             .flatMap({ $0.absoluteString })
             .flatMap({ $0.replacingOccurrences(of: magicLinkServer.magicLinkPrefix.absoluteString, with: "") })
-            .flatMap({ Go23Wallet.WalletConnect.ConnectionUrl($0) })
+            .flatMap({ DerbyWallet.WalletConnect.ConnectionUrl($0) })
 
         return wcUrl
     }
 
-    private static func extractWalletConnectUrlFromWalletConnectMobileLinking(_ url: URL) -> Go23Wallet.WalletConnect.ConnectionUrl? {
+    private static func extractWalletConnectUrlFromWalletConnectMobileLinking(_ url: URL) -> DerbyWallet.WalletConnect.ConnectionUrl? {
         //NOTE: URLComponents is clearer solution, but for some reasons it doesn't resolve all parameters from url
-        let scheme = RPCServer(withMagicLink: url)?.magicLinkPrefix.absoluteString ?? "\(url.scheme)://"
-
+        guard let magicLinkServer = RPCServer(withMagicLink: url) else { return nil }
         let _url: URL? = url
         let wcUrl1 = _url
             .flatMap({ $0.absoluteString })
-            .flatMap({ $0.replacingOccurrences(of: scheme, with: "") })
+            .flatMap({ $0.replacingOccurrences(of: magicLinkServer.magicLinkPrefix.absoluteString, with: "") })
             .flatMap({ $0.replacingOccurrences(of: "wc?uri=", with: "") })
-            .flatMap({ Go23Wallet.WalletConnect.ConnectionUrl($0) })
+            .flatMap({ DerbyWallet.WalletConnect.ConnectionUrl($0) })
 
         let wcUrl2 = _url
             .flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: true)?.queryItems })
             .flatMap({ $0.first(where: { $0.name == "uri" })?.value })
-            .flatMap({ Go23Wallet.WalletConnect.ConnectionUrl($0) })
+            .flatMap({ DerbyWallet.WalletConnect.ConnectionUrl($0) })
 
         return wcUrl1 ?? wcUrl2
         //no-op. According to WalletConnect docs, this is just to get iOS to switch over to the app for signing, etc. e.g. https://aw.app/wc?uri=wc:00e46b69-d0cc-4b3e-b6a2-cee442f97188@1

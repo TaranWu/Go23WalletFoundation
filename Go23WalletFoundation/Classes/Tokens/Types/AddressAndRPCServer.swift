@@ -1,18 +1,17 @@
 //
 //  AddressAndRPCServer.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 30.03.2021.
 //
 
 import Foundation
-import Go23WalletAddress
 
 public struct AddressAndRPCServer: Hashable, Codable, CustomStringConvertible {
-    public let address: Go23Wallet.Address
+    public let address: DerbyWallet.Address
     public let server: RPCServer
 
-    public init(address: Go23Wallet.Address, server: RPCServer) {
+    public init(address: DerbyWallet.Address, server: RPCServer) {
         self.address = address
         self.server = server
     }
@@ -27,7 +26,7 @@ public struct AddressAndRPCServer: Hashable, Codable, CustomStringConvertible {
 }
 
 public struct AddressAndOptionalRPCServer: Hashable, Codable, CustomStringConvertible {
-    public let address: Go23Wallet.Address
+    public let address: DerbyWallet.Address
     public let server: RPCServer?
 
     public var description: String {

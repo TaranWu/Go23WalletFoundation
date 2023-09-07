@@ -1,6 +1,6 @@
 //
 //  SwapTokenProvider.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 24.08.2022.
 //

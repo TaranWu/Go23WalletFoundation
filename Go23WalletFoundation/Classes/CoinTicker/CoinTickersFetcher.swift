@@ -1,8 +1,8 @@
 //
 //  CoinTickersFetcher.swift
-//  Go23Wallet
+//  DerbyWallet
 //
-//  Created by Vladyslav Shepitko on 27.01.2021.
+//  Created by Tatan.
 //
 
 import Combine
@@ -12,11 +12,15 @@ public protocol CoinTickersFetcherTests {
     func addOrUpdateTestsOnly(ticker: CoinTicker?, for token: TokenMappedToTicker)
 }
 
-public protocol CoinTickersFetcher: AnyObject, CoinTickersFetcherTests, CoinTickersFetcherProvider {
+public protocol CoinTickersFetcher: AnyObject, CoinTickersFetcherTests {
     var tickersDidUpdate: AnyPublisher<Void, Never> { get }
     var updateTickerIds: AnyPublisher<[(tickerId: TickerIdString, key: AddressAndRPCServer)], Never> { get }
-
-    func ticker(for key: AddressAndRPCServer, currency: Currency) -> CoinTicker?
+    
+    func ticker(for addressAndPRCServer: AddressAndRPCServer) -> CoinTicker?
+    func fetchTickers(for tokens: [TokenMappedToTicker], force: Bool)
+    func resolveTikerIds(for tokens: [TokenMappedToTicker])
+    func fetchChartHistories(for token: TokenMappedToTicker, force: Bool, periods: [ChartHistoryPeriod]) -> AnyPublisher<[ChartHistory], Never>
+    func cancel()
 }
 
 public struct AssignedCoinTickerId: Hashable, Codable {

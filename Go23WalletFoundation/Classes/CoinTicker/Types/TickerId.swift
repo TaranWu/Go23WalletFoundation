@@ -1,13 +1,12 @@
 //
 //  TickerId.swift
-//  Go23Wallet
+//  DerbyWallet
 //
-//  Created by Vladyslav Shepitko on 29.03.2022.
+//  Created by Tatan.
 //
 
 import Foundation
 import BigInt
-import Go23WalletAddress
 
 public struct TickerId: Codable, Hashable {
     let id: String
@@ -46,12 +45,12 @@ extension TickerId {
             var platforms: [AddressAndRPCServer] = []
             for each in try container.decode([String: String].self, forKey: .platforms) {
                 guard let server = RPCServer(coinGeckoPlatform: each.key.trimmed) else { continue }
-                let address: Go23Wallet.Address
+                let address: DerbyWallet.Address
                 let possibleAddressValue = each.value.trimmed
                 if possibleAddressValue.isEmpty {
                     address = Constants.nullAddress
                 } else {
-                    guard let _address = Go23Wallet.Address(string: possibleAddressValue) else { continue }
+                    guard let _address = DerbyWallet.Address(string: possibleAddressValue) else { continue }
                     address = _address
                 }
                 platforms.append(.init(address: address, server: server))

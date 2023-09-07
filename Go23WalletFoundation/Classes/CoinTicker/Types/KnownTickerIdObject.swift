@@ -1,8 +1,8 @@
 //
 //  KnownTickerIdObject.swift
-//  Go23WalletFoundation
+//  DerbyWalletFoundation
 //
-//  Created by Vladyslav Shepitko on 05.09.2022.
+//  Created by Tatan.
 //
 
 import Foundation
@@ -18,8 +18,8 @@ class KnownTickerIdObject: Object {
         return .init(chainID: chainId)
     }
 
-    var contractAddress: Go23Wallet.Address {
-        return Go23Wallet.Address(uncheckedAgainstNullAddress: contract)!
+    var contractAddress: DerbyWallet.Address {
+        return DerbyWallet.Address(uncheckedAgainstNullAddress: contract)!
     }
 
     convenience init(key: AssignedCoinTickerId) {
@@ -30,7 +30,7 @@ class KnownTickerIdObject: Object {
         self.tickerIdString = key.tickerId
     }
 
-    convenience init(server: RPCServer, contractAddress: Go23Wallet.Address, tickerIdString: TickerIdString) {
+    convenience init(server: RPCServer, contractAddress: DerbyWallet.Address, tickerIdString: TickerIdString) {
         self.init()
         self.primaryKey = ContractAddressObject.generatePrimaryKey(fromContract: contractAddress, server: server)
         self.chainId = server.chainID

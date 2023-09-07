@@ -3,14 +3,13 @@
 import Foundation
 import RealmSwift
 import Combine
-import Go23WalletAddress
 
 public protocol NonActivityEventsDataStore {
-    func getLastMatchingEventSortedByBlockNumber(for contract: Go23Wallet.Address, tokenContract: Go23Wallet.Address, server: RPCServer, eventName: String) -> EventInstanceValue?
+    func getLastMatchingEventSortedByBlockNumber(for contract: DerbyWallet.Address, tokenContract: DerbyWallet.Address, server: RPCServer, eventName: String) -> EventInstanceValue?
     func addOrUpdate(events: [EventInstanceValue])
-    func deleteEvents(for contract: Go23Wallet.Address)
-    func getMatchingEvent(for contract: Go23Wallet.Address, tokenContract: Go23Wallet.Address, server: RPCServer, eventName: String, filterName: String, filterValue: String) -> EventInstanceValue?
-    func recentEventsChangeset(for contract: Go23Wallet.Address) -> AnyPublisher<ChangeSet<[EventInstanceValue]>, Never>
+    func deleteEvents(for contract: DerbyWallet.Address)
+    func getMatchingEvent(for contract: DerbyWallet.Address, tokenContract: DerbyWallet.Address, server: RPCServer, eventName: String, filterName: String, filterValue: String) -> EventInstanceValue?
+    func recentEventsChangeset(for contract: DerbyWallet.Address) -> AnyPublisher<ChangeSet<[EventInstanceValue]>, Never>
 }
 
 open class NonActivityMultiChainEventsDataStore: NonActivityEventsDataStore {
@@ -20,9 +19,9 @@ open class NonActivityMultiChainEventsDataStore: NonActivityEventsDataStore {
         self.store = store
     }
 
-    public func getMatchingEvent(for contract: Go23Wallet.Address, tokenContract: Go23Wallet.Address, server: RPCServer, eventName: String, filterName: String, filterValue: String) -> EventInstanceValue? {
+    public func getMatchingEvent(for contract: DerbyWallet.Address, tokenContract: DerbyWallet.Address, server: RPCServer, eventName: String, filterName: String, filterValue: String) -> EventInstanceValue? {
         let predicate = NonActivityMultiChainEventsDataStore
-            .functional
+            .Functional
             .matchingEventPredicate(for: contract, tokenContract: tokenContract, server: server, eventName: eventName, filterName: filterName, filterValue: filterValue)
 
         var event: EventInstanceValue?
@@ -35,7 +34,7 @@ open class NonActivityMultiChainEventsDataStore: NonActivityEventsDataStore {
         return event
     }
 
-    public func deleteEvents(for contract: Go23Wallet.Address) {
+    public func deleteEvents(for contract: DerbyWallet.Address) {
         store.performSync { realm in
             try? realm.safeWrite {
                 let events = realm.objects(EventInstance.self)
@@ -45,7 +44,7 @@ open class NonActivityMultiChainEventsDataStore: NonActivityEventsDataStore {
         }
     }
 
-    public func recentEventsChangeset(for contract: Go23Wallet.Address) -> AnyPublisher<ChangeSet<[EventInstanceValue]>, Never> {
+    public func recentEventsChangeset(for contract: DerbyWallet.Address) -> AnyPublisher<ChangeSet<[EventInstanceValue]>, Never> {
         var publisher: AnyPublisher<ChangeSet<[EventInstanceValue]>, Never>!
         store.performSync { realm in
             publisher = realm.objects(EventInstance.self)
@@ -69,9 +68,9 @@ open class NonActivityMultiChainEventsDataStore: NonActivityEventsDataStore {
         return publisher
     }
 
-    public func getLastMatchingEventSortedByBlockNumber(for contract: Go23Wallet.Address, tokenContract: Go23Wallet.Address, server: RPCServer, eventName: String) -> EventInstanceValue? {
+    public func getLastMatchingEventSortedByBlockNumber(for contract: DerbyWallet.Address, tokenContract: DerbyWallet.Address, server: RPCServer, eventName: String) -> EventInstanceValue? {
         let predicate = NonActivityMultiChainEventsDataStore
-            .functional
+            .Functional
             .matchingEventPredicate(for: contract, tokenContract: tokenContract, server: server, eventName: eventName)
 
         var event: EventInstanceValue?
@@ -99,27 +98,27 @@ open class NonActivityMultiChainEventsDataStore: NonActivityEventsDataStore {
 }
 
 extension NonActivityMultiChainEventsDataStore {
-    enum functional {}
+    enum Functional {}
 }
 
-extension NonActivityMultiChainEventsDataStore.functional {
+extension NonActivityMultiChainEventsDataStore.Functional {
 
     static func isFilterMatchPredicate(filterName: String, filterValue: String) -> NSPredicate {
         return NSPredicate(format: "filter = '\(filterName)=\(filterValue)'")
     }
 
-    static func matchingEventPredicate(for contract: Go23Wallet.Address, tokenContract: Go23Wallet.Address, server: RPCServer, eventName: String, filterName: String, filterValue: String) -> NSPredicate {
+    static func matchingEventPredicate(for contract: DerbyWallet.Address, tokenContract: DerbyWallet.Address, server: RPCServer, eventName: String, filterName: String, filterValue: String) -> NSPredicate {
         return NSCompoundPredicate(andPredicateWithSubpredicates: [
-            EventsActivityDataStore.functional.isContractMatchPredicate(contract: contract),
-            EventsActivityDataStore.functional.isChainIdMatchPredicate(server: server),
-            EventsActivityDataStore.functional.isTokenContractMatchPredicate(contract: tokenContract),
-            EventsActivityDataStore.functional.isEventNameMatchPredicate(eventName: eventName),
+            EventsActivityDataStore.Functional.isContractMatchPredicate(contract: contract),
+            EventsActivityDataStore.Functional.isChainIdMatchPredicate(server: server),
+            EventsActivityDataStore.Functional.isTokenContractMatchPredicate(contract: tokenContract),
+            EventsActivityDataStore.Functional.isEventNameMatchPredicate(eventName: eventName),
             isFilterMatchPredicate(filterName: filterName, filterValue: filterValue)
         ])
     }
 
-    static func matchingEventPredicate(for contract: Go23Wallet.Address, tokenContract: Go23Wallet.Address, server: RPCServer, eventName: String) -> NSPredicate {
-        EventsActivityDataStore.functional.matchingEventPredicate(for: contract, tokenContract: tokenContract, server: server, eventName: eventName)
+    static func matchingEventPredicate(for contract: DerbyWallet.Address, tokenContract: DerbyWallet.Address, server: RPCServer, eventName: String) -> NSPredicate {
+        EventsActivityDataStore.Functional.matchingEventPredicate(for: contract, tokenContract: tokenContract, server: server, eventName: eventName)
     }
 }
 

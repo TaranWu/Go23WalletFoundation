@@ -1,6 +1,6 @@
 //
 //  RealmStore.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 06.04.2022.
 //
@@ -21,7 +21,7 @@ public func fakeRealm(inMemoryIdentifier: String = "MyInMemoryRealm") -> Realm {
 
 open class RealmStore {
     public static func threadName(for wallet: Wallet) -> String {
-        return "org.Go23Wallet.swift.realmStore.\(wallet.address).wallet"
+        return "org.DerbyWallet.swift.realmStore.\(wallet.address).wallet"
     }
     private let config: Realm.Configuration
     private let thread: RunLoopThread = .init()
@@ -32,9 +32,9 @@ open class RealmStore {
 
         return realm
     }()
-    fileprivate let queueForRealmStore = DispatchQueue(label: "org.Go23Wallet.swift.realm.store", qos: .background)
+    fileprivate let queueForRealmStore = DispatchQueue(label: "org.DerbyWallet.swift.realm.store", qos: .background)
 
-    public init(realm: Realm, name: String = "org.Go23Wallet.swift.realmStore") {
+    public init(realm: Realm, name: String = "org.DerbyWallet.swift.realmStore") {
         self.mainThreadRealm = realm
         config = realm.configuration
 
@@ -47,7 +47,7 @@ open class RealmStore {
             block(mainThreadRealm)
         } else {
             //NOTE: synchronize calls from different threads to avoid
-            //*** -[Go23Wallet.RunLoopThread performSelector:onThread:withObject:waitUntilDone:modes:]: target thread exited while waiting for the perform
+            //*** -[DerbyWallet.RunLoopThread performSelector:onThread:withObject:waitUntilDone:modes:]: target thread exited while waiting for the perform
             dispatchPrecondition(condition: .notOnQueue(queueForRealmStore))
             queueForRealmStore.sync {
                 //NOTE: perform an operation on run loop thread
@@ -90,22 +90,7 @@ extension Realm {
             CoinTickerObject.self,
             AssignedCoinTickerIdObject.self
         ]
-
-        configuration.schemaVersion = 2
-        configuration.migrationBlock = { migration, oldSchemaVersion in
-            if oldSchemaVersion < 1 {
-                migration.enumerateObjects(ofType: CoinTickerObject.className()) { _, newObject in
-                    newObject?["currency"] = Currency.USD.code
-                }
-            }
-
-            if oldSchemaVersion < 2 {
-                migration.deleteData(forType: EventActivity.className())
-                migration.deleteData(forType: CoinTickerObject.className())
-                migration.deleteData(forType: AssignedCoinTickerIdObject.className())
-            }
-        }
-
+        
         let realm = try! Realm(configuration: configuration)
 
         return realm

@@ -24,7 +24,7 @@ public struct TokenIdOrigin {
         let number: BigUInt = (`bitmask` & tokenId) >> bitShift
         switch asType {
         case .address:
-            return String(numberEncodingUtf8String: number).flatMap { Go23Wallet.Address(string: $0) }.flatMap { .address($0) }
+            return String(numberEncodingUtf8String: number).flatMap { DerbyWallet.Address(string: $0) }.flatMap { .address($0) }
         case .uint:
             return .uint(number)
         case .utf8:

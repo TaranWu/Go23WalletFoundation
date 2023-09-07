@@ -1,6 +1,6 @@
 //
 //  TokenViewModel.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 14.07.2022.
 //
@@ -9,13 +9,12 @@ import Foundation
 import BigInt
 
 public protocol TokenIdentifiable {
-    var contractAddress: Go23Wallet.Address { get }
+    var contractAddress: DerbyWallet.Address { get }
     var server: RPCServer { get }
-    var type: TokenType { get }
 }
 
 public struct TokenViewModel {
-    public let contractAddress: Go23Wallet.Address
+    public let contractAddress: DerbyWallet.Address
     public let symbol: String
     public let decimals: Int
     public let server: RPCServer
@@ -34,20 +33,23 @@ public struct TokenScriptOverrides {
     public let hasNoBaseAssetDefinition: Bool
     public let server: RPCServerOrAny?
 
-    init(token: TokenScriptSupportable, tokenAdaptor: TokenAdaptor) {
-        let xmlHandler = tokenAdaptor.xmlHandler(token: token)
-        self.symbolInPluralForm = tokenAdaptor.symbolInPluralForm2(token: token)
-        self.title = tokenAdaptor.title(token: token)
+    public let xmlHandler: XMLHandler
+
+    init(token: TokenScriptSupportable, assetDefinitionStore: AssetDefinitionStore, wallet: Wallet, eventsDataStore: NonActivityEventsDataStore) {
+        let xmlHandler = XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore)
+        self.symbolInPluralForm = token.symbolInPluralForm(withAssetDefinitionStore: assetDefinitionStore)
+        self.title = token.title(withAssetDefinitionStore: assetDefinitionStore)
         //NOTE: replace if needed
         switch token.type {
         case .erc20, .nativeCryptocurrency:
-            self.shortTitleInPluralForm = tokenAdaptor.shortTitleInPluralForm(token: token)
-            self.titleInPluralForm = tokenAdaptor.titleInPluralForm(token: token)
+            self.shortTitleInPluralForm = token.shortTitleInPluralForm(withAssetDefinitionStore: assetDefinitionStore)
+            self.titleInPluralForm = token.titleInPluralForm(withAssetDefinitionStore: assetDefinitionStore)
         case .erc875, .erc1155, .erc721, .erc721ForTickets:
-            self.shortTitleInPluralForm = tokenAdaptor.shortTitleInPluralForm(token: token)
-            self.titleInPluralForm = tokenAdaptor.titleInPluralFormOptional(token: token) ?? tokenAdaptor.titleInPluralForm(token: token)
+            self.shortTitleInPluralForm = token.shortTitleInPluralForm(withAssetDefinitionStore: assetDefinitionStore, eventsDataStore: eventsDataStore, forWallet: wallet)
+            self.titleInPluralForm = token.titleInPluralForm(withAssetDefinitionStore: assetDefinitionStore, eventsDataStore: eventsDataStore, forWallet: wallet) ?? token.titleInPluralForm(withAssetDefinitionStore: assetDefinitionStore)
         }
 
+        self.xmlHandler = xmlHandler
         self.hasNoBaseAssetDefinition = xmlHandler.hasNoBaseAssetDefinition
         self.server = xmlHandler.server
     }
@@ -55,27 +57,38 @@ public struct TokenScriptOverrides {
 
 extension TokenViewModel: BalanceRepresentable { }
 
-extension TokenScriptOverrides: Hashable { }
+extension TokenScriptOverrides: Hashable {
+    public static func == (lhs: TokenScriptOverrides, rhs: TokenScriptOverrides) -> Bool {
+        return lhs.title == rhs.title && lhs.titleInPluralForm == rhs.titleInPluralForm && lhs.shortTitleInPluralForm == rhs.shortTitleInPluralForm && lhs.symbolInPluralForm == rhs.symbolInPluralForm && lhs.hasNoBaseAssetDefinition == rhs.hasNoBaseAssetDefinition && lhs.server == rhs.server
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(title)
+        hasher.combine(titleInPluralForm)
+        hasher.combine(shortTitleInPluralForm)
+        hasher.combine(symbolInPluralForm)
+        hasher.combine(hasNoBaseAssetDefinition)
+        hasher.combine(server)
+        //NOTE: we don't want to add xmlHandler to compute hash value, for now
+    }
+}
 
 extension TokenViewModel: TokenFilterable {
     public var balanceNft: [TokenBalanceValue] { balance.balance }
-    public var valueBI: BigUInt { balance.value }
+    public var valueBI: BigInt { balance.value }
 }
 
 extension TokenViewModel: TokenSortable {
-    public var value: BigUInt { balance.value }
+    public var value: BigInt { balance.value }
 }
-
-extension TokenViewModel: TokenScriptOverridesSupportable { }
-extension TokenViewModel: TokenBalanceSupportable { }
 
 extension TokenViewModel: Equatable {
     public static func == (lhs: TokenViewModel, rhs: TokenViewModel) -> Bool {
-        return lhs.contractAddress == rhs.contractAddress && lhs.server == rhs.server
+        return lhs.contractAddress.sameContract(as: rhs.contractAddress) && lhs.server == rhs.server
     }
 
     public static func == (lhs: TokenViewModel, rhs: Token) -> Bool {
-        return lhs.contractAddress == rhs.contractAddress && lhs.server == rhs.server
+        return lhs.contractAddress.sameContract(as: rhs.contractAddress) && lhs.server == rhs.server
     }
 }
 
@@ -96,11 +109,11 @@ extension TokenViewModel: Hashable {
 
         switch token.type {
         case .nativeCryptocurrency:
-            self.balance = .init(balance: NativecryptoBalanceViewModel(balance: token, ticker: nil))
+            self.balance = .init(balance: NativecryptoBalanceViewModel(token: token, ticker: nil))
         case .erc20:
-            self.balance = .init(balance: Erc20BalanceViewModel(balance: token, ticker: nil))
+            self.balance = .init(balance: Erc20BalanceViewModel(token: token, ticker: nil))
         case .erc875, .erc721, .erc721ForTickets, .erc1155:
-            self.balance = .init(balance: NFTBalanceViewModel(balance: token, ticker: nil))
+            self.balance = .init(balance: NFTBalanceViewModel(token: token, ticker: nil))
         }
         self.tokenScriptOverrides = nil
     }
@@ -110,10 +123,6 @@ extension TokenViewModel: Hashable {
     }
 
     public func override(tokenScriptOverrides: TokenScriptOverrides) -> TokenViewModel {
-        return .init(contractAddress: contractAddress, symbol: symbol, decimals: decimals, server: server, type: type, name: name, shouldDisplay: shouldDisplay, balance: balance, tokenScriptOverrides: tokenScriptOverrides)
-    }
-
-    public func override(shouldDisplay: Bool) -> TokenViewModel {
         return .init(contractAddress: contractAddress, symbol: symbol, decimals: decimals, server: server, type: type, name: name, shouldDisplay: shouldDisplay, balance: balance, tokenScriptOverrides: tokenScriptOverrides)
     }
 }

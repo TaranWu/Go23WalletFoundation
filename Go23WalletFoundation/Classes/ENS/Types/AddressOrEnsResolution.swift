@@ -1,6 +1,6 @@
 //
 //  AddressOrEnsResolution.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 27.01.2022.
 //

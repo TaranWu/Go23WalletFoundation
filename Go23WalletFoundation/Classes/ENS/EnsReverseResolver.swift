@@ -3,22 +3,19 @@
 import Foundation
 import Go23WalletENS
 import Combine
-import Go23WalletAddress
 
-class EnsReverseResolver {
+class EnsReverseResolver: ENSDelegateImpl {
     private let storage: EnsRecordsStorage
     private let server: RPCServer
-    private lazy var ens = ENS(delegate: ensDelegate, chainId: server.chainID)
-    private let ensDelegate: ENSDelegateImpl
+    private lazy var ens = ENS(delegate: self, chainId: server.chainID)
 
-    init(storage: EnsRecordsStorage, blockchainProvider: BlockchainProvider) {
-        self.server = blockchainProvider.server
+    init(server: RPCServer, storage: EnsRecordsStorage) {
+        self.server = server
         self.storage = storage
-        self.ensDelegate = ENSDelegateImpl(blockchainProvider: blockchainProvider)
     }
 
     //TODO make calls from multiple callers at the same time for the same address more efficient
-    func getENSNameFromResolver(for address: Go23Wallet.Address) -> AnyPublisher<String, SmartContractError> {
+    func getENSNameFromResolver(for address: DerbyWallet.Address) -> AnyPublisher<String, SmartContractError> {
         if let cachedResult = cachedEnsValue(for: address) {
             return .just(cachedResult)
         }
@@ -32,7 +29,7 @@ class EnsReverseResolver {
 }
 
 extension EnsReverseResolver: CachedEnsResolutionServiceType {
-    func cachedEnsValue(for address: Go23Wallet.Address) -> String? {
+    func cachedEnsValue(for address: DerbyWallet.Address) -> String? {
         let key = EnsLookupKey(nameOrAddress: address.eip55String, server: server)
         switch storage.record(for: key, expirationTime: Constants.Ens.recordExpiration)?.value {
         case .ens(let ens):

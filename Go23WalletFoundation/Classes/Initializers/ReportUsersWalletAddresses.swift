@@ -1,6 +1,6 @@
 //
 //  ReportUsersWalletAddresses.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 11.05.2022.
 //
@@ -9,18 +9,17 @@ import Foundation
 import Combine
 
 public final class ReportUsersWalletAddresses: Initializer {
-    private let keystore: Keystore
+    private let walletAddressesStore: WalletAddressesStore
     private var cancelable = Set<AnyCancellable>()
     
-    public init(keystore: Keystore) {
-        self.keystore = keystore
+    public init(walletAddressesStore: WalletAddressesStore) {
+        self.walletAddressesStore = walletAddressesStore
     }
 
     public func perform() {
         //NOTE: make 2 sec delay to avoid load on launch
-        keystore.walletsPublisher
-            .delay(for: .seconds(2), scheduler: RunLoop.main)
-            .sink { crashlytics.track(wallets: Array($0)) }
-            .store(in: &cancelable)
+        walletAddressesStore.walletsPublisher.delay(for: .seconds(2), scheduler: RunLoop.main).sink { wallets in
+            crashlytics.track(wallets: Array(wallets))
+        }.store(in: &cancelable)
     }
 }

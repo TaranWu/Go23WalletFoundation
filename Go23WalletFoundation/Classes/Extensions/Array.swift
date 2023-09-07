@@ -1,15 +1,15 @@
 //
 //  Array.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 04.03.2021.
 //
 
 import Foundation
 
-public func - <T: Equatable> (left: [T], right: [T]) -> [T] {
-    return left.filter { l in
-        !right.contains { $0 == l }
+public func -<T: Equatable>(left: [T], right: [T]) -> [T] {
+    return left.filter { leftT in
+        !right.contains { $0 == leftT }
     }
 }
 

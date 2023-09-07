@@ -3,55 +3,52 @@
 import Foundation
 import Combine
 
+public enum TransactionError: Error {
+    case failedToFetch
+}
+
+public protocol TransactionsServiceDelegate: AnyObject {
+    func didCompleteTransaction(in service: TransactionsService, transaction: TransactionInstance)
+    func didExtractNewContracts(in service: TransactionsService, contractsAndServers: [AddressAndRPCServer])
+}
+
 public class TransactionsService {
-    private let transactionDataStore: TransactionDataStore
-    private let sessionsProvider: SessionsProvider
+    public let transactionDataStore: TransactionDataStore
+    private let sessions: ServerDictionary<WalletSession>
     private let tokensService: DetectedContractsProvideble & TokenProvidable & TokenAddable
     private let analytics: AnalyticsLogger
-    private var providers: [RPCServer: SingleChainTransactionProvider] = [:]
-    private let config: Config
+    private var providers: [SingleChainTransactionProvider] = []
+    private var config: Config { return sessions.anyValue.config }
     private let fetchLatestTransactionsQueue: OperationQueue = {
         let queue = OperationQueue()
         queue.name = "Fetch Latest Transactions"
-            //A limit is important for many reasons. One of which is Etherscan has a rate limit of 5 calls/sec/IP address according to https://etherscan.io/apis
+        //A limit is important for many reasons. One of which is Etherscan has a rate limit of 5 calls/sec/IP address according to https://etherscan.io/apis
         queue.maxConcurrentOperationCount = 3
         return queue
     }()
 
+    public weak var delegate: TransactionsServiceDelegate?
+
     public var transactionsChangeset: AnyPublisher<[TransactionInstance], Never> {
-        return sessionsProvider.sessions
-            .flatMapLatest { [transactionDataStore] sessions -> AnyPublisher<[TransactionInstance], Never> in
-                let servers = sessions.values.map { $0.server }
-                return transactionDataStore
-                    .transactionsChangeset(filter: .all, servers: servers)
-                    .map { change -> [TransactionInstance] in
-                        switch change {
-                        case .initial(let transactions): return transactions
-                        case .update(let transactions, _, _, _): return transactions
-                        case .error: return []
-                        }
-                    }.eraseToAnyPublisher()
+        let servers = sessions.values.map { $0.server }
+        return transactionDataStore
+            .transactionsChangeset(forFilter: .all, servers: servers)
+            .map { change -> [TransactionInstance] in
+                switch change {
+                case .initial(let transactions): return transactions
+                case .update(let transactions, _, _, _): return transactions
+                case .error: return []
+                }
             }.eraseToAnyPublisher()
     }
     private var cancelable = Set<AnyCancellable>()
-    private let networkService: NetworkService
-    private let assetDefinitionStore: AssetDefinitionStore
+    private let queue = DispatchQueue(label: "com.TransactionsService.UpdateQueue")
 
-    public init(sessionsProvider: SessionsProvider,
-                transactionDataStore: TransactionDataStore,
-                analytics: AnalyticsLogger,
-                tokensService: DetectedContractsProvideble & TokenProvidable & TokenAddable,
-                networkService: NetworkService,
-                config: Config,
-                assetDefinitionStore: AssetDefinitionStore) {
-
-        self.config = config
-        self.sessionsProvider = sessionsProvider
+    public init(sessions: ServerDictionary<WalletSession>, transactionDataStore: TransactionDataStore, analytics: AnalyticsLogger, tokensService: DetectedContractsProvideble & TokenProvidable & TokenAddable) {
+        self.sessions = sessions
         self.tokensService = tokensService
         self.transactionDataStore = transactionDataStore
         self.analytics = analytics
-        self.networkService = networkService
-        self.assetDefinitionStore = assetDefinitionStore
 
         setupSingleChainTransactionProviders()
 
@@ -71,97 +68,36 @@ public class TransactionsService {
         fetchLatestTransactionsQueue.cancelAllOperations()
     }
 
-    private func setupSingleChainTransactionProviders() {
-        sessionsProvider.sessions
-            .sink { [weak self] sessions in
-                guard let strongSelf = self else { return }
-
-                let servers = sessions.map { $0.key }
-
-                var providers: [SingleChainTransactionProvider] = []
-                for session in sessions {
-                    if let provider = strongSelf.providers[session.key] {
-                        providers += [provider]
-                    } else {
-                        providers += [strongSelf.buildTransactionProvider(for: session.value)]
-                    }
-                }
-
-                let providersToDelete = strongSelf.providers.keys.filter { k in sessions.contains(where: { $0.key == k }) }
-                providersToDelete.forEach { strongSelf.providers[$0] = .none }
-            }.store(in: &cancelable)
+    private func removeUnknownTransactions() {
+        //TODO why do we remove such transactions? especially `.failed` and `.unknown`?
+        transactionDataStore.removeTransactions(for: [.unknown], servers: config.enabledServers)
     }
 
-    private func buildTransactionProvider(for session: WalletSession) -> SingleChainTransactionProvider {
-        let ercTokenDetector = ErcTokenDetector(
-            tokensService: tokensService,
-            server: session.server,
-            ercProvider: session.tokenProvider,
-            assetDefinitionStore: assetDefinitionStore)
-
-        switch session.server.transactionsSource {
-        case .etherscan:
-            let provider = EtherscanSingleChainTransactionProvider(
-                session: session,
-                analytics: analytics,
-                transactionDataStore: transactionDataStore,
-                tokensService: tokensService,
-                fetchLatestTransactionsQueue: fetchLatestTransactionsQueue,
-                ercTokenDetector: ercTokenDetector,
-                networkService: networkService)
-
-            provider.start()
-
-            return provider
-        case .covalent(let apiKey):
-            let transporter = BaseApiTransporter()
-            let networking = CovalentApiNetworking(
-                server: session.server,
-                apiKey: apiKey,
-                transporter: transporter)
-
-            let provider = TransactionProvider(
-                session: session,
-                analytics: analytics,
-                transactionDataStore: transactionDataStore,
-                ercTokenDetector: ercTokenDetector,
-                networking: networking,
-                defaultPagination: session.server.defaultTransactionsPagination)
-
-            provider.start()
-
-            return provider
-        case .oklink(let apiKey):
-            let transporter = BaseApiTransporter()
-            let transactionBuilder = TransactionBuilder(
-                tokensService: tokensService,
-                server: session.server,
-                tokenProvider: session.tokenProvider)
-
-            let networking = OklinkApiNetworking(
-                server: session.server,
-                apiKey: apiKey,
-                transporter: transporter,
-                ercTokenProvider: session.tokenProvider,
-                transactionBuilder: transactionBuilder)
-
-            let provider = TransactionProvider(
-                session: session,
-                analytics: analytics,
-                transactionDataStore: transactionDataStore,
-                ercTokenDetector: ercTokenDetector,
-                networking: networking,
-                defaultPagination: session.server.defaultTransactionsPagination)
-
-            provider.start()
+    private func setupSingleChainTransactionProviders() {
+        providers = sessions.values.map { each in
+            let providerType = each.server.transactionProviderType
+            let tokensFromTransactionsFetcher = TokensFromTransactionsFetcher(detectedTokens: tokensService, session: each)
+            tokensFromTransactionsFetcher.delegate = self
+            let provider = providerType.init(session: each, analytics: analytics, transactionDataStore: transactionDataStore, tokensService: tokensService, fetchLatestTransactionsQueue: fetchLatestTransactionsQueue, tokensFromTransactionsFetcher: tokensFromTransactionsFetcher)
+            provider.delegate = self
 
             return provider
         }
     }
 
+    public func start() {
+        for each in providers {
+            each.start()
+        }
+
+        queue.async {
+            self.removeUnknownTransactions()
+        }
+    }
+
     @objc private func stopTimers() {
         for each in providers {
-            each.value.stopTimers()
+            each.stopTimers()
         }
     }
 
@@ -169,7 +105,7 @@ public class TransactionsService {
         guard !config.development.isAutoFetchingDisabled else { return }
 
         for each in providers {
-            each.value.runScheduledTimers()
+            each.runScheduledTimers()
         }
     }
 
@@ -177,14 +113,8 @@ public class TransactionsService {
         guard !config.development.isAutoFetchingDisabled else { return }
 
         for each in providers {
-            each.value.fetch()
+            each.fetch()
         }
-    }
-
-    public func transactionPublisher(for transactionId: String, server: RPCServer) -> AnyPublisher<TransactionInstance?, Never> {
-        transactionDataStore.transactionPublisher(for: transactionId, server: server)
-            .replaceError(with: nil)
-            .eraseToAnyPublisher()
     }
 
     public func transaction(withTransactionId transactionId: String, forServer server: RPCServer) -> TransactionInstance? {
@@ -192,31 +122,31 @@ public class TransactionsService {
     }
 
     public func addSentTransaction(_ transaction: SentTransaction) {
-        guard let session = sessionsProvider.session(for: transaction.original.server) else { return }
+        let session = sessions[transaction.original.server]
 
         TransactionDataStore.pendingTransactionsInformation[transaction.id] = (server: transaction.original.server, data: transaction.original.data, transactionType: transaction.original.transactionType, gasPrice: transaction.original.gasPrice)
         let token = transaction.original.to.flatMap { tokensService.token(for: $0, server: transaction.original.server) }
         let transaction = TransactionInstance.from(from: session.account.address, transaction: transaction, token: token)
-        
         transactionDataStore.add(transactions: [transaction])
     }
 
     public func stop() {
         for each in providers {
-            each.value.stop()
+            each.stop()
         }
     }
 }
 
-extension RPCServer {
-    var defaultTransactionsPagination: TransactionsPagination {
-        switch transactionsSource {
-        case .etherscan:
-            return .init(page: 0, lastFetched: [], limit: 200)
-        case .covalent:
-            return .init(page: 0, lastFetched: [], limit: 500)
-        case .oklink:
-            return .init(page: 0, lastFetched: [], limit: 50)
-        }
+extension TransactionsService: TokensFromTransactionsFetcherDelegate {
+
+    public func didExtractTokens(in fetcher: TokensFromTransactionsFetcher, contractsAndServers: [AddressAndRPCServer], tokenUpdates: [TokenUpdate]) {
+        tokensService.add(tokenUpdates: tokenUpdates)
+        delegate?.didExtractNewContracts(in: self, contractsAndServers: contractsAndServers)
+    }
+}
+
+extension TransactionsService: SingleChainTransactionProviderDelegate {
+    public func didCompleteTransaction(transaction: TransactionInstance, in provider: SingleChainTransactionProvider) {
+        delegate?.didCompleteTransaction(in: self, transaction: transaction)
     }
 }

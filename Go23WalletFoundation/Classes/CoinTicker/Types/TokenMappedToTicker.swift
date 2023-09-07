@@ -1,17 +1,16 @@
 //
 //  TokenMappedToTicker.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 29.03.2022.
 //
 
 import Foundation
-import Go23WalletAddress
 
 public struct TokenMappedToTicker {
     public let symbol: String
     public let name: String
-    public let contractAddress: Go23Wallet.Address
+    public let contractAddress: DerbyWallet.Address
     public let server: RPCServer
     /// Already found ticker id, out of info.coingeckoTickerId
     public let coinGeckoId: String?
@@ -57,6 +56,6 @@ extension TokenMappedToTicker: Equatable {
 
     /// Checks for matching of ticker id
     public static func == (lhs: TokenMappedToTicker, rhs: AddressAndRPCServer) -> Bool {
-        return lhs.contractAddress == rhs.address && lhs.server == rhs.server
+        return lhs.contractAddress.sameContract(as: rhs.address) && lhs.server == rhs.server
     }
 }

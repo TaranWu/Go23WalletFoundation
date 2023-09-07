@@ -2,14 +2,13 @@
 
 import Foundation
 import RealmSwift
-import Go23WalletAddress
 
 class DelegateContract: Object {
     @objc dynamic var primaryKey: String = ""
     @objc dynamic var chainId: Int = 0
     @objc dynamic var contract: String = ""
 
-    convenience init(contractAddress: Go23Wallet.Address, server: RPCServer) {
+    convenience init(contractAddress: DerbyWallet.Address, server: RPCServer) {
         self.init()
         self.contract = contractAddress.eip55String
         self.chainId = server.chainID
@@ -24,7 +23,7 @@ class DelegateContract: Object {
         return RPCServer(chainID: chainId)
     }
 
-    var contractAddress: Go23Wallet.Address {
-        return Go23Wallet.Address(uncheckedAgainstNullAddress: contract)!
+    var contractAddress: DerbyWallet.Address {
+        return DerbyWallet.Address(uncheckedAgainstNullAddress: contract)!
     }
 }

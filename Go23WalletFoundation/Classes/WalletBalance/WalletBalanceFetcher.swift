@@ -1,6 +1,6 @@
 //
 //  WalletBalanceFetcherType.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 28.05.2021.
 //
@@ -28,35 +28,34 @@ public class WalletBalanceFetcher: NSObject, WalletBalanceFetcherType {
     private var timer: Timer?
     private let wallet: Wallet
     private var cancelable = Set<AnyCancellable>()
+    private lazy var walletBalanceSubject: CurrentValueSubject<WalletBalance, Never> = .init(.init(wallet: wallet, tokens: []))
     private let tokensService: TokenViewModelState & TokenBalanceRefreshable
-    private lazy var walletBalanceSubject = CurrentValueSubject<WalletBalance, Never>(WalletBalance(wallet: wallet, tokens: [], currency: currencyService.currency))
-    private let currencyService: CurrencyService
+
     public var walletBalance: AnyPublisher<WalletBalance, Never> {
-        walletBalanceSubject.eraseToAnyPublisher()
+        return walletBalanceSubject
+            .eraseToAnyPublisher()
     }
 
-    public init(wallet: Wallet,
-                tokensService: TokenViewModelState & TokenBalanceRefreshable,
-                currencyService: CurrencyService) {
-
+    public init(wallet: Wallet, tokensService: TokenViewModelState & TokenBalanceRefreshable) {
         self.wallet = wallet
         self.tokensService = tokensService
-        self.currencyService = currencyService
         super.init()
     }
 
     public func start() {
+        cancelable.cancellAll()
+
+        tokensService.tokenViewModels
+            .map { [wallet] in WalletBalance(wallet: wallet, tokens: $0) }
+            .removeDuplicates()
+            .assign(to: \.value, on: walletBalanceSubject)
+            .store(in: &cancelable)
+
         guard !isRunningTests() else { return }
 
         timer = Timer.scheduledTimer(withTimeInterval: Self.updateBalanceInterval, repeats: true) { [weak self] _ in
             self?.refreshBalance(updatePolicy: .all)
         }
-
-        tokensService.tokenViewModels
-            .map { [wallet, currencyService] in WalletBalance(wallet: wallet, tokens: $0, currency: currencyService.currency) }
-            .removeDuplicates()
-            .assign(to: \.value, on: walletBalanceSubject)
-            .store(in: &cancelable)
     }
 
     deinit {

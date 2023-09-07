@@ -16,7 +16,7 @@ public struct SwapQuote {
     }
 
     public struct Token {
-        public let address: Go23Wallet.Address
+        public let address: DerbyWallet.Address
         public let chainId: Int
         public let coinKey: String
         public let decimals: Int
@@ -78,7 +78,7 @@ extension SwapQuote.Action: Decodable {
 
 extension SwapQuote.Token {
     public static func == (lhs: SwapQuote.Token, rhs: TokenToSwap) -> Bool {
-        return lhs.address == rhs.address && lhs.chainId == rhs.server.chainID
+        return lhs.address.sameContract(as: rhs.address) && lhs.chainId == rhs.server.chainID
     }
 }
 
@@ -95,13 +95,13 @@ extension SwapQuote.Token: Decodable {
         let container = try decoder.container(keyedBy: Keys.self)
 
         let addressString = try container.decode(String.self, forKey: .address)
-        address = try Go23Wallet.Address(string: addressString) ?? { throw ParsingError(fieldName: .address) }()
+        address = try DerbyWallet.Address(string: addressString) ?? { throw ParsingError(fieldName: .address) }()
         chainId = try container.decode(Int.self, forKey: .chainId)
-        coinKey = try container.decode(String.self, forKey: .coinKey, defaultValue: "")
+        coinKey = try container.decode(String.self, forKey: .coinKey)
         decimals = try container.decode(Int.self, forKey: .decimals)
         logoURI = try container.decodeIfPresent(String.self, forKey: .logoURI)
-        name = try container.decode(String.self, forKey: .name, defaultValue: "")
-        priceUSD = try container.decode(String.self, forKey: .priceUSD, defaultValue: "")
-        symbol = try container.decode(String.self, forKey: .symbol, defaultValue: "")
+        name = try container.decode(String.self, forKey: .name)
+        priceUSD = try container.decode(String.self, forKey: .priceUSD)
+        symbol = try container.decode(String.self, forKey: .symbol)
     }
 }

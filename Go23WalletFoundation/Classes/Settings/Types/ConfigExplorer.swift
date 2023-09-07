@@ -1,7 +1,6 @@
 // Copyright SIX DAY LLC. All rights reserved.
 
 import Foundation
-import Go23WalletAddress
 
 public struct ConfigExplorer {
     private let server: RPCServer
@@ -17,7 +16,7 @@ public struct ConfigExplorer {
             .flatMap { (url: $0, name: result.name) }
     }
 
-    public func contractUrl(address: Go23Wallet.Address) -> (url: URL, name: String)? {
+    public func contractUrl(address: DerbyWallet.Address) -> (url: URL, name: String)? {
         let result = ConfigExplorer.explorer(for: server)
         return result.url
             .flatMap { URL(string: $0 + "/address/" + address.eip55String) }

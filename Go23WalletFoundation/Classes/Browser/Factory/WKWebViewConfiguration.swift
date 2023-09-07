@@ -3,9 +3,10 @@
 import Foundation
 import WebKit
 import JavaScriptCore
-import Go23WalletAddress
 
-class WebviewConfiguration: NSObject {}
+class WebviewConfiguration: NSObject {
+    
+}
 
 public enum WebViewType {
     case dappBrowser(RPCServer)
@@ -14,10 +15,10 @@ public enum WebViewType {
 
 extension WKWebViewConfiguration {
 
-    public static func make(forType type: WebViewType, address: Go23Wallet.Address, messageHandler: WKScriptMessageHandler) -> WKWebViewConfiguration {
+    public static func make(forType type: WebViewType, address: DerbyWallet.Address, in messageHandler: WKScriptMessageHandler) -> WKWebViewConfiguration {
         let webViewConfig = WKWebViewConfiguration()
         var js = ""
-
+        
         switch type {
         case .dappBrowser(let server):
             let currentBundle = Bundle(for: WebviewConfiguration.self)
@@ -62,7 +63,7 @@ extension WKWebViewConfiguration {
         }
 
         HackToAllowUsingSafaryExtensionCodeInDappBrowser.injectJs(to: webViewConfig)
-        webViewConfig.userContentController.add(messageHandler, name: Method.sendTransaction.rawValue)
+
         webViewConfig.userContentController.add(messageHandler, name: Method.signTransaction.rawValue)
         webViewConfig.userContentController.add(messageHandler, name: Method.signPersonalMessage.rawValue)
         webViewConfig.userContentController.add(messageHandler, name: Method.signMessage.rawValue)
@@ -76,67 +77,87 @@ extension WKWebViewConfiguration {
         return webViewConfig
     }
 
-// swiftlint:disable function_body_length
-    fileprivate static func javaScriptForDappBrowser(server: RPCServer, address: Go23Wallet.Address) -> String {
+    public static func jsMake(for server: RPCServer, address: DerbyWallet.Address) -> WKUserScript? {
+        
+        var js = ""
+        
+        let currentBundle = Bundle(for: WebviewConfiguration.self)
+        guard let bundleUrl = currentBundle.url(forResource: "Go23WalletFoundation", withExtension: "bundle"),
+              let resourceBundle = Bundle(url: bundleUrl) else {
+            return nil
+        }
+        
+        if let filepath = resourceBundle.path(forResource: "Go23Wallet-min", ofType: "js") {
+            do {
+                js += try String(contentsOfFile: filepath)
+            } catch { }
+        }
+        js += javaScriptForDappBrowser(server: server, address: address)
+            
+        let userScript = WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        return userScript
+    }
+    
+    fileprivate static func javaScriptForDappBrowser(server: RPCServer, address: DerbyWallet.Address) -> String {
         return """
-               //Space is needed here because it is sometimes cut off by websites. 
+               //Space is needed here because it is sometimes cut off by websites.
                
                const addressHex = "\(address.eip55String)"
-               const rpcURL = "\(server.web3InjectedRpcURL.absoluteString)"
+               const rpcURL = "\(server.rpcURL.absoluteString)"
                const chainID = "\(server.chainID)"
 
                function executeCallback (id, error, value) {
-                   Go23Wallet.executeCallback(id, error, value)
+                   GO23Wallet.executeCallback(id, error, value)
                }
 
-               Go23Wallet.init(rpcURL, {
+               GO23Wallet.init(rpcURL, {
                    getAccounts: function (cb) { cb(null, [addressHex]) },
                    processTransaction: function (tx, cb){
                        console.log('signing a transaction', tx)
                        const { id = 8888 } = tx
-                       Go23Wallet.addCallback(id, cb)
-                       webkit.messageHandlers.sendTransaction.postMessage({"name": "sendTransaction", "object":     tx, id: id})
+                       GO23Wallet.addCallback(id, cb)
+                       webkit.messageHandlers.signTransaction.postMessage({"name": "signTransaction", "object":     tx, id: id})
                    },
                    signMessage: function (msgParams, cb) {
                        const { data } = msgParams
                        const { id = 8888 } = msgParams
                        console.log("signing a message", msgParams)
-                       Go23Wallet.addCallback(id, cb)
+                       GO23Wallet.addCallback(id, cb)
                        webkit.messageHandlers.signMessage.postMessage({"name": "signMessage", "object": { data }, id:    id} )
                    },
                    signPersonalMessage: function (msgParams, cb) {
                        const { data } = msgParams
                        const { id = 8888 } = msgParams
                        console.log("signing a personal message", msgParams)
-                       Go23Wallet.addCallback(id, cb)
+                       GO23Wallet.addCallback(id, cb)
                        webkit.messageHandlers.signPersonalMessage.postMessage({"name": "signPersonalMessage", "object":  { data }, id: id})
                    },
                    signTypedMessage: function (msgParams, cb) {
                        const { data } = msgParams
                        const { id = 8888 } = msgParams
                        console.log("signing a typed message", msgParams)
-                       Go23Wallet.addCallback(id, cb)
+                       GO23Wallet.addCallback(id, cb)
                        webkit.messageHandlers.signTypedMessage.postMessage({"name": "signTypedMessage", "object":     { data }, id: id})
                    },
                    ethCall: function (msgParams, cb) {
                        const data = msgParams
                        const { id = Math.floor((Math.random() * 100000) + 1) } = msgParams
                        console.log("eth_call", msgParams)
-                       Go23Wallet.addCallback(id, cb)
+                       GO23Wallet.addCallback(id, cb)
                        webkit.messageHandlers.ethCall.postMessage({"name": "ethCall", "object": data, id: id})
                    },
                    walletAddEthereumChain: function (msgParams, cb) {
                        const data = msgParams
                        const { id = Math.floor((Math.random() * 100000) + 1) } = msgParams
                        console.log("walletAddEthereumChain", msgParams)
-                       Go23Wallet.addCallback(id, cb)
+                       GO23Wallet.addCallback(id, cb)
                        webkit.messageHandlers.walletAddEthereumChain.postMessage({"name": "walletAddEthereumChain", "object": data, id: id})
                    },
                    walletSwitchEthereumChain: function (msgParams, cb) {
                        const data = msgParams
                        const { id = Math.floor((Math.random() * 100000) + 1) } = msgParams
                        console.log("walletSwitchEthereumChain", msgParams)
-                       Go23Wallet.addCallback(id, cb)
+                       GO23Wallet.addCallback(id, cb)
                        webkit.messageHandlers.walletSwitchEthereumChain.postMessage({"name": "walletSwitchEthereumChain", "object": data, id: id})
                    },
                    enable: function() {
@@ -151,7 +172,7 @@ extension WKWebViewConfiguration {
                })
 
                web3.setProvider = function () {
-                   console.debug('Go23Wallet Wallet - overrode web3.setProvider')
+                   console.debug('GO23Wallet - overrode web3.setProvider')
                }
 
                web3.eth.defaultAccount = addressHex
@@ -192,7 +213,7 @@ extension WKWebViewConfiguration {
     }
 // swiftlint:enable function_body_length
 
-    fileprivate static func javaScriptForTokenScriptRenderer(address: Go23Wallet.Address) -> String {
+    fileprivate static func javaScriptForTokenScriptRenderer(address: DerbyWallet.Address) -> String {
         return """
                window.web3CallBacks = {}
                window.tokenScriptCallBacks = {}
@@ -313,15 +334,15 @@ private struct HackToAllowUsingSafaryExtensionCodeInDappBrowser {
         }
         var js = javaScriptForSafaryExtension()
         js += """
-                const overridenElementsForGo23WalletExtension = new Map();
+                const overridenElementsForGO23WalletExtension = new Map();
                 function runOnStart() {
                     function applyURLsOverriding(options, url) {
-                        let elements = overridenElementsForGo23WalletExtension.get(url);
+                        let elements = overridenElementsForGO23WalletExtension.get(url);
                         if (typeof elements != 'undefined') {
-                            overridenElementsForGo23WalletExtension(elements)
+                            overridenElementsForGO23WalletExtension(elements)
                         }
 
-                        overridenElementsForGo23WalletExtension.set(url, retrieveAllURLs(document, options));
+                        overridenElementsForGO23WalletExtension.set(url, retrieveAllURLs(document, options));
                     }
 
                     const url = document.URL;
@@ -350,3 +371,4 @@ private struct HackToAllowUsingSafaryExtensionCodeInDappBrowser {
         webViewConfig.userContentController.addUserScript(userScript)
     }
 }
+

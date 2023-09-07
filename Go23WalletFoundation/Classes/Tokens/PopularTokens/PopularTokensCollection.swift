@@ -1,13 +1,12 @@
 //
 //  PopularTokensCollection.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 04.06.2021.
 //
 
 import Foundation
-import Combine
-import Go23WalletCore
+import PromiseKit
 
 struct JSONCodingKeys: CodingKey {
     var stringValue: String
@@ -28,7 +27,7 @@ public struct PopularToken: Decodable {
         case invalid
     }
 
-    public var contractAddress: Go23Wallet.Address
+    public var contractAddress: DerbyWallet.Address
     public var server: RPCServer
     public var name: String
 
@@ -41,7 +40,7 @@ public struct PopularToken: Decodable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        if let address = Go23Wallet.Address(uncheckedAgainstNullAddress: try container.decode(String.self, forKey: .address)) {
+        if let address = DerbyWallet.Address(uncheckedAgainstNullAddress: try container.decode(String.self, forKey: .address)) {
             contractAddress = address
         } else {
             throw AnyError.invalid
@@ -57,49 +56,76 @@ public enum WalletOrPopularToken {
 }
 
 public protocol PopularTokensCollectionType: AnyObject {
-    func fetchTokens() -> AnyPublisher<[PopularToken], PromiseError>
+    func fetchTokens(for servers: [RPCServer]) -> Promise<[PopularToken]>
 }
 
-public class PopularTokensCollection: NSObject, PopularTokensCollectionType {
-    private let queue = DispatchQueue(label: "LocalPopularTokensCollection")
-    private static var cachedTokens: [PopularToken]? = .none
-    private let tokensUrl: URL
-    private let servers: AnyPublisher<[RPCServer], Never>
-
-    public init(servers: AnyPublisher<[RPCServer], Never>, tokensUrl: URL) {
-        self.servers = servers
-        self.tokensUrl = tokensUrl
-    }
-
-    public func fetchTokens() -> AnyPublisher<[PopularToken], PromiseError> {
-        servers.receive(on: queue)
-            .tryMap { [tokensUrl] servers -> [PopularToken] in
-                if let tokens = PopularTokensCollection.cachedTokens {
-                    let tokens = PopularTokensCollection.filterTokens(with: servers, in: tokens)
-                    return tokens
-                } else {
-                    let data = try Data(contentsOf: tokensUrl, options: .alwaysMapped)
-                    let response = try JSONDecoder().decode(PopularTokenList.self, from: data)
-
-                    PopularTokensCollection.cachedTokens = response.tokens
-
-                    return PopularTokensCollection.filterTokens(with: servers, in: response.tokens)
-                }
-            }.mapError { PromiseError(error: $0) }
-            .eraseToAnyPublisher()
-    }
-
-    private static func filterTokens(with servers: [RPCServer], in response: [PopularToken]) -> [PopularToken] {
+extension PopularTokensCollectionType {
+    func filterTokens(with servers: [RPCServer], in response: [PopularToken]) -> [PopularToken] {
         return response.filter { each in servers.contains(each.server) }
     }
 }
 
-extension PopularTokensCollection {
+public class PopularTokensCollection: NSObject, PopularTokensCollectionType {
+    private let tokensURL: URL = URL(string: "https://raw.githubusercontent.com/AlphaWallet/alpha-wallet-android/fa86b477586929f61e7fefefc6a9c70de91de1f0/app/src/main/assets/known_contract.json")!
+    private let queue = DispatchQueue.global()
+    private static var tokens: [PopularToken]? = .none
+
+    public func fetchTokens(for servers: [RPCServer]) -> Promise<[PopularToken]> {
+        if let tokens = Self.tokens {
+            let tokens = filterTokens(with: servers, in: tokens)
+            return .value(tokens)
+        } else {
+            return Promise { seal in
+                queue.async {
+                    do {
+                        let data = try Data(contentsOf: self.tokensURL, options: .alwaysMapped)
+                        let response = try JSONDecoder().decode(PopularTokenList.self, from: data)
+
+                        Self.tokens = response.tokens
+                        let tokens = self.filterTokens(with: servers, in: response.tokens)
+                        seal.fulfill(tokens)
+                    } catch {
+                        seal.reject(error)
+                    }
+                }
+            }
+        }
+    }
+}
+
+public class LocalPopularTokensCollection: NSObject, PopularTokensCollectionType {
     //Force unwraps protected by unit test — try removing to replace with dummy to see test fails
-    public static var bundleLocatedTokensUrl: URL {
-        let resourceBundleUrl = Bundle(for: PopularTokensCollection.self).url(forResource: String(reflecting: PopularTokensCollection.self).components(separatedBy: ".").first!, withExtension: "bundle")!
+    lazy private var tokensURL: URL = {
+        let resourceBundleUrl = Bundle(for: self.classForCoder).url(forResource: String(reflecting: self.classForCoder).components(separatedBy: ".").first!, withExtension: "bundle")!
         let resourceBundle = Bundle(url: resourceBundleUrl)!
         return resourceBundle.url(forResource: "known_contract", withExtension: "json")!
+    }()
+
+    private let queue = DispatchQueue.global()
+    private static var tokens: [PopularToken]? = .none
+
+    public override init() {}
+    public func fetchTokens(for servers: [RPCServer]) -> Promise<[PopularToken]> {
+
+        if let tokens = Self.tokens {
+            let tokens = filterTokens(with: servers, in: tokens)
+            return .value(tokens)
+        } else {
+            return Promise { seal in
+                queue.async {
+                    do {
+                        let data = try Data(contentsOf: self.tokensURL, options: .alwaysMapped)
+                        let response = try JSONDecoder().decode(PopularTokenList.self, from: data)
+
+                        Self.tokens = response.tokens
+                        let tokens = self.filterTokens(with: servers, in: response.tokens)
+                        seal.fulfill(tokens)
+                    } catch {
+                        seal.reject(error)
+                    }
+                }
+            }
+        }
     }
 }
 

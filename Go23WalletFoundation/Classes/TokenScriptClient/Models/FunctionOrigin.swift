@@ -10,7 +10,7 @@ public enum FunctionError: LocalizedError {
     case formValue
     case postTransaction
 
-    public var errorDescription: String? {
+    var localizedDescription: String {
         switch self {
         case .formPayload:
             return "Impossible To Build Configuration! Form Payload missing"
@@ -22,7 +22,6 @@ public enum FunctionError: LocalizedError {
     }
 }
 
-// swiftlint:disable type_body_length
 public struct FunctionOrigin {
     public enum FunctionType {
         case functionCall(functionName: String, inputs: [AssetFunctionCall.Argument], output: AssetFunctionCall.ReturnType)
@@ -91,7 +90,8 @@ public struct FunctionOrigin {
         }
     }
 
-    public let originContractOrRecipientAddress: Go23Wallet.Address
+    public let originContractOrRecipientAddress: DerbyWallet.Address
+    private let attributeId: AttributeId
     private let functionType: FunctionType
     private let bitmask: BigUInt?
     private let bitShift: Int
@@ -107,7 +107,7 @@ public struct FunctionOrigin {
         functionType.inputValue
     }
 
-    public init?(forEthereumFunctionTransactionElement ethereumFunctionElement: XMLElement, root: XMLDocument, originContract: Go23Wallet.Address, xmlContext: XmlContext, bitmask: BigUInt?, bitShift: Int) {
+    public init?(forEthereumFunctionTransactionElement ethereumFunctionElement: XMLElement, root: XMLDocument, attributeId: AttributeId, originContract: DerbyWallet.Address, xmlContext: XmlContext, bitmask: BigUInt?, bitShift: Int) {
         guard let functionName = ethereumFunctionElement["function"].nilIfEmpty else { return nil }
         let inputs: [AssetFunctionCall.Argument]
         if let dataElement = XMLHandler.getDataElement(fromFunctionElement: ethereumFunctionElement, xmlContext: xmlContext) {
@@ -117,19 +117,19 @@ public struct FunctionOrigin {
         }
         let value = XMLHandler.getValueElement(fromFunctionElement: ethereumFunctionElement, xmlContext: xmlContext).flatMap { FunctionOrigin.createInput(fromInputElement: $0, root: root, xmlContext: xmlContext, withInputType: .uint) }
         let functionType = FunctionType.functionTransaction(functionName: functionName, inputs: inputs, inputValue: value)
-        self = .init(originElement: ethereumFunctionElement, xmlContext: xmlContext, originalContractOrRecipientAddress: originContract, functionType: functionType, bitmask: bitmask, bitShift: bitShift)
+        self = .init(originElement: ethereumFunctionElement, xmlContext: xmlContext, originalContractOrRecipientAddress: originContract, attributeId: attributeId, functionType: functionType, bitmask: bitmask, bitShift: bitShift)
     }
 
-    public init?(forEthereumPaymentElement ethereumFunctionElement: XMLElement, root: XMLDocument, recipientAddress: Go23Wallet.Address, xmlContext: XmlContext, bitmask: BigUInt?, bitShift: Int) {
+    public init?(forEthereumPaymentElement ethereumFunctionElement: XMLElement, root: XMLDocument, attributeId: AttributeId, recipientAddress: DerbyWallet.Address, xmlContext: XmlContext, bitmask: BigUInt?, bitShift: Int) {
         if let valueElement = XMLHandler.getValueElement(fromFunctionElement: ethereumFunctionElement, xmlContext: xmlContext), let value = FunctionOrigin.createInput(fromInputElement: valueElement, root: root, xmlContext: xmlContext, withInputType: .uint) {
             let functionType = FunctionType.paymentTransaction(inputValue: value)
-            self = .init(originElement: ethereumFunctionElement, xmlContext: xmlContext, originalContractOrRecipientAddress: recipientAddress, functionType: functionType, bitmask: bitmask, bitShift: bitShift)
+            self = .init(originElement: ethereumFunctionElement, xmlContext: xmlContext, originalContractOrRecipientAddress: recipientAddress, attributeId: attributeId, functionType: functionType, bitmask: bitmask, bitShift: bitShift)
         } else {
             return nil
         }
     }
 
-    public init?(forEthereumFunctionCallElement ethereumFunctionElement: XMLElement, root: XMLDocument, originContract: Go23Wallet.Address, xmlContext: XmlContext, bitmask: BigUInt?, bitShift: Int) {
+    public init?(forEthereumFunctionCallElement ethereumFunctionElement: XMLElement, root: XMLDocument, attributeName: AttributeId, originContract: DerbyWallet.Address, xmlContext: XmlContext, bitmask: BigUInt?, bitShift: Int) {
         guard let functionName = ethereumFunctionElement["function"].nilIfEmpty else { return nil }
         guard let asType: OriginAsType = ethereumFunctionElement["as"].flatMap({ OriginAsType(rawValue: $0) }) else { return nil }
         let inputs: [AssetFunctionCall.Argument]
@@ -140,13 +140,14 @@ public struct FunctionOrigin {
             inputs = []
         }
         let functionType = FunctionType.functionCall(functionName: functionName, inputs: inputs, output: output)
-        self = .init(originElement: ethereumFunctionElement, xmlContext: xmlContext, originalContractOrRecipientAddress: originContract, functionType: functionType, bitmask: bitmask, bitShift: bitShift)
+        self = .init(originElement: ethereumFunctionElement, xmlContext: xmlContext, originalContractOrRecipientAddress: originContract, attributeId: attributeName, functionType: functionType, bitmask: bitmask, bitShift: bitShift)
     }
 
-    public init(originElement: XMLElement, xmlContext: XmlContext, originalContractOrRecipientAddress: Go23Wallet.Address, functionType: FunctionType, bitmask: BigUInt?, bitShift: Int) {
+    public init(originElement: XMLElement, xmlContext: XmlContext, originalContractOrRecipientAddress: DerbyWallet.Address, attributeId: AttributeId, functionType: FunctionType, bitmask: BigUInt?, bitShift: Int) {
         self.originElement = originElement
         self.xmlContext = xmlContext
         self.originContractOrRecipientAddress = originalContractOrRecipientAddress
+        self.attributeId = attributeId
         self.functionType = functionType
         self.bitmask = bitmask
         self.bitShift = bitShift
@@ -155,6 +156,7 @@ public struct FunctionOrigin {
     public func extractValue(withTokenId tokenId: TokenId, account: Wallet, server: RPCServer, attributeAndValues: [AttributeId: AssetInternalValue], localRefs: [AttributeId: AssetInternalValue], assetAttributeProvider: CallForAssetAttributeProvider) -> AssetInternalValue? {
         guard let functionName = functionType.functionName else { return nil }
         guard let subscribable = callSmartContractFunction(
+                forAttributeId: attributeId,
                 tokenId: tokenId,
                 attributeAndValues: attributeAndValues,
                 localRefs: localRefs,
@@ -165,7 +167,7 @@ public struct FunctionOrigin {
                 output: functionType.output,
                 assetAttributeProvider: assetAttributeProvider) else { return nil }
         let resultSubscribable = Subscribable<AssetInternalValue>(nil)
-        subscribable.sinkAsync { value in
+        subscribable.subscribe { value in
             guard let value = value else { return }
             if let bitmask = self.bitmask {
                 resultSubscribable.send(self.castReturnValue(value: value, bitmask: bitmask))
@@ -283,8 +285,8 @@ public struct FunctionOrigin {
             functionCallMetaData = metadata
             value = formValue(withTokenId: tokenId, attributeAndValues: attributeAndValues, localRefs: localRefs, server: server, account: session.account) ?? 0
         }
-        //TODO feels like everything can just be in `.tokenScript`. But have to check dapp, it includes other parameters like gas
-        return (UnconfirmedTransaction(transactionType: .prebuilt(token.server), value: value, recipient: nil, contract: originContractOrRecipientAddress, data: payload),
+        //TODO feels ike everything can just be in `.tokenScript`. But have to check dapp, it includes other parameters like gas
+        return (UnconfirmedTransaction(transactionType: .tokenScript(token), value: BigInt(value), recipient: nil, contract: originContractOrRecipientAddress, data: payload),
                 functionCallMetaData)
     }
 
@@ -333,12 +335,13 @@ public struct FunctionOrigin {
     }
 
     private func callSmartContractFunction(
+            forAttributeId attributeId: AttributeId,
             tokenId: TokenId,
             attributeAndValues: [AttributeId: AssetInternalValue],
             localRefs: [AttributeId: AssetInternalValue],
             account: Wallet,
             server: RPCServer,
-            originContract: Go23Wallet.Address,
+            originContract: DerbyWallet.Address,
             functionName: String,
             output: AssetFunctionCall.ReturnType,
             assetAttributeProvider: CallForAssetAttributeProvider
@@ -349,11 +352,10 @@ public struct FunctionOrigin {
         let functionCall = AssetFunctionCall(server: server, contract: originContract, functionName: functionName, inputs: functionType.inputs, output: output, arguments: arguments)
 
         //ENS token is treated as ERC721 because it is picked up from OpenSea. But it doesn't respond to `name` and `symbol`. Calling them is harmless but causes node errors that can be confusing "execution reverted" when looking at logs
-        if ["name", "symbol"].contains(functionCall.functionName) && functionCall.contract == Constants.ensContractOnMainnet {
+        if ["name", "symbol"].contains(functionCall.functionName) && functionCall.contract.sameContract(as: Constants.ensContractOnMainnet) {
             return Subscribable<AssetInternalValue>(nil)
         }
 
-        return assetAttributeProvider.getValue(functionCall: functionCall)
+        return assetAttributeProvider.getValue(forAttributeId: attributeId, tokenId: tokenId, functionCall: functionCall)
     }
 }
-// swiftlint:enable type_body_length

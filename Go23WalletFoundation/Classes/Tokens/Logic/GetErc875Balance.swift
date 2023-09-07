@@ -2,39 +2,28 @@
 
 import Foundation
 import PromiseKit
-import Go23WalletCore
-import Combine
 
-class GetErc875Balance {
-    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.getErc875Balance")
-    private var inFlightPublishers: [String: AnyPublisher<[String], SessionTaskError>] = [:]
-    private let blockchainProvider: BlockchainProvider
+public class GetErc875Balance {
+    private let queue: DispatchQueue?
+    private let server: RPCServer
 
-    init(blockchainProvider: BlockchainProvider) {
-        self.blockchainProvider = blockchainProvider
+    public init(forServer server: RPCServer, queue: DispatchQueue? = nil) {
+        self.server = server
+        self.queue = queue
     }
 
-    func getErc875TokenBalance(for address: Go23Wallet.Address, contract: Go23Wallet.Address) -> AnyPublisher<[String], SessionTaskError> {
-        Just(contract)
-            .receive(on: queue)
-            .setFailureType(to: SessionTaskError.self)
-            .flatMap { [weak self, queue, blockchainProvider] contract -> AnyPublisher<[String], SessionTaskError> in
-                let key = "\(address.eip55String)-\(contract.eip55String)"
+    public func getERC875TokenBalance(for address: DerbyWallet.Address, contract: DerbyWallet.Address) -> Promise<[String]> {
+        let function = GetERC875Balance()
+        return callSmartContract(withServer: server, contract: contract, functionName: function.name, abiString: function.abi, parameters: [address.eip55String] as [AnyObject]).map(on: queue, { balanceResult -> [String] in
+            return GetErc875Balance.adapt(balanceResult["0"])
+        })
+    }
 
-                if let publisher = self?.inFlightPublishers[key] {
-                    return publisher
-                } else {
-                    let publisher = blockchainProvider
-                        .call(Erc875BalanceOfMethodCall(contract: contract, address: address))
-                        .receive(on: queue)
-                        .handleEvents(receiveCompletion: { _ in self?.inFlightPublishers[key] = .none })
-                        .share()
-                        .eraseToAnyPublisher()
-
-                    self?.inFlightPublishers[key] = publisher
-
-                    return publisher
-                }
-            }.eraseToAnyPublisher()
+    private static func adapt(_ values: Any?) -> [String] {
+        guard let array = values as? [Data] else { return [] }
+        return array.map { each in
+            let value = each.toHexString()
+            return "0x\(value)"
+        }
     }
 }

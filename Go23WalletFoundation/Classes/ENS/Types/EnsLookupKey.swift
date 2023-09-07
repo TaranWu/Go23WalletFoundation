@@ -1,6 +1,6 @@
 //
 //  EnsLookupKey.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 06.06.2022.
 //

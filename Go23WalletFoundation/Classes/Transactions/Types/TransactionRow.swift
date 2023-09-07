@@ -14,10 +14,15 @@ public enum TransactionRow {
         }
     }
 
-    public var id: String { transaction.id }
-    public var blockNumber: Int { transaction.blockNumber }
-    public var transactionIndex: Int { transaction.transactionIndex }
-
+    public var id: String {
+        transaction.id
+    }
+    public var blockNumber: Int {
+        transaction.blockNumber
+    }
+    public var transactionIndex: Int {
+        transaction.transactionIndex
+    }
     public var from: String {
         switch self {
         case .standalone(let transaction):
@@ -28,7 +33,6 @@ public enum TransactionRow {
             return operation.from
         }
     }
-
     public var to: String {
         switch self {
         case .standalone(let transaction):
@@ -39,7 +43,6 @@ public enum TransactionRow {
             return operation.to
         }
     }
-
     public var value: String {
         switch self {
         case .standalone(let transaction):
@@ -50,14 +53,27 @@ public enum TransactionRow {
             return operation.value
         }
     }
-
-    public var gas: String { transaction.gas }
-    public var gasPrice: String { transaction.gasPrice }
-    public var gasUsed: String { transaction.gasUsed }
-    public var nonce: String { transaction.nonce }
-    public var date: Date { transaction.date }
-    public var state: TransactionState { transaction.state }
-    public var server: RPCServer { transaction.server }
+    public var gas: String {
+        transaction.gas
+    }
+    public var gasPrice: String {
+        transaction.gasPrice
+    }
+    public var gasUsed: String {
+        transaction.gasUsed
+    }
+    public var nonce: String {
+        transaction.nonce
+    }
+    public var date: Date {
+        transaction.date
+    }
+    public var state: TransactionState {
+        transaction.state
+    }
+    public var server: RPCServer {
+        transaction.server
+    }
 
     public var operation: LocalizedOperationObjectInstance? {
         switch self {
@@ -65,23 +81,8 @@ public enum TransactionRow {
             return transaction.operation
         case .group:
             return nil
-        case .item(_, let operation):
+        case .item(_, operation: let operation):
             return operation
-        }
-    }
-}
-
-extension TransactionRow: Hashable {
-    public static func == (lhs: TransactionRow, rhs: TransactionRow) -> Bool {
-        switch (lhs, rhs) {
-        case (.standalone(let t1), .standalone(let t2)):
-            return t1 == t2
-        case (.group(let t1), .group(let t2)):
-            return t1 == t2
-        case (.item(let t1, let op1), .item(let t2, let op2)):
-            return t1 == t2 && op1 == op2
-        case (.standalone, .item), (.standalone, .group), (.item, .standalone), (.item, .group), (.group, .standalone), (.group, .item):
-            return false
         }
     }
 }

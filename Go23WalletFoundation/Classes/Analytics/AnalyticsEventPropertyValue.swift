@@ -1,7 +1,6 @@
 // Copyright © 2020 Stormbird PTE. LTD.
 
 import Foundation
-import Go23WalletAddress
 
 public protocol AnalyticsEventPropertyValue {
     var value: Any { get }
@@ -47,7 +46,7 @@ extension URL: AnalyticsEventPropertyValue {
         return self
     }
 }
-extension Go23Wallet.Address: AnalyticsEventPropertyValue {
+extension DerbyWallet.Address: AnalyticsEventPropertyValue {
     public var value: Any {
         return self.eip55String
     }

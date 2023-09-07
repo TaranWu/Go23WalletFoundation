@@ -1,7 +1,6 @@
 import Foundation
-import Go23WalletAddress
 
-extension Go23Wallet.Ethereum.ABI {
+extension DerbyWallet.Ethereum.ABI {
     public static let erc1155String: String = {
         String(data: erc1155, encoding: .utf8)!
     }()

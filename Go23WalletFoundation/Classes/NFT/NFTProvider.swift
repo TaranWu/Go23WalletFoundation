@@ -1,6 +1,6 @@
 //
 //  NFTService.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 22.03.2022.
 //
@@ -11,67 +11,82 @@ import Go23WalletOpenSea
 import PromiseKit
 import Combine
 
-public typealias NonFungiblesTokens = (openSea: OpenSeaAddressesToNonFungibles, enjin: Void)
+public typealias NonFungiblesTokens = (openSea: OpenSeaAddressesToNonFungibles, enjin: EnjinTokenIdsToSemiFungibles)
 
-public protocol NFTProvider {
-    func collectionStats(collectionId: String) -> AnyPublisher<Stats, PromiseError>
-    func nonFungible() -> AnyPublisher<NonFungiblesTokens, Never>
-    func enjinToken(tokenId: TokenId) -> EnjinToken?
+public protocol NFTProvider: NftAssetImageProvider {
+    func collectionStats(slug: String, server: RPCServer) -> Promise<Stats>
+    func nonFungible(wallet: Wallet, server: RPCServer) -> Promise<NonFungiblesTokens>
 }
 
-extension OpenSea: NftAssetImageProvider {
-    public func assetImageUrl(for url: Eip155URL) -> AnyPublisher<URL, PromiseError> {
-        fetchAsset(for: url)
-            .map { [$0.imageUrl, $0.thumbnailUrl, $0.imageOriginalUrl].compactMap { URL(string: $0) } }
-            .tryMap {
-                if let url = $0.first {
-                    return url
-                } else {
-                    struct AssetImageUrlNotFound: Error {}
-                    throw PromiseError(error: AssetImageUrlNotFound())
-                }
-            }.mapError { PromiseError(error: $0) }
-            .eraseToAnyPublisher()
-    }
-}
-
-public final class Go23WalletNFTProvider: NFTProvider {
+public final class DerbyWalletNFTProvider: NFTProvider {
     private let openSea: OpenSea
     private let enjin: Enjin
-    private let wallet: Wallet
-    private let server: RPCServer
+    private var inflightPromises: AtomicDictionary<AddressAndRPCServer, Promise<NonFungiblesTokens>> = .init()
+    //TODO when we remove `queue`, it's also a good time to look at using a shared copy of `OpenSea` from `AppCoordinator`
+    private let queue: DispatchQueue
 
-    public init(analytics: AnalyticsLogger, wallet: Wallet, server: RPCServer, config: Config, storage: RealmStore) {
-        self.wallet = wallet
-        self.server = server
-        enjin = Enjin(server: server, storage: storage)
-        openSea = OpenSea(analytics: analytics, server: server, config: config)
+    public init(analytics: AnalyticsLogger) {
+        queue = DispatchQueue(label: "org.DerbyWallet.swift.nftProvider")
+        enjin = Enjin(queue: queue)
+        openSea = OpenSea(analytics: analytics, queue: queue)
     }
 
-    public func collectionStats(collectionId: String) -> AnyPublisher<Stats, PromiseError> {
-        openSea.collectionStats(collectionId: collectionId)
-            .receive(on: RunLoop.main)
-            .eraseToAnyPublisher()
+    public init(openSea: OpenSea, enjin: Enjin, queue: DispatchQueue) {
+        self.openSea = openSea
+        self.enjin = enjin
+        self.queue = queue
     }
 
-    public func enjinToken(tokenId: TokenId) -> EnjinToken? {
-        enjin.token(tokenId: tokenId)
+    // NOTE: Its important to return value for promise and not an error. As we are using `when(fulfilled: ...)`. There is force unwrap inside the `when(fulfilled` function
+    private func getEnjinSemiFungible(account: Wallet, server: RPCServer) -> Promise<EnjinTokenIdsToSemiFungibles> {
+        return enjin.semiFungible(wallet: account, server: server)
+            .map(on: queue, { mapped -> EnjinTokenIdsToSemiFungibles in
+                var result: EnjinTokenIdsToSemiFungibles = [:]
+                let tokens = Array(mapped.values.flatMap { $0 })
+                for each in tokens {
+                    guard let tokenId = each.id else { continue }
+                    // NOTE: store with trailing zeros `70000000000019a4000000000000000000000000000000000000000000000000` instead of `70000000000019a4`
+                    result[TokenIdConverter.addTrailingZerosPadding(string: tokenId)] = each
+                }
+                return result
+            }).recover(on: queue, { _ -> Promise<EnjinTokenIdsToSemiFungibles> in
+                return .value([:])
+            })
     }
 
-    public func nonFungible() -> AnyPublisher<NonFungiblesTokens, Never> {
+    private func getOpenSeaNonFungible(account: Wallet, server: RPCServer) -> Promise<OpenSeaAddressesToNonFungibles> {
+        return openSea.nonFungible(wallet: account, server: server)
+    }
+
+    public func assetImageUrl(for url: Eip155URL) -> AnyPublisher<URL, PromiseError> {
+        openSea.fetchAssetImageUrl(for: url, server: .main).publisher
+    }
+
+    public func collectionStats(slug: String, server: RPCServer) -> Promise<Stats> {
+        openSea.collectionStats(slug: slug, server: server)
+    }
+
+    public func nonFungible(wallet: Wallet, server: RPCServer) -> Promise<NonFungiblesTokens> {
         let key = AddressAndRPCServer(address: wallet.address, server: server)
 
-        let tokensFromOpenSeaPromise = openSea.nonFungible(wallet: wallet)
-            .replaceError(with: [:])
+        if let promise = inflightPromises[key] {
+            return promise
+        } else {
+            let tokensFromOpenSeaPromise = getOpenSeaNonFungible(account: wallet, server: server)
+            let enjinTokensPromise = getEnjinSemiFungible(account: wallet, server: server)
 
-        let enjinTokensPromise = enjin.fetchTokens(wallet: wallet)
-            .receive(on: DispatchQueue.global())
-            .mapToVoid()
-            .replaceError(with: ())
+            let promise = firstly {
+                when(fulfilled: tokensFromOpenSeaPromise, enjinTokensPromise)
+            }.map(on: queue, { (contractToOpenSeaNonFungibles, enjinTokens) -> NonFungiblesTokens in
+                return (contractToOpenSeaNonFungibles, enjinTokens)
+            }).ensure(on: queue, {
+                self.inflightPromises[key] = .none
+            })
 
-        return Publishers.CombineLatest(tokensFromOpenSeaPromise, enjinTokensPromise)
-            .map { ($0, $1) }
-            .eraseToAnyPublisher()
+            inflightPromises[key] = promise
+
+            return promise
+        }
     }
 
 }

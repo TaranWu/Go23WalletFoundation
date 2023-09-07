@@ -12,10 +12,10 @@ public struct SwappableToken: Decodable, Equatable {
         let fieldName: Keys
     }
 
-    let address: Go23Wallet.Address
+    let address: DerbyWallet.Address
     let server: RPCServer
 
-    init(address: Go23Wallet.Address, server: RPCServer) {
+    init(address: DerbyWallet.Address, server: RPCServer) {
         self.address = address
         self.server = server
     }
@@ -26,7 +26,7 @@ public struct SwappableToken: Decodable, Equatable {
         let addressString = try container.decode(String.self, forKey: .address)
         let chainId = try container.decode(Int.self, forKey: .chainId)
 
-        address = try Go23Wallet.Address(string: addressString) ?? { throw ParsingError(fieldName: .address) }()
+        address = try DerbyWallet.Address(string: addressString) ?? { throw ParsingError(fieldName: .address) }()
         server = RPCServer(chainID: chainId)
     }
 }

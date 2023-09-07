@@ -2,68 +2,45 @@
 
 import Foundation
 import RealmSwift
-import Combine
 
-public final class BrowserHistoryStorage {
+public final class HistoryStore {
     private let realm: Realm
-    private let ignoreUrls: Set<URL>
 
-    public var historiesChangeset: AnyPublisher<ChangeSet<[BrowserHistoryRecord]>, Never> {
+    public var histories: Results<History> {
         return realm.objects(History.self)
             .sorted(byKeyPath: "createdAt", ascending: false)
-            .changesetPublisher
-            .map { changeSet -> ChangeSet<[BrowserHistoryRecord]> in
-                switch changeSet {
-                case .initial(let results):
-                    return .initial(Array(results.map { BrowserHistoryRecord(history: $0) }))
-                case .error(let error):
-                    return .error(error)
-                case .update(let results, let deletions, let insertions, let modifications):
-                    return .update(Array(results.map { BrowserHistoryRecord(history: $0) }), deletions: deletions, insertions: insertions, modifications: modifications)
-                }
-            }.eraseToAnyPublisher()
     }
-    
-    public var firstHistoryRecord: BrowserHistoryRecord? {
-        histories.first
-    }
+    let ignoreUrls: Set<String>
 
-    private var histories: [BrowserHistoryRecord] {
-        return realm.objects(History.self)
-            .sorted(byKeyPath: "createdAt", ascending: false)
-            .map { BrowserHistoryRecord(history: $0) }
-    }
-
-    public init(realm: Realm = .shared(), ignoreUrls: Set<URL>) {
+    public init(realm: Realm = .shared(), ignoreUrls: Set<String>) {
         self.realm = realm
         self.ignoreUrls = ignoreUrls
     }
 
-    public func addRecord(url: URL, title: String) {
-        let record = BrowserHistoryRecord(url: url, title: title)
+    public func record(url: URL, title: String) {
+        let history = History(url: url.absoluteString, title: title)
 
-        guard !ignoreUrls.contains(record.url) else { return }
+        guard !ignoreUrls.contains(history.url) else {
+            return
+        }
 
-        add(records: [record])
+        add(histories: [history])
     }
 
-    func add(records: [BrowserHistoryRecord]) {
+    public func add(histories: [History]) {
         try? realm.write {
-            let records = records.map { History(historyRecord: $0) }
-            realm.add(records, update: .all)
+            realm.add(histories, update: .all)
         }
     }
 
-    public func delete(record: BrowserHistoryRecord) {
+    public func delete(histories: [History]) {
         try? realm.write {
-            guard let record = realm.object(ofType: History.self, forPrimaryKey: record.id) else { return }
-            realm.delete(record)
+            realm.delete(histories)
         }
     }
 
-    public func deleteAllRecords() {
+    public func clearAll() {
         try? realm.write {
-            let histories = realm.objects(History.self)
             realm.delete(histories)
         }
     }

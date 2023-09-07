@@ -3,7 +3,7 @@
 import BigInt
 import Foundation
 
-public struct EthereumTransaction {
+public struct PendingTransaction {
     let blockHash: String
     let blockNumber: String
     let from: String
@@ -13,23 +13,20 @@ public struct EthereumTransaction {
     let hash: String
     let value: String
     let nonce: String
-    let input: String
 }
 
-extension EthereumTransaction {
-    public init(dictionary: [String: AnyObject]) {
-        let blockHash = dictionary["blockHash"] as? String ?? ""
-        let blockNumber = dictionary["blockNumber"] as? String ?? ""
-        let gas = dictionary["gas"] as? String ?? "0"
-        let gasPrice = dictionary["gasPrice"] as? String ?? "0"
-        let hash = dictionary["hash"] as? String ?? ""
-        let value = dictionary["value"] as? String ?? "0"
-        let nonce = dictionary["nonce"] as? String ?? "0"
-        let from = dictionary["from"] as? String ?? ""
-        let to = dictionary["to"] as? String ?? ""
-        let input = dictionary["input"] as? String ?? "0x"
-        
-        self.init(
+extension PendingTransaction {
+    public static func from(_ transaction: [String: AnyObject]) -> PendingTransaction? {
+        let blockHash = transaction["blockHash"] as? String ?? ""
+        let blockNumber = transaction["blockNumber"] as? String ?? ""
+        let gas = transaction["gas"] as? String ?? "0"
+        let gasPrice = transaction["gasPrice"] as? String ?? "0"
+        let hash = transaction["hash"] as? String ?? ""
+        let value = transaction["value"] as? String ?? "0"
+        let nonce = transaction["nonce"] as? String ?? "0"
+        let from = transaction["from"] as? String ?? ""
+        let to = transaction["to"] as? String ?? ""
+        return PendingTransaction(
             blockHash: blockHash,
             blockNumber: BigInt(blockNumber.drop0x, radix: 16)?.description ?? "",
             from: from,
@@ -38,7 +35,7 @@ extension EthereumTransaction {
             gasPrice: BigInt(gasPrice.drop0x, radix: 16)?.description ?? "",
             hash: hash,
             value: BigInt(value.drop0x, radix: 16)?.description ?? "",
-            nonce: BigInt(nonce.drop0x, radix: 16)?.description ?? "",
-            input: input)
+            nonce: BigInt(nonce.drop0x, radix: 16)?.description ?? ""
+        )
     }
-}
+} 

@@ -6,12 +6,12 @@ import Go23JSONRPCKit
 public struct EthCallRequest: Go23JSONRPCKit.Request {
     public typealias Response = String
 
-    let from: Go23Wallet.Address?
-    let to: Go23Wallet.Address?
+    let from: DerbyWallet.Address?
+    let to: DerbyWallet.Address?
     let value: String?
     let data: String
 
-    public init(from: Go23Wallet.Address?, to: Go23Wallet.Address?, value: String?, data: String) {
+    public init(from: DerbyWallet.Address?, to: DerbyWallet.Address?, value: String?, data: String) {
         self.from = from
         self.to = to
         self.value = value

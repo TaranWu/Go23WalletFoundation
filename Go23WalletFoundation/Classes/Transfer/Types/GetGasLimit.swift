@@ -1,6 +1,6 @@
 //
 //  GetGasLimit.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 18.08.2022.
 //
@@ -11,22 +11,31 @@ import BigInt
 import Go23JSONRPCKit
 import PromiseKit
 
-final class GetGasLimit {
+public final class GetGasLimit {
+    private let account: Wallet
     private let server: RPCServer
     private let analytics: AnalyticsLogger
 
-    init(server: RPCServer, analytics: AnalyticsLogger) {
+    public init(account: Wallet, server: RPCServer, analytics: AnalyticsLogger) {
+        self.account = account
         self.server = server
         self.analytics = analytics
     }
 
-    func getGasLimit(account: Go23Wallet.Address, value: BigUInt, transactionType: EstimateGasTransactionType, data: Data) -> Promise<BigUInt> {
-        let request = EstimateGasRequest(from: account, transactionType: transactionType, value: value, data: data)
+    public func getGasLimit(value: BigInt, toAddress: DerbyWallet.Address?, data: Data) -> Promise<BigInt> {
+        let transactionType: EstimateGasRequest.TransactionType
+        if let toAddress = toAddress {
+            transactionType = .normal(to: toAddress)
+        } else {
+            transactionType = .contractDeployment
+        }
+
+        let request = EstimateGasRequest(from: account.address, transactionType: transactionType, value: value, data: data)
 
         return firstly {
             APIKitSession.send(EtherServiceRequest(server: server, batch: BatchFactory().create(request)), server: server, analytics: analytics)
-        }.map { gasLimit -> BigUInt in
-            return gasLimit
+        }.map { gasLimit -> BigInt in
+            return BigInt(gasLimit.drop0x, radix: 16) ?? BigInt()
         }
     }
 }

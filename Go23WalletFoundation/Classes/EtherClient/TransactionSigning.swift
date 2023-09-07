@@ -5,7 +5,7 @@ import CryptoSwift
 
 public protocol Signer {
     func hash(transaction: UnsignedTransaction) throws -> Data
-    func values(signature: Data) -> (r: BigInt, s: BigInt, v: BigInt)
+    func values(transaction: UnsignedTransaction, signature: Data) -> (r: BigInt, s: BigInt, v: BigInt)
 }
 
 public struct EIP155Signer: Signer {
@@ -36,15 +36,15 @@ public struct EIP155Signer: Signer {
         return data
     }
 
-    public func values(signature: Data) -> (r: BigInt, s: BigInt, v: BigInt) {
-        let (r, s, v) = HomesteadSigner().values(signature: signature)
+    public func values(transaction: UnsignedTransaction, signature: Data) -> (r: BigInt, s: BigInt, v: BigInt) {
+        let (oldr, olds, oldv) = HomesteadSigner().values(transaction: transaction, signature: signature)
         let newV: BigInt
         if server.chainID != 0 {
             newV = BigInt(signature[64]) + 35 + BigInt(server.chainID) + BigInt(server.chainID)
         } else {
-            newV = v
+            newV = oldv
         }
-        return (r, s, newV)
+        return (oldr, olds, newV)
     }
 }
 
@@ -61,12 +61,12 @@ public struct HomesteadSigner: Signer {
         ])!
     }
 
-    public func values(signature: Data) -> (r: BigInt, s: BigInt, v: BigInt) {
+    public func values(transaction: UnsignedTransaction, signature: Data) -> (r: BigInt, s: BigInt, v: BigInt) {
         precondition(signature.count == 65, "Wrong size for signature")
-        let r = BigInt(sign: .plus, magnitude: BigUInt(signature[..<32]))
-        let s = BigInt(sign: .plus, magnitude: BigUInt(signature[32..<64]))
-        let v = BigInt(sign: .plus, magnitude: BigUInt(signature[64] + EthereumSigner.vitaliklizeConstant))
-        return (r, s, v)
+        let bigr = BigInt(sign: .plus, magnitude: BigUInt(signature[..<32]))
+        let bigs = BigInt(sign: .plus, magnitude: BigUInt(signature[32..<64]))
+        let bigv = BigInt(sign: .plus, magnitude: BigUInt(signature[64] + EthereumSigner.vitaliklizeConstant))
+        return (bigr, bigs, bigv)
     }
 }
 

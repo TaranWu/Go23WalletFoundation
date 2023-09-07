@@ -1,6 +1,6 @@
 //
 //  NFTBalanceViewModel.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 22.03.2022.
 //
@@ -8,32 +8,30 @@
 import Foundation
 import BigInt 
 
-struct NFTBalanceViewModel: BalanceViewModelType {
-    private let _balance: BalanceRepresentable
+public struct NFTBalanceViewModel: BalanceViewModelType {
+    public var ticker: CoinTicker?
+    private let token: BalanceRepresentable
 
-    var ticker: CoinTicker?
-
-    init(balance: BalanceRepresentable, ticker: CoinTicker?) {
-        self._balance = balance
+    init(token: BalanceRepresentable, ticker: CoinTicker?) {
+        self.token = token
         self.ticker = ticker
     }
 
-    var balance: [TokenBalanceValue] {
-        return _balance.balanceNft
+    public var balance: [TokenBalanceValue] {
+        return token.balanceNft
     }
 
-    var value: BigUInt { return _balance.valueBI }
-    var valueDecimal: Decimal { Decimal(bigUInt: value, decimals: _balance.decimals) ?? .zero }
-    var amountString: String { return "\(nonZeroBalance) \(_balance.symbol)" }
-    var currencyAmount: String? { return nil }
-    var amountInFiat: Double? { return nil }
-    var amountFull: String { return "\(nonZeroBalance)" }
-    var amountShort: String { return "\(nonZeroBalance)" }
-    var symbol: String { return _balance.symbol }
+    public var value: BigInt { return token.valueBI }
+    public var amount: Double { return Double(nonZeroBalance) }
+    var amountString: String { return "\(nonZeroBalance) \(token.symbol)" }
+    public var currencyAmount: String? { return nil }
+    public var currencyAmountWithoutSymbol: Double? { return nil }
+    public var amountFull: String { return "\(nonZeroBalance)" }
+    public var amountShort: String { return "\(nonZeroBalance)" }
+    public var symbol: String { return token.symbol }
 
     private var nonZeroBalance: Int {
-        let actualBalance = Array(_balance.balanceNft.filter { isNonZeroBalance($0.balance, tokenType: _balance.type) })
+        let actualBalance = Array(token.balanceNft.filter { isNonZeroBalance($0.balance, tokenType: token.type) })
         return actualBalance.count
     }
-    
 }

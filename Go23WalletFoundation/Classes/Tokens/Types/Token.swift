@@ -1,6 +1,6 @@
 //
 //  Token.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 18.05.2022.
 //
@@ -8,17 +8,16 @@
 import Foundation
 import Go23WalletOpenSea
 import BigInt
-import Go23WalletAddress
 
 public struct Token: Equatable, Hashable {
     public let primaryKey: String
-    public let contractAddress: Go23Wallet.Address
+    public let contractAddress: DerbyWallet.Address
     public let symbol: String
     public let decimals: Int
     public let server: RPCServer
     public let type: TokenType
     public let name: String
-    public let value: BigUInt
+    public let value: BigInt
     public let balance: [TokenBalanceValue]
     public let shouldDisplay: Bool
     public let info: TokenInfo
@@ -36,6 +35,11 @@ public struct Token: Equatable, Hashable {
         }
     }
 
+    public var valueDecimal: NSDecimalNumber? {
+        let value = EtherNumberFormatter.plain.string(from: value, decimals: decimals)
+        return value.optionalDecimalValue
+    }
+
     public var nonZeroBalance: [TokenBalanceValue] {
         return Array(balance.filter { isNonZeroBalance($0.balance, tokenType: self.type) })
     }
@@ -44,19 +48,20 @@ public struct Token: Equatable, Hashable {
         balance.compactMap { $0.nonFungibleBalance }
     }
 
-    public init(contract: Go23Wallet.Address = Constants.nullAddress,
-                server: RPCServer = .main,
-                name: String = "",
-                symbol: String = "",
-                decimals: Int = 0,
-                value: BigUInt = .zero,
-                isCustom: Bool = false,
-                isDisabled: Bool = false,
-                shouldDisplay: Bool = false,
-                type: TokenType = .erc20,
-                balance: [TokenBalanceValue] = [],
-                sortIndex: Int? = nil) {
-
+    public init(
+            contract: DerbyWallet.Address = Constants.nullAddress,
+            server: RPCServer = .main,
+            name: String = "",
+            symbol: String = "",
+            decimals: Int = 0,
+            value: BigInt = .zero,
+            isCustom: Bool = false,
+            isDisabled: Bool = false,
+            shouldDisplay: Bool = false,
+            type: TokenType = .erc20,
+            balance: [TokenBalanceValue] = [],
+            sortIndex: Int? = nil
+    ) {
         self.primaryKey = TokenObject.generatePrimaryKey(fromContract: contract, server: server)
         self.contractAddress = contract
         self.server = server
@@ -92,7 +97,7 @@ extension Token {
 }
 
 extension Token: TokenScriptSupportable {
-    public var valueBI: BigUInt { value }
+    public var valueBI: BigInt { value }
     public var balanceNft: [TokenBalanceValue] { balance }
 }
 extension Token: TokenFilterable { }

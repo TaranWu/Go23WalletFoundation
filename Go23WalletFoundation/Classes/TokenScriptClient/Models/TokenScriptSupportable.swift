@@ -1,6 +1,6 @@
 //
 //  TokenScriptSupportable.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 18.05.2022.
 //
@@ -11,33 +11,37 @@ import BigInt
 public protocol TokenScriptSupportable {
     var name: String { get }
     var symbol: String { get }
-    var contractAddress: Go23Wallet.Address { get }
+    var contractAddress: DerbyWallet.Address { get }
     var type: TokenType { get }
     var decimals: Int { get }
     var server: RPCServer { get }
-    var valueBI: BigUInt { get }
+    var valueBI: BigInt { get }
     var balanceNft: [TokenBalanceValue] { get }
 }
 
-public extension TokenAdaptor {
+public extension TokenScriptSupportable {
 
-    func title(token: TokenScriptSupportable) -> String {
-        let localizedNameFromAssetDefinition = XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore).getLabel(fallback: token.name)
-        return title(token: token, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition, symbol: token.symbol)
+    func title(withAssetDefinitionStore assetDefinitionStore: AssetDefinitionStore) -> String {
+        let localizedNameFromAssetDefinition = XMLHandler(token: self, assetDefinitionStore: assetDefinitionStore).getLabel(fallback: name)
+        return title(withAssetDefinitionStore: assetDefinitionStore, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition, symbol: symbol)
     }
 
-    func titleInPluralFormOptional(token: TokenScriptSupportable) -> String? {
-        guard let collection = token.balanceNft.first?.nonFungibleBalance?.collection else { return nil }
-        return collection.name.nonEmpty ? collection.name : nil
+    func titleInPluralForm(withAssetDefinitionStore assetDefinitionStore: AssetDefinitionStore, eventsDataStore: NonActivityEventsDataStore, forWallet wallet: Wallet) -> String? {
+        if let tokenHolders = getTokenHolders(assetDefinitionStore: assetDefinitionStore, eventsDataStore: eventsDataStore, forWallet: wallet).first {
+            guard let name = tokenHolders.tokens.first?.values.collectionValue?.name, name.nonEmpty else { return nil }
+            return name
+        } else {
+            return nil
+        }
     }
 
-    func titleInPluralForm(token: TokenScriptSupportable) -> String {
-        let localizedNameFromAssetDefinition = XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore).getNameInPluralForm(fallback: token.name)
-        return title(token: token, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition, symbol: token.symbol)
+    func titleInPluralForm(withAssetDefinitionStore assetDefinitionStore: AssetDefinitionStore) -> String {
+        let localizedNameFromAssetDefinition = XMLHandler(token: self, assetDefinitionStore: assetDefinitionStore).getNameInPluralForm(fallback: name)
+        return title(withAssetDefinitionStore: assetDefinitionStore, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition, symbol: symbol)
     }
 
-    private func title(token: TokenScriptSupportable, localizedNameFromAssetDefinition: String, symbol: String) -> String {
-        let compositeName = compositeTokenName(forContract: token.contractAddress, fromContractName: token.name, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
+    private func title(withAssetDefinitionStore assetDefinitionStore: AssetDefinitionStore, localizedNameFromAssetDefinition: String, symbol: String) -> String {
+        let compositeName = compositeTokenName(forContract: contractAddress, fromContractName: name, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
         if compositeName.isEmpty {
             return symbol
         } else {
@@ -64,31 +68,31 @@ public extension TokenAdaptor {
 //
 //    Use shortest of name and symbol, but abbreviate to 5 characters or less and capitalise.
 
-    func shortTitleInPluralForm(token: TokenScriptSupportable) -> String {
+    func shortTitleInPluralForm(withAssetDefinitionStore assetDefinitionStore: AssetDefinitionStore, eventsDataStore: NonActivityEventsDataStore, forWallet wallet: Wallet) -> String {
         func compositeTokenNameAndSymbol(symbol: String, name: String) -> String {
             let daiSymbol = "DAI\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}"
             //We could have just trimmed away all trailing \0, but this is faster and safer since only DAI seems to have this problem
             if daiSymbol == symbol {
-                return "\(token.valueBI) (DAI)".uppercased()
+                return "\(valueBI) (DAI)".uppercased()
             } else {
-                return "\(token.valueBI) (\(symbol))".uppercased()
+                return "\(valueBI) (\(symbol))".uppercased()
             }
         }
-        let xmlHandler = XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore)
+        let xmlHandler = XMLHandler(token: self, assetDefinitionStore: assetDefinitionStore)
 
         func _compositeTokenName(fallback: String = "") -> String {
             let localizedNameFromAssetDefinition = xmlHandler.getNameInPluralForm(fallback: fallback)
-            return compositeTokenName(forContract: token.contractAddress, fromContractName: token.name, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
+            return compositeTokenName(forContract: contractAddress, fromContractName: name, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
         }
 
         let localizedNameFromAssetDefinition = _compositeTokenName()
-        let symbol = self.symbol(token: token, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
+        let symbol = self.symbol(withAssetDefinitionStore: assetDefinitionStore, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
 
         if localizedNameFromAssetDefinition.isEmpty {
-            if let name = titleInPluralFormOptional(token: token) {
+            if let name = titleInPluralForm(withAssetDefinitionStore: assetDefinitionStore, eventsDataStore: eventsDataStore, forWallet: wallet) {
                 return name
             } else {
-                let tokenName = _compositeTokenName(fallback: token.name)
+                let tokenName = _compositeTokenName(fallback: name)
 
                 if tokenName.isEmpty {
                     return symbol
@@ -113,28 +117,28 @@ public extension TokenAdaptor {
         }
     }
 
-    func shortTitleInPluralForm2(token: TokenScriptSupportable) -> String {
+    func shortTitleInPluralForm(withAssetDefinitionStore assetDefinitionStore: AssetDefinitionStore) -> String {
         func compositeTokenNameAndSymbol(symbol: String, name: String) -> String {
             let daiSymbol = "DAI\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}"
             //We could have just trimmed away all trailing \0, but this is faster and safer since only DAI seems to have this problem
             if daiSymbol == symbol {
-                return "\(token.valueBI) (DAI)".uppercased()
+                return "\(valueBI) (DAI)".uppercased()
             } else {
-                return "\(token.valueBI) (\(symbol))".uppercased()
+                return "\(valueBI) (\(symbol))".uppercased()
             }
         }
-        let xmlHandler = XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore)
+        let xmlHandler = XMLHandler(token: self, assetDefinitionStore: assetDefinitionStore)
 
         func _compositeTokenName(fallback: String = "") -> String {
             let localizedNameFromAssetDefinition = xmlHandler.getNameInPluralForm(fallback: fallback)
-            return compositeTokenName(forContract: token.contractAddress, fromContractName: token.name, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
+            return compositeTokenName(forContract: contractAddress, fromContractName: name, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
         }
 
         let localizedNameFromAssetDefinition = _compositeTokenName()
-        let symbol = self.symbol(token: token, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
+        let symbol = self.symbol(withAssetDefinitionStore: assetDefinitionStore, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
 
         if localizedNameFromAssetDefinition.isEmpty {
-            let tokenName = _compositeTokenName(fallback: token.name)
+            let tokenName = _compositeTokenName(fallback: name)
 
             if tokenName.isEmpty {
                 return symbol
@@ -158,22 +162,22 @@ public extension TokenAdaptor {
         }
     }
 
-    func symbolInPluralForm2(token: TokenScriptSupportable) -> String {
-        let localizedNameFromAssetDefinition = XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore).getNameInPluralForm(fallback: token.name)
-        return symbol(token: token, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
+    func symbolInPluralForm(withAssetDefinitionStore assetDefinitionStore: AssetDefinitionStore) -> String {
+        let localizedNameFromAssetDefinition = XMLHandler(token: self, assetDefinitionStore: assetDefinitionStore).getNameInPluralForm(fallback: name)
+        return symbol(withAssetDefinitionStore: assetDefinitionStore, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
     }
 
-    private func symbol(token: TokenScriptSupportable, localizedNameFromAssetDefinition: String) -> String {
-        let compositeName = compositeTokenName(forContract: token.contractAddress, fromContractName: token.name, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
+    private func symbol(withAssetDefinitionStore assetDefinitionStore: AssetDefinitionStore, localizedNameFromAssetDefinition: String) -> String {
+        let compositeName = compositeTokenName(forContract: contractAddress, fromContractName: name, localizedNameFromAssetDefinition: localizedNameFromAssetDefinition)
         if compositeName.isEmpty {
-            return token.symbol
+            return symbol
         } else {
             let daiSymbol = "DAI\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}\u{0}"
             //We could have just trimmed away all trailing \0, but this is faster and safer since only DAI seems to have this problem
-            if daiSymbol == token.symbol {
+            if daiSymbol == symbol {
                 return "DAI"
             } else {
-                return token.symbol
+                return symbol
             }
         }
     }
@@ -205,7 +209,7 @@ public func isZeroBalance(_ balance: String, tokenType: TokenType) -> Bool {
     }
 }
 
-public func compositeTokenName(forContract contract: Go23Wallet.Address, fromContractName contractName: String, localizedNameFromAssetDefinition: String) -> String {
+public func compositeTokenName(forContract contract: DerbyWallet.Address, fromContractName contractName: String, localizedNameFromAssetDefinition: String) -> String {
     let compositeName: String
     //TODO improve and remove the check for "N/A". Maybe a constant
     //Special case for FIFA tickets, otherwise, we just show the name from the XML

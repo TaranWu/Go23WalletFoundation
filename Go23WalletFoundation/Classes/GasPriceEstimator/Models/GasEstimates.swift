@@ -4,11 +4,11 @@ import Foundation
 import BigInt
 
 public struct GasEstimates {
-    private var others: [TransactionConfigurationType: BigUInt]
+    private var others: [TransactionConfigurationType: BigInt]
 
-    public var standard: BigUInt
+    public var standard: BigInt
 
-    public subscript(configurationType: TransactionConfigurationType) -> BigUInt? {
+    public subscript(configurationType: TransactionConfigurationType) -> BigInt? {
         get {
             switch configurationType {
             case .standard:
@@ -33,7 +33,7 @@ public struct GasEstimates {
         }
     }
 
-    public init(standard: BigUInt, others: [TransactionConfigurationType: BigUInt] = .init()) {
+    public init(standard: BigInt, others: [TransactionConfigurationType: BigInt] = .init()) {
         self.others = others
         self.standard = standard
     }

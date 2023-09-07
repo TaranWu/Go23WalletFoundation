@@ -1,8 +1,8 @@
 //
-//  SupportedTickerIdsFetcher.swift
-//  Go23Wallet
+//  CoinGeckoTickerIdsFetcher.swift
+//  DerbyWallet
 //
-//  Created by Vladyslav Shepitko on 24.05.2022.
+//  Created by Tatan.
 //
 
 import Combine
@@ -10,31 +10,22 @@ import Foundation
 import Go23WalletCore
 import CombineExt
 
-public protocol SupportedTickerIdsFetcherConfig {
-    var tickerIdsLastFetchedDate: Date? { get set }
-}
-
 /// Ticker ids are havy objects, that don't change often, keep them cached and in separate fetcher to extract logic
-public final class SupportedTickerIdsFetcher: TickerIdsFetcher {
-    typealias TickerIdsPublisher = AnyPublisher<Void, PromiseError>
+public class CoinGeckoTickerIdsFetcher: TickerIdsFetcher {
+    typealias TickerIdsPublisher = AnyPublisher<Void, CoinGeckoNetworkProviderError>
 
-    private let networkProvider: CoinTickerNetworkProviderType
+    private let networkProvider: CoinGeckoNetworkProviderType
+    private let spamTokens = SpamTokens()
     private let storage: TickerIdsStorage & CoinTickersStorage
-    private var config: SupportedTickerIdsFetcherConfig
-    private let pricesCacheLifetime: TimeInterval
+    private var config: Config
+    private let pricesCacheLifetime: TimeInterval = 604800 // one week
     private var fetchSupportedTickerIdsPublisher: TickerIdsPublisher?
-    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.coinGeckoTicker.IdsFetcher")
+    private let queue = DispatchQueue(label: "org.DerbyWallet.swift.coinGeckoTicker.IdsFetcher")
 
-    /// Init method
-    /// - pricesCacheLifetime - default value 604800, one week
-    /// - networkProvider
-    /// - storage
-    /// - config
-    public init(networkProvider: CoinTickerNetworkProviderType, storage: TickerIdsStorage & CoinTickersStorage, config: SupportedTickerIdsFetcherConfig, pricesCacheLifetime: TimeInterval = 604800) {
+    public init(networkProvider: CoinGeckoNetworkProviderType, storage: TickerIdsStorage & CoinTickersStorage, config: Config) {
         self.networkProvider = networkProvider
         self.storage = storage
         self.config = config
-        self.pricesCacheLifetime = pricesCacheLifetime
     }
 
     /// Searching for ticker id very havy operation, and takes to mutch time, we use cacing in `knownTickerIds` to store all know ticker ids
@@ -82,10 +73,10 @@ public final class SupportedTickerIdsFetcher: TickerIdsFetcher {
     }
 }
 
-extension Config: SupportedTickerIdsFetcherConfig {
+extension Config {
     static let tickerIdsLastFetchedDateKey = "tickerIdsLastFetchedDateKey"
 
-    public var tickerIdsLastFetchedDate: Date? {
+    var tickerIdsLastFetchedDate: Date? {
         get {
             guard let timeinterval = defaults.value(forKey: Config.tickerIdsLastFetchedDateKey) as? TimeInterval else { return nil }
             return Date(timeIntervalSince1970: timeinterval)

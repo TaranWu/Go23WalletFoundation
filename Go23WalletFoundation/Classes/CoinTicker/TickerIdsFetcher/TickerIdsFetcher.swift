@@ -1,8 +1,8 @@
 //
 //  TickerIdsFetcher.swift
-//  Go23Wallet
+//  DerbyWallet
 //
-//  Created by Vladyslav Shepitko on 14.06.2022.
+//  Created by Tatan.
 //
 
 import Foundation
@@ -42,5 +42,6 @@ public class TickerIdsFetcherImpl: TickerIdsFetcher {
         }
 
         return firstMatchingTickerId(publishers)
+            .eraseToAnyPublisher()
     }
 }

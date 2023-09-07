@@ -55,18 +55,18 @@ public struct TokenScriptFilterParser {
                     return string >= value
                 }
             case .bytes(let bytes):
-                guard let a = BigUInt(bytes.hexEncoded, radix: 16), let b = BigUInt(value, radix: 16) else { return false }
+                guard let biga = BigUInt(bytes.hexEncoded, radix: 16), let bigb = BigUInt(value, radix: 16) else { return false }
                 switch self {
                 case .equal:
-                    return a == b
+                    return biga == bigb
                 case .lessThan:
-                    return a < b
+                    return biga < bigb
                 case .greaterThan:
-                    return a > b
+                    return biga > bigb
                 case .lessThanOrEqual:
-                    return a <= b
+                    return biga <= bigb
                 case .greaterThanOrEqual:
-                    return a >= b
+                    return biga >= bigb
                 }
             case .int(let int):
                 guard let rhs = BigInt(value) else { return false }
@@ -190,7 +190,6 @@ public struct TokenScriptFilterParser {
         }()
         public init() {}
 
-        // swiftlint:disable function_body_length
         public func tokenize(expression: String) -> [Token] {
             var result: [Token] = []
             var buffer: [Character] = []
@@ -296,7 +295,6 @@ public struct TokenScriptFilterParser {
             }
             return result
         }
-        // swiftlint:enable function_body_length
 
         private func convertHexToCharacter(_ hex: String) -> Character? {
             let code = Int(strtoul(hex, nil, 16))
@@ -333,7 +331,7 @@ public struct TokenScriptFilterParser {
         private let values: [AttributeId: AssetAttributeSyntaxValue]
         private var tokens: [Lexer.Token]
 
-        public static func valuesWithImplicitValues(_ values: [AttributeId: AssetAttributeSyntaxValue], ownerAddress: Go23Wallet.Address, symbol: String, fungibleBalance: BigUInt?) -> [AttributeId: AssetAttributeSyntaxValue] {
+        public static func valuesWithImplicitValues(_ values: [AttributeId: AssetAttributeSyntaxValue], ownerAddress: DerbyWallet.Address, symbol: String, fungibleBalance: BigInt?) -> [AttributeId: AssetAttributeSyntaxValue] {
             let todayString = GeneralisedTime().formatAsGeneralisedTime.substring(to: 8)
             var implicitValues: [AttributeId: AssetAttributeSyntaxValue] = [
                 "symbol": .init(syntax: .directoryString, value: .string(symbol)),
@@ -341,7 +339,7 @@ public struct TokenScriptFilterParser {
                 "ownerAddress": .init(syntax: .directoryString, value: .address(ownerAddress)),
             ]
             if let fungibleBalance = fungibleBalance {
-                implicitValues["balance"] = .init(syntax: .integer, value: .uint(fungibleBalance))
+                implicitValues["balance"] = .init(syntax: .integer, value: .int(fungibleBalance))
             }
             return values.merging(implicitValues) { (_, new) in new }
         }
@@ -499,7 +497,7 @@ public struct TokenScriptFilterParser {
 
     let expression: String
 
-    func parse(withValues values: [AttributeId: AssetAttributeSyntaxValue], ownerAddress: Go23Wallet.Address, symbol: String, fungibleBalance: BigUInt?) -> Bool {
+    func parse(withValues values: [AttributeId: AssetAttributeSyntaxValue], ownerAddress: DerbyWallet.Address, symbol: String, fungibleBalance: BigInt?) -> Bool {
         let tokens = Lexer().tokenize(expression: expression)
         let values = Parser.valuesWithImplicitValues(values, ownerAddress: ownerAddress, symbol: symbol, fungibleBalance: fungibleBalance)
         return Parser(tokens: tokens, values: values).parse()
@@ -508,14 +506,14 @@ public struct TokenScriptFilterParser {
 // swiftlint:enable type_body_length
 
 fileprivate extension String {
-    subscript(i: Int) -> String {
-        self[i ..< i + 1]
-    }
+	subscript(i: Int) -> String {
+		self[i ..< i + 1]
+	}
 
-    subscript(r: Range<Int>) -> String {
-        let range = Range(uncheckedBounds: (lower: max(0, min(count, r.lowerBound)), upper: min(count, max(0, r.upperBound))))
-        let start = index(startIndex, offsetBy: range.lowerBound)
-        let end = index(start, offsetBy: range.upperBound - range.lowerBound)
-        return String(self[start ..< end])
-    }
+	subscript(r: Range<Int>) -> String {
+		let range = Range(uncheckedBounds: (lower: max(0, min(count, r.lowerBound)), upper: min(count, max(0, r.upperBound))))
+		let start = index(startIndex, offsetBy: range.lowerBound)
+		let end = index(start, offsetBy: range.upperBound - range.lowerBound)
+		return String(self[start ..< end])
+	}
 }

@@ -1,6 +1,6 @@
 //
 //  xDaiBridge.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 04.10.2021.
 //
@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 
-public final class xDaiBridge: SupportedTokenActionsProvider, BridgeTokenURLProviderType {
+public final class XDaiBridge: SupportedTokenActionsProvider, BridgeTokenURLProviderType {
     public var objectWillChange: AnyPublisher<Void, Never> {
         return .empty()
     }
@@ -20,7 +20,7 @@ public final class xDaiBridge: SupportedTokenActionsProvider, BridgeTokenURLProv
         case .erc1155, .erc20, .erc721, .erc721ForTickets, .erc875:
             return false
         case .nativeCryptocurrency:
-            return token.server == xDaiBridge.supportedServer
+            return token.server == XDaiBridge.supportedServer
         }
     }
 
@@ -29,7 +29,7 @@ public final class xDaiBridge: SupportedTokenActionsProvider, BridgeTokenURLProv
     }
 
     func rpcServer(forToken token: TokenActionsIdentifiable) -> RPCServer? {
-        return xDaiBridge.supportedServer
+        return XDaiBridge.supportedServer
     }
 
     public let action: String

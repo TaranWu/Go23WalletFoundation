@@ -2,7 +2,6 @@
 
 import Foundation
 import BigInt
-import Go23WalletAddress
 
 extension TokenInstanceAction.ActionType: Equatable {
     public static func == (lhs: TokenInstanceAction.ActionType, rhs: TokenInstanceAction.ActionType) -> Bool {
@@ -38,7 +37,7 @@ public struct TokenInstanceAction {
         case nftRedeem
         case nftSell
         case nonFungibleTransfer
-        case tokenScript(contract: Go23Wallet.Address, title: String, viewHtml: (html: String, style: String), attributes: [AttributeId: AssetAttribute], transactionFunction: FunctionOrigin?, selection: TokenScriptSelection?)
+        case tokenScript(contract: DerbyWallet.Address, title: String, viewHtml: (html: String, style: String), attributes: [AttributeId: AssetAttribute], transactionFunction: FunctionOrigin?, selection: TokenScriptSelection?)
         case swap(service: TokenActionProvider)
         case bridge(service: TokenActionProvider)
         case buy(service: TokenActionProvider)
@@ -84,7 +83,7 @@ public struct TokenInstanceAction {
             return transactionFunction
         }
     }
-    public var contract: Go23Wallet.Address? {
+    public var contract: DerbyWallet.Address? {
         switch type {
         case .erc20Send, .erc20Receive, .swap, .buy, .bridge:
             return nil
@@ -103,16 +102,24 @@ public struct TokenInstanceAction {
         self.type = type
     }
     //TODO we can live-reload the action view screen now if we observe for changes
-    public func viewHtml(tokenId: TokenId) -> String {
+    public func viewHtml(forTokenHolder tokenHolder: TokenHolder, tokenId: TokenId) -> (html: String, hash: Int) {
         switch type {
-        case .erc20Send, .erc20Receive, .swap, .buy, .bridge, .nonFungibleTransfer, .nftRedeem, .nftSell:
-            return ""
+        case .erc20Send, .erc20Receive, .swap, .buy, .bridge:
+            return (html: "", hash: 0)
+        case .nftRedeem:
+            return (html: "", hash: 0)
+        case .nftSell:
+            return (html: "", hash: 0)
+        case .nonFungibleTransfer:
+            return (html: "", hash: 0)
         case .tokenScript(_, _, (html: let html, style: let style), _, _, _):
-            return wrapWithHtmlViewport(html: html, style: style, forTokenId: tokenId)
+            //Just an easy way to generate a hash for style + HTML
+            let hash = "\(style)\(html)".hashForCachingHeight
+            return (html: wrapWithHtmlViewport(html: html, style: style, forTokenHolder: tokenHolder), hash: hash)
         }
     }
 
-    public func activeExcludingSelection(selectedTokenHolders: [TokenHolder], forWalletAddress walletAddress: Go23Wallet.Address, fungibleBalance: BigUInt? = nil) -> TokenScriptSelection? {
+    public func activeExcludingSelection(selectedTokenHolders: [TokenHolder], forWalletAddress walletAddress: DerbyWallet.Address, fungibleBalance: BigInt? = nil) -> TokenScriptSelection? {
         switch type {
         case .erc20Send, .erc20Receive, .swap, .buy, .bridge:
             return nil
@@ -132,7 +139,7 @@ public struct TokenInstanceAction {
         }
     }
 
-    public func activeExcludingSelection(selectedTokenHolder tokenHolder: TokenHolder, tokenId: TokenId, forWalletAddress walletAddress: Go23Wallet.Address, fungibleBalance: BigUInt? = nil) -> TokenScriptSelection? {
+    public func activeExcludingSelection(selectedTokenHolder tokenHolder: TokenHolder, tokenId: TokenId, forWalletAddress walletAddress: DerbyWallet.Address, fungibleBalance: BigInt? = nil) -> TokenScriptSelection? {
         switch type {
         case .erc20Send, .erc20Receive, .swap, .buy, .bridge:
             return nil

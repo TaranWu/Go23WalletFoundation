@@ -2,17 +2,8 @@
 
 import UIKit
 import CoreImage
-import Go23Web3Swift
 
 extension Data {
-
-    public init(json: Any, options: JSONSerialization.WritingOptions = []) throws {
-        guard JSONSerialization.isValidJSONObject(json) else {
-            throw DecodeError.initFailure
-        }
-        self = try JSONSerialization.data(withJSONObject: json, options: options)
-    }
-
     public struct HexEncodingOptions: OptionSet {
         public let rawValue: Int
         public static let upperCase = HexEncodingOptions(rawValue: 1 << 0)
@@ -31,23 +22,20 @@ extension Data {
         return "0x" + self.hex()
     }
 
-    //NOTE: as minimum chunck is as min time it will be executed, during testing we found that optimal chunck size is 100, but seems it could be optimized more, execution time (0.2 seconds), pretty good and doesn't block UI
-    public init(_hex value: String) {
-        let chunkSize: Int = 100
+    public init(_hex value: String, chunkSize: Int) {
         if value.count > chunkSize {
             self = value.chunked(into: chunkSize).reduce(NSMutableData()) { result, chunk -> NSMutableData in
-                let part = Data.data(from: String(chunk))
+                let part = Data(_hex: String(chunk))
                 result.append(part)
 
                 return result
             } as Data
         } else {
-            self = Data.data(from: value)
+            self = Data(_hex: value)
         }
     }
-
     //NOTE: renamed to `_hex` because CryptoSwift has its own implementation of `.init(hex:)` that instantiates Data() object with additionaly byte at the end. That brokes `signing` in app. Not sure that this is good name.
-    private static func data(from hex: String) -> Data {
+    public init(_hex hex: String) {
         let len = hex.count / 2
         var data = Data(capacity: len)
         for i in 0..<len {
@@ -58,21 +46,21 @@ extension Data {
                 data.append(&num, count: 1)
             }
         }
-        return data
+        self = data
     }
 
     //TODO remove if unused. Also confusing
     public init?(fromHexEncodedString string: String) {
         // Convert 0 ... 9, a ... f, A ...F to their decimal value,
         // return nil for all other input characters
-        func decodeNibble(u: UInt16) -> UInt8? {
-            switch u {
+        func decodeNibble(uCode: UInt16) -> UInt8? {
+            switch uCode {
             case 0x30 ... 0x39:
-                return UInt8(u - 0x30)
+                return UInt8(uCode - 0x30)
             case 0x41 ... 0x46:
-                return UInt8(u - 0x41 + 10)
+                return UInt8(uCode - 0x41 + 10)
             case 0x61 ... 0x66:
-                return UInt8(u - 0x61 + 10)
+                return UInt8(uCode - 0x61 + 10)
             default:
                 return nil
             }
@@ -81,8 +69,8 @@ extension Data {
         self.init(capacity: string.utf16.count/2)
         var even = true
         var byte: UInt8 = 0
-        for c in string.utf16 {
-            guard let val = decodeNibble(u: c) else { return nil }
+        for charactor in string.utf16 {
+            guard let val = decodeNibble(uCode: charactor) else { return nil }
             if even {
                 byte = val << 4
             } else {

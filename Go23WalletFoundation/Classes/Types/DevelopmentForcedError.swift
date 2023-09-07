@@ -2,14 +2,10 @@
 
 import Foundation
 
-public struct DevelopmentForcedError: LocalizedError {
+public struct DevelopmentForcedError: Error {
     public let message: String
     
     public init(message: String) {
         self.message = message
-    }
-
-    public var errorDescription: String? {
-        return message
     }
 }

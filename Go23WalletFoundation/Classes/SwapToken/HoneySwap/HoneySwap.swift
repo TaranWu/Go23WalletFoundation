@@ -1,13 +1,12 @@
 //
 //  HoneySwap.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 19.02.2021.
 //
 
 import Foundation
 import Combine
-import Go23WalletAddress
 
 public class HoneySwap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
     public var objectWillChange: AnyPublisher<Void, Never> {
@@ -67,8 +66,8 @@ public class HoneySwap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
             static let output = "outputCurrency"
         }
 
-        case inputOutput(from: Go23Wallet.Address, to: AddressOrEnsName)
-        case input(Go23Wallet.Address)
+        case inputOutput(from: DerbyWallet.Address, to: AddressOrEnsName)
+        case input(DerbyWallet.Address)
         case none
 
         var urlQueryItems: [URLQueryItem] {
@@ -101,10 +100,10 @@ public class HoneySwap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
     }
 
     public func isSupport(token: TokenActionsIdentifiable) -> Bool {
-        switch token.server.serverWithEnhancedSupport {
+        switch token.server {
         case .xDai:
             return true
-        case .main, .polygon, .binance_smart_chain, .heco, .rinkeby, .arbitrum, .klaytnCypress, .klaytnBaobabTestnet, nil:
+        case .main, .kovan, .ropsten, .rinkeby, .sokol, .goerli, .artis_sigma1, .artis_tau1, .custom, .poa, .callisto, .classic, .binance_smart_chain, .binance_smart_chain_testnet, .heco, .heco_testnet, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .candle, .polygon, .mumbai_testnet, .optimistic, .optimisticKovan, .cronosTestnet, .arbitrum, .arbitrumRinkeby, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .phi, .ioTeX, .ioTeXTestnet:
             return false
         }
     }

@@ -1,5 +1,5 @@
 //  XMLHandler.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by James Sangalli on 11/4/18.
 //  Copyright © 2018 Stormbird PTE. LTD.
@@ -8,7 +8,6 @@
 import Foundation
 import Kanna
 import PromiseKit
-import Go23WalletAddress
 
 // swiftlint:disable file_length
 public enum SingularOrPlural {
@@ -83,7 +82,7 @@ public enum TokenScriptSignatureVerificationType: Codable {
     }
 }
 
-//https://github.com/AlphaWallet/TokenScript/wiki/Visual-representation-of-the-validity-of-TokenScript-files
+
 public enum TokenLevelTokenScriptDisplayStatus {
     case type0NoTokenScript
     case type1GoodTokenScriptSignatureGoodOrOptional(isDebugMode: Bool, isSigned: Bool, validatedDomain: String?, error: SignatureValidationError)
@@ -95,7 +94,7 @@ public enum TokenLevelTokenScriptDisplayStatus {
         case invalidSignature
     }
 
-    public enum SignatureValidationError: Error {
+    public enum SignatureValidationError: LocalizedError {
         case tokenScriptType1SupportedNotCanonicalizedAndUnsigned
         case tokenScriptType1SupportedAndSigned
         case tokenScriptType2InvalidSignature
@@ -116,7 +115,7 @@ class PrivateXMLHandler {
     private let signatureNamespacePrefix = "ds:"
     private let xhtmlNamespacePrefix = "xhtml:"
     private let xmlContext = PrivateXMLHandler.createXmlContext(withLang: PrivateXMLHandler.lang)
-    private let contractAddress: Go23Wallet.Address
+    private let contractAddress: DerbyWallet.Address
     var server: RPCServerOrAny?
     //Explicit type so that the variable autocompletes with AppCode
     private lazy var selections = extractSelectionsForToken()
@@ -126,7 +125,7 @@ class PrivateXMLHandler {
         baseTokenType != nil
     }
     private let baseTokenType: TokenType?
-    lazy private var contractNamesAndAddresses: [String: [(Go23Wallet.Address, RPCServer)]] = extractContractNamesAndAddresses()
+    lazy private var contractNamesAndAddresses: [String: [(DerbyWallet.Address, RPCServer)]] = extractContractNamesAndAddresses()
 
     private lazy var tokenElement: XMLElement? = {
         return XMLHandler.getTokenElement(fromRoot: xml, xmlContext: xmlContext)
@@ -150,7 +149,7 @@ class PrivateXMLHandler {
 
     var hasValidTokenScriptFile: Bool
     let tokenScriptStatus: Promise<TokenLevelTokenScriptDisplayStatus>
-    private let threadSafe = ThreadSafe(label: "org.Go23Wallet.swift.xmlHandler.privateXmlHandler")
+    private let threadSafe = ThreadSafe(label: "org.DerbyWallet.swift.xmlHandler.privateXmlHandler")
     private lazy var _fields: [AttributeId: AssetAttribute] = extractFieldsForToken()
     var fields: [AttributeId: AssetAttribute] {
         var fields: [AttributeId: AssetAttribute] = [:]
@@ -214,18 +213,10 @@ class PrivateXMLHandler {
             let fromActionAsTopLevel = Array(XMLHandler.getTokenScriptActionOnlyActionElements(fromRoot: xml, xmlContext: xmlContext))
             let actionElements = fromTokenAsTopLevel + fromActionAsTopLevel
             for actionElement in actionElements {
-                if let name = XMLHandler.getNameElement(fromActionElement: actionElement, xmlContext: xmlContext)?.text?.trimmed.nilIfEmpty {
-                    let html: String
-                    let style: String
-                    if let viewElement = XMLHandler.getViewElement(fromCardElement: actionElement, xmlContext: xmlContext) {
-                        let (html: html1, style: style1) = extractHtml(fromViewElement: viewElement)
-                        html = html1
-                        style = style1
-                        guard !html.isEmpty else { continue }
-                    } else {
-                        html = ""
-                        style = ""
-                    }
+                if let name = XMLHandler.getNameElement(fromActionElement: actionElement, xmlContext: xmlContext)?.text?.trimmed.nilIfEmpty,
+                   let viewElement = XMLHandler.getViewElement(fromCardElement: actionElement, xmlContext: xmlContext) {
+                    let (html: html, style: style) = extractHtml(fromViewElement: viewElement)
+                    guard !html.isEmpty else { continue }
                     let attributes = extractFields(forActionElement: actionElement)
                     let functionOrigin = XMLHandler.getActionTransactionFunctionElement(fromActionElement: actionElement, xmlContext: xmlContext).flatMap { self.createFunctionOriginFrom(ethereumFunctionElement: $0) }
                     let selection = XMLHandler.getExcludeSelectionId(fromActionElement: actionElement, xmlContext: xmlContext).flatMap { id in
@@ -267,11 +258,11 @@ class PrivateXMLHandler {
                   let ethereumEventElement = XMLHandler.getEthereumOriginElementEvents(fromAttributeTypeElement: eachCard, xmlContext: xmlContext),
                    let eventName = ethereumEventElement["type"],
                    let asnModuleNamedElement = XMLHandler.getAsnModuleNamedTypeElement(fromRoot: xml, xmlContext: xmlContext, forTypeName: eventName) else { return nil }
-                let optionalContract: Go23Wallet.Address?
+                let optionalContract: DerbyWallet.Address?
                 if let eventContractName = ethereumEventElement["contract"],
                    let eventSourceContractElement = XMLHandler.getContractElementByName(contractName: eventContractName, fromRoot: xml, xmlContext: xmlContext) {
                     let addressElements = XMLHandler.getAddressElements(fromContractElement: eventSourceContractElement, xmlContext: xmlContext)
-                    optionalContract = addressElements.first?.text.flatMap({ Go23Wallet.Address(string: $0.trimmed) })
+                    optionalContract = addressElements.first?.text.flatMap({ DerbyWallet.Address(string: $0.trimmed) })
                 } else {
                     optionalContract = contractAddress
                 }
@@ -366,18 +357,18 @@ class PrivateXMLHandler {
     }
 
     //TODO maybe this should be removed. We should not use AssetDefinitionStore here because it's easy to create cyclical references and infinite loops since they refer to each other
-    convenience init(contract: Go23Wallet.Address, assetDefinitionStore: AssetDefinitionStore) {
+    convenience init(contract: DerbyWallet.Address, assetDefinitionStore: AssetDefinitionStore) {
         let xmlString = assetDefinitionStore[contract]
         let isOfficial = assetDefinitionStore.isOfficial(contract: contract)
         let isCanonicalized = assetDefinitionStore.isCanonicalized(contract: contract)
         self.init(contract: contract, xmlString: xmlString, baseTokenType: nil, isOfficial: isOfficial, isCanonicalized: isCanonicalized, assetDefinitionStore: assetDefinitionStore)
     }
 
-    convenience init(contract: Go23Wallet.Address, baseXml: String, baseTokenType: TokenType, assetDefinitionStore: AssetDefinitionStore) {
+    convenience init(contract: DerbyWallet.Address, baseXml: String, baseTokenType: TokenType, assetDefinitionStore: AssetDefinitionStore) {
         self.init(contract: contract, xmlString: baseXml, baseTokenType: baseTokenType, isOfficial: true, isCanonicalized: true, assetDefinitionStore: assetDefinitionStore)
     }
 
-    private init(contract: Go23Wallet.Address, xmlString: String?, baseTokenType: TokenType?, isOfficial: Bool, isCanonicalized: Bool, assetDefinitionStore: AssetDefinitionStore) {
+    private init(contract: DerbyWallet.Address, xmlString: String?, baseTokenType: TokenType?, isOfficial: Bool, isCanonicalized: Bool, assetDefinitionStore: AssetDefinitionStore) {
         let xmlString = xmlString ?? ""
         self.contractAddress = contract
         self.isOfficial = isOfficial
@@ -393,7 +384,7 @@ class PrivateXMLHandler {
 
         threadSafe.performSync {
             //We still compute the TokenScript status even if xmlString is empty because it might be considered empty because there's a conflict
-            let tokenScriptStatusPromise = assetDefinitionStore.computeTokenScriptStatus(forContract: contract, xmlString: xmlString, isOfficial: isOfficial)
+            let tokenScriptStatusPromise = PrivateXMLHandler.computeTokenScriptStatus(forContract: contract, xmlString: xmlString, isOfficial: isOfficial, isCanonicalized: isCanonicalized, assetDefinitionStore: assetDefinitionStore)
             _tokenScriptStatus = tokenScriptStatusPromise
             if let tokenScriptStatus = tokenScriptStatusPromise.value {
                 let (xml, hasValidTokenScriptFile) = PrivateXMLHandler.storeXmlAccordingToTokenScriptStatus(xmlString: xmlString, tokenScriptStatus: tokenScriptStatus)
@@ -496,8 +487,7 @@ class PrivateXMLHandler {
             index: UInt16,
             inWallet account: Wallet,
             server: RPCServer,
-            tokenType: TokenType,
-            assetDefinitionStore: AssetDefinitionStore
+            tokenType: TokenType
     ) -> TokenScript.Token {
         guard tokenIdOrEvent.tokenId != 0 else { return .empty }
         let values: [AttributeId: AssetAttributeSyntaxValue]
@@ -505,7 +495,7 @@ class PrivateXMLHandler {
             values = .init()
         } else {
             //TODO read from cache again, perhaps based on a timeout/TTL for each attribute. There was a bug with reading from cache sometimes. e.g. cache a token with 8 token origin attributes and 1 function origin attribute and when displaying it and reading from the cache, sometimes it'll only return the 1 function origin attribute in the cache
-            values = resolveAttributesBypassingCache(withTokenIdOrEvent: tokenIdOrEvent, server: server, account: account, assetDefinitionStore: assetDefinitionStore)
+            values = resolveAttributesBypassingCache(withTokenIdOrEvent: tokenIdOrEvent, server: server, account: account)
         }
         return TokenScript.Token(tokenIdOrEvent: tokenIdOrEvent, tokenType: tokenType, index: index, name: name, symbol: symbol, status: .available, values: values)
     }
@@ -519,31 +509,74 @@ class PrivateXMLHandler {
         return areFieldsEmpty
     }
 
-    func resolveAttributesBypassingCache(withTokenIdOrEvent tokenIdOrEvent: TokenIdOrEvent,
-                                         server: RPCServer,
-                                         account: Wallet,
-                                         assetDefinitionStore: AssetDefinitionStore) -> [AttributeId: AssetAttributeSyntaxValue] {
+    func resolveAttributesBypassingCache(withTokenIdOrEvent tokenIdOrEvent: TokenIdOrEvent, server: RPCServer, account: Wallet) -> [AttributeId: AssetAttributeSyntaxValue] {
         var attributes: [AttributeId: AssetAttributeSyntaxValue] = [:]
         threadSafe.performSync {
-            attributes = assetDefinitionStore
-                .assetAttributeResolver
-                .resolve(withTokenIdOrEvent: tokenIdOrEvent,
-                         userEntryValues: .init(),
-                         server: server,
-                         account: account,
-                         additionalValues: .init(),
-                         localRefs: .init(),
-                         attributes: _fields)
+            attributes = _fields.resolve(withTokenIdOrEvent: tokenIdOrEvent, userEntryValues: .init(), server: server, account: account, additionalValues: .init(), localRefs: .init())
         }
         return attributes
     }
 
-    private static func extractServer(fromXML xml: XMLDocument, xmlContext: XmlContext, matchingContract contractAddress: Go23Wallet.Address) -> RPCServer? {
+    private static func computeTokenScriptStatus(forContract contract: DerbyWallet.Address, xmlString: String, isOfficial: Bool, isCanonicalized: Bool, assetDefinitionStore: AssetDefinitionStore) -> Promise<TokenLevelTokenScriptDisplayStatus> {
+        if assetDefinitionStore.hasConflict(forContract: contract) {
+            return .value(.type2BadTokenScript(isDebugMode: !isOfficial, error: .tokenScriptType2ConflictingFiles, reason: .conflictWithAnotherFile))
+        }
+        if assetDefinitionStore.hasOutdatedTokenScript(forContract: contract) {
+            return .value(.type2BadTokenScript(isDebugMode: !isOfficial, error: .tokenScriptType2OldSchemaVersion, reason: .oldTokenScriptVersion))
+        }
+        if xmlString.nilIfEmpty == nil {
+            return .value(.type0NoTokenScript)
+        }
+        let result = XMLHandler.Functional.checkTokenScriptSchema(xmlString)
+        switch result {
+        case .supportedTokenScriptVersion:
+            return firstly { () -> Promise<TokenScriptSignatureVerificationType> in
+                if let cachedVerificationType = assetDefinitionStore.getCacheTokenScriptSignatureVerificationType(forXmlString: xmlString) {
+                    return .value(cachedVerificationType)
+                } else {
+                    return verificationType(forXml: xmlString, isCanonicalized: isCanonicalized, contractAddress: contract, provider: assetDefinitionStore)
+                }
+            }.then { verificationStatus -> Promise<TokenLevelTokenScriptDisplayStatus> in
+                return Promise { seal in
+                    assetDefinitionStore.writeCacheTokenScriptSignatureVerificationType(verificationStatus, forContract: contract, forXmlString: xmlString)
+                    switch verificationStatus {
+                    case .verified(let domainName):
+                    seal.fulfill(.type1GoodTokenScriptSignatureGoodOrOptional(isDebugMode: !isOfficial, isSigned: true, validatedDomain: domainName, error: .tokenScriptType1SupportedAndSigned))
+                    case .verificationFailed:
+                        seal.fulfill(.type2BadTokenScript(isDebugMode: !isOfficial, error: .tokenScriptType2InvalidSignature, reason: .invalidSignature))
+                    case .notCanonicalizedAndNotSigned:
+                        //But should always be debug mode because we can't have a non-canonicalized XML from the official repo
+                        seal.fulfill(.type1GoodTokenScriptSignatureGoodOrOptional(isDebugMode: !isOfficial, isSigned: false, validatedDomain: nil, error: .tokenScriptType1SupportedNotCanonicalizedAndUnsigned))
+                    }
+                }
+            }
+        case .unsupportedTokenScriptVersion(let isOld):
+            if isOld {
+                return .value(.type2BadTokenScript(isDebugMode: !isOfficial, error: .custom("type 2 or bad? Mismatch version. Old version"), reason: .oldTokenScriptVersion))
+            } else {
+                assertImpossibleCodePath()
+                return .value(.type2BadTokenScript(isDebugMode: !isOfficial, error: .custom("type 2 or bad? Mismatch version. Unknown schema"), reason: nil))
+            }
+        case .unknownXml:
+            assertImpossibleCodePath()
+            return .value(.type2BadTokenScript(isDebugMode: !isOfficial, error: .custom("unknown. Maybe empty invalid? Doesn't even include something that might be our schema"), reason: nil))
+        case .others:
+            assertImpossibleCodePath()
+            return .value(.type2BadTokenScript(isDebugMode: !isOfficial, error: .custom("Not XML?"), reason: nil))
+        }
+    }
+
+    private static func extractServer(fromXML xml: XMLDocument, xmlContext: XmlContext, matchingContract contractAddress: DerbyWallet.Address) -> RPCServer? {
         for (contract, chainId) in getHoldingContracts(xml: xml, xmlContext: xmlContext) where contract == contractAddress {
             return .init(chainID: chainId)
         }
         //Might be possible?
         return nil
+    }
+
+    private static func verificationType(forXml xmlString: String, isCanonicalized: Bool, contractAddress: DerbyWallet.Address, provider: BaseTokenScriptFilesProvider) -> Promise<TokenScriptSignatureVerificationType> {
+        let verifier = TokenScriptSignatureVerifier()
+        return verifier.verify(xml: xmlString, provider: provider)
     }
 
     private func defaultActions(forTokenType tokenType: TokenInterfaceType) -> [TokenInstanceAction] {
@@ -595,21 +628,21 @@ class PrivateXMLHandler {
     private func createFunctionOriginFrom(ethereumFunctionElement: XMLElement) -> FunctionOrigin? {
         if let contract = ethereumFunctionElement["contract"].nilIfEmpty {
             guard let server = server else { return nil }
-            return XMLHandler.functional.getNonTokenHoldingContract(byName: contract, server: server, fromContractNamesAndAddresses: self.contractNamesAndAddresses)
-                    .flatMap { FunctionOrigin(forEthereumFunctionTransactionElement: ethereumFunctionElement, root: xml, originContract: $0, xmlContext: xmlContext, bitmask: nil, bitShift: 0) }
+            return XMLHandler.Functional.getNonTokenHoldingContract(byName: contract, server: server, fromContractNamesAndAddresses: self.contractNamesAndAddresses)
+                    .flatMap { FunctionOrigin(forEthereumFunctionTransactionElement: ethereumFunctionElement, root: xml, attributeId: "", originContract: $0, xmlContext: xmlContext, bitmask: nil, bitShift: 0) }
         } else {
             return XMLHandler.getRecipientAddress(fromEthereumFunctionElement: ethereumFunctionElement, xmlContext: xmlContext)
-                    .flatMap { FunctionOrigin(forEthereumPaymentElement: ethereumFunctionElement, root: xml, recipientAddress: $0, xmlContext: xmlContext, bitmask: nil, bitShift: 0) }
+                    .flatMap { FunctionOrigin(forEthereumPaymentElement: ethereumFunctionElement, root: xml, attributeId: "", recipientAddress: $0, xmlContext: xmlContext, bitmask: nil, bitShift: 0) }
         }
     }
 
-    private func extractContractNamesAndAddresses() -> [String: [(Go23Wallet.Address, RPCServer)]] {
-        var result = [String: [(Go23Wallet.Address, RPCServer)]]()
+    private func extractContractNamesAndAddresses() -> [String: [(DerbyWallet.Address, RPCServer)]] {
+        var result = [String: [(DerbyWallet.Address, RPCServer)]]()
         for eachContractElement in XMLHandler.getContractElements(fromRoot: xml, xmlContext: xmlContext) {
             guard let name = eachContractElement["name"] else { continue }
             let addressElements = XMLHandler.getAddressElements(fromContractElement: eachContractElement, xmlContext: xmlContext)
             result[name] = addressElements.compactMap {
-                guard let address = $0.text.flatMap({ Go23Wallet.Address(string: $0.trimmed) }), let chainId = $0["network"].flatMap({ Int($0) }) else { return nil }
+                guard let address = $0.text.flatMap({ DerbyWallet.Address(string: $0.trimmed) }), let chainId = $0["network"].flatMap({ Int($0) }) else { return nil }
                 return (address: address, server: RPCServer(chainID: chainId))
             }
         }
@@ -657,17 +690,17 @@ class PrivateXMLHandler {
         return html
     }
 
-    fileprivate static func getHoldingContracts(xml: XMLDocument, xmlContext: XmlContext) -> [(Go23Wallet.Address, Int)] {
-        let fromTokenAsTopLevel: [(Go23Wallet.Address, Int)] = XMLHandler.getAddressElementsForHoldingContracts(fromRoot: xml, xmlContext: xmlContext)
+    fileprivate static func getHoldingContracts(xml: XMLDocument, xmlContext: XmlContext) -> [(DerbyWallet.Address, Int)] {
+        let fromTokenAsTopLevel: [(DerbyWallet.Address, Int)] = XMLHandler.getAddressElementsForHoldingContracts(fromRoot: xml, xmlContext: xmlContext)
                 .map { (contract: $0.text, chainId: $0["network"]) }
                 .compactMap { (contract, chainId) in
-                    if let contract = contract.flatMap({ Go23Wallet.Address(string: $0) }), let chainId = chainId.flatMap({ Int($0) }) {
+                    if let contract = contract.flatMap({ DerbyWallet.Address(string: $0) }), let chainId = chainId.flatMap({ Int($0) }) {
                         return (contract: contract, chainId: chainId)
                     } else {
                         return nil
                     }
                 }
-        let fromActionAsTopLevel: [(Go23Wallet.Address, Int)]
+        let fromActionAsTopLevel: [(DerbyWallet.Address, Int)]
         if let server = XMLHandler.getServerForNativeCurrencyAction(fromRoot: xml, xmlContext: xmlContext) {
             fromActionAsTopLevel = [(Constants.nativeCryptoAddressInDatabase, server.chainID)]
         } else {
@@ -725,8 +758,9 @@ final class ThreadSafe {
     }
 }
 
-/// This class delegates all the functionality to a singleton of the actual XML parser. 1 for each contract. So we just parse the XML file 1 time only for each contract
-public struct XMLHandler {
+/// This class delegates all the Functionality to a singleton of the actual XML parser. 1 for each contract. So we just parse the XML file 1 time only for each contract
+public class XMLHandler {
+    public static var assetAttributeProvider = CallForAssetAttributeProvider()
     private let privateXMLHandler: PrivateXMLHandler
     private let baseXMLHandler: PrivateXMLHandler?
 
@@ -876,20 +910,16 @@ public struct XMLHandler {
         return fieldIdsAndNames
     }
 
-    public var fieldIdsAndNamesExcludingBase: [AttributeId: String] {
-        return privateXMLHandler.fieldIdsAndNames
-    }
-
-    public init(token: TokenScriptSupportable, assetDefinitionStore: AssetDefinitionStore) {
+    public convenience init(token: TokenScriptSupportable, assetDefinitionStore: AssetDefinitionStore) {
         self.init(contract: token.contractAddress, tokenType: token.type, assetDefinitionStore: assetDefinitionStore)
     }
 
-    public init(contract: Go23Wallet.Address, tokenType: TokenType, assetDefinitionStore: AssetDefinitionStore) {
+    public convenience init(contract: DerbyWallet.Address, tokenType: TokenType, assetDefinitionStore: AssetDefinitionStore) {
         self.init(contract: contract, optionalTokenType: tokenType, assetDefinitionStore: assetDefinitionStore)
     }
 
     //private because we don't want client code creating XMLHandler(s) to be able to accidentally pass in a nil TokenType
-    private init(contract: Go23Wallet.Address, optionalTokenType tokenType: TokenType?, assetDefinitionStore: AssetDefinitionStore) {
+    private init(contract: DerbyWallet.Address, optionalTokenType tokenType: TokenType?, assetDefinitionStore: AssetDefinitionStore) {
         var privateXMLHandler: PrivateXMLHandler
         var baseXMLHandler: PrivateXMLHandler?
         if let handler = assetDefinitionStore.getXmlHandler(for: contract) {
@@ -927,40 +957,14 @@ public struct XMLHandler {
         self.privateXMLHandler = privateXMLHandler
     }
 
-    public func getToken(name: String,
-                         symbol: String,
-                         fromTokenIdOrEvent tokenIdOrEvent: TokenIdOrEvent,
-                         index: UInt16,
-                         inWallet account: Wallet,
-                         server: RPCServer,
-                         tokenType: TokenType,
-                         assetDefinitionStore: AssetDefinitionStore) -> TokenScript.Token {
+    public func getToken(name: String, symbol: String, fromTokenIdOrEvent tokenIdOrEvent: TokenIdOrEvent, index: UInt16, inWallet account: Wallet, server: RPCServer, tokenType: TokenType) -> TokenScript.Token {
         //TODO get rid of the forced unwrap
 
-        let overriden = privateXMLHandler.getToken(
-            name: name,
-            symbol: symbol,
-            fromTokenIdOrEvent: tokenIdOrEvent,
-            index: index,
-            inWallet: account,
-            server: server,
-            tokenType: tokenType,
-            assetDefinitionStore: assetDefinitionStore)
-
+        let overriden = privateXMLHandler.getToken(name: name, symbol: symbol, fromTokenIdOrEvent: tokenIdOrEvent, index: index, inWallet: account, server: server, tokenType: tokenType)
         if let baseXMLHandler = baseXMLHandler {
-            let base = baseXMLHandler.getToken(
-                name: name,
-                symbol: symbol,
-                fromTokenIdOrEvent: tokenIdOrEvent,
-                index: index,
-                inWallet: account,
-                server: server,
-                tokenType: tokenType,
-                assetDefinitionStore: assetDefinitionStore)
-
+            let base = baseXMLHandler.getToken(name: name, symbol: symbol, fromTokenIdOrEvent: tokenIdOrEvent, index: index, inWallet: account, server: server, tokenType: tokenType)
             let baseValues = base.values
             let overriddenValues = overriden.values
-
             return TokenScript.Token(
                     tokenIdOrEvent: overriden.tokenIdOrEvent,
                     tokenType: overriden.tokenType,
@@ -998,26 +1002,12 @@ public struct XMLHandler {
         return nameInPluralForm
     }
 
-    public func resolveAttributesBypassingCache(withTokenIdOrEvent tokenIdOrEvent: TokenIdOrEvent,
-                                                server: RPCServer,
-                                                account: Wallet,
-                                                assetDefinitionStore: AssetDefinitionStore) -> [AttributeId: AssetAttributeSyntaxValue] {
-
+    public func resolveAttributesBypassingCache(withTokenIdOrEvent tokenIdOrEvent: TokenIdOrEvent, server: RPCServer, account: Wallet) -> [AttributeId: AssetAttributeSyntaxValue] {
         var attributes: [AttributeId: AssetAttributeSyntaxValue] = [:]
-        let overrides = privateXMLHandler.resolveAttributesBypassingCache(
-            withTokenIdOrEvent: tokenIdOrEvent,
-            server: server,
-            account: account,
-            assetDefinitionStore: assetDefinitionStore)
-
+        let overrides = privateXMLHandler.resolveAttributesBypassingCache(withTokenIdOrEvent: tokenIdOrEvent, server: server, account: account)
         if let baseXMLHandler = baseXMLHandler {
             //TODO This is inefficient because overridden attributes get resolved too
-            let base = baseXMLHandler.resolveAttributesBypassingCache(
-                withTokenIdOrEvent: tokenIdOrEvent,
-                server: server,
-                account: account,
-                assetDefinitionStore: assetDefinitionStore)
-
+            let base = baseXMLHandler.resolveAttributesBypassingCache(withTokenIdOrEvent: tokenIdOrEvent, server: server, account: account)
             attributes = base.merging(overrides) { _, new in new }
         } else {
             attributes = overrides
@@ -1028,16 +1018,16 @@ public struct XMLHandler {
 }
 
 extension XMLHandler {
-    public enum functional {}
+    public enum Functional {}
 }
 
-extension XMLHandler.functional {
+extension XMLHandler.Functional {
 
-    public static func tokenScriptStatus(forContract contract: Go23Wallet.Address, assetDefinitionStore: AssetDefinitionStore) -> Promise<TokenLevelTokenScriptDisplayStatus> {
+    public static func tokenScriptStatus(forContract contract: DerbyWallet.Address, assetDefinitionStore: AssetDefinitionStore) -> Promise<TokenLevelTokenScriptDisplayStatus> {
         XMLHandler(contract: contract, optionalTokenType: nil, assetDefinitionStore: assetDefinitionStore).tokenScriptStatus
     }
 
-    public static func getNonTokenHoldingContract(byName name: String, server: RPCServerOrAny, fromContractNamesAndAddresses contractNamesAndAddresses: [String: [(Go23Wallet.Address, RPCServer)]]) -> Go23Wallet.Address? {
+    public static func getNonTokenHoldingContract(byName name: String, server: RPCServerOrAny, fromContractNamesAndAddresses contractNamesAndAddresses: [String: [(DerbyWallet.Address, RPCServer)]]) -> DerbyWallet.Address? {
         guard let addressesAndServers = contractNamesAndAddresses[name] else { return nil }
         switch server {
         case .any:
@@ -1051,11 +1041,11 @@ extension XMLHandler.functional {
     }
 
     //Returns nil if the XML schema is not supported
-    public static func getHoldingContracts(forTokenScript xmlString: String) -> [(Go23Wallet.Address, Int)]? {
+    public static func getHoldingContracts(forTokenScript xmlString: String) -> [(DerbyWallet.Address, Int)]? {
         //Lang doesn't matter
         let xmlContext = PrivateXMLHandler.createXmlContext(withLang: "en")
 
-        switch XMLHandler.functional.checkTokenScriptSchema(xmlString) {
+        switch XMLHandler.Functional.checkTokenScriptSchema(xmlString) {
         case .supportedTokenScriptVersion:
             if let xml = try? Kanna.XML(xml: xmlString, encoding: .utf8) {
                 return PrivateXMLHandler.getHoldingContracts(xml: xml, xmlContext: xmlContext)
@@ -1087,7 +1077,7 @@ extension XMLHandler.functional {
     }
 
     public static func isTokenScriptSupportedSchemaVersion(_ url: URL) -> Bool {
-        switch XMLHandler.functional.checkTokenScriptSchema(forPath: url) {
+        switch XMLHandler.Functional.checkTokenScriptSchema(forPath: url) {
         case .supportedTokenScriptVersion:
             return true
         case .unsupportedTokenScriptVersion:

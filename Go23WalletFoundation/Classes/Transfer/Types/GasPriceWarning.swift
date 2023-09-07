@@ -1,6 +1,6 @@
 //
 //  GasPriceWarning.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 10.05.2022.
 //

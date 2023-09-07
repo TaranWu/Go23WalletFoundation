@@ -1,18 +1,23 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
 import Foundation
-import Combine
-import Go23WalletAddress
+import PromiseKit
 
 public class IsErc875Contract {
-    private let blockchainProvider: BlockchainProvider
+    private let server: RPCServer
 
-    public init(blockchainProvider: BlockchainProvider) {
-        self.blockchainProvider = blockchainProvider
+    public init(forServer server: RPCServer) {
+        self.server = server
     }
 
-    public func getIsERC875Contract(for contract: Go23Wallet.Address) -> AnyPublisher<Bool, SessionTaskError> {
-        blockchainProvider
-            .call(Erc875IsStormBirdContractMethodCall(contract: contract))
+    public func getIsERC875Contract(for contract: DerbyWallet.Address) -> Promise<Bool> {
+        let function = GetIsERC875()
+        return callSmartContract(withServer: server, contract: contract, functionName: function.name, abiString: function.abi).map { dictionary -> Bool in
+            if let isERC875 = dictionary["0"] as? Bool {
+                return isERC875
+            } else {
+                throw createSmartContractCallError(forContract: contract, functionName: function.name)
+            }
+        }
     }
 }

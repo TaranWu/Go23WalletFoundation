@@ -1,6 +1,6 @@
 //
 //  GetPendingTransaction.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 20.08.2022.
 //
@@ -20,15 +20,17 @@ public final class GetPendingTransaction {
         self.analytics = analytics
     }
 
-    public func getPendingTransaction(hash: String) -> Promise<EthereumTransaction?> {
+    public func getPendingTransaction(hash: String) -> Promise<PendingTransaction?> {
         let request = GetTransactionRequest(hash: hash)
         return APIKitSession.send(EtherServiceRequest(server: server, batch: BatchFactory().create(request)), server: server, analytics: analytics)
     }
 
     //TODO log `Analytics.WebApiErrors.rpcNodeRateLimited` when appropriate too
-    public func getPendingTransaction(server: RPCServer, hash: String) -> AnyPublisher<EthereumTransaction?, SessionTaskError> {
+    public func getPendingTransaction(server: RPCServer, hash: String) -> AnyPublisher<PendingTransaction?, SessionTaskError> {
         let request = GetTransactionRequest(hash: hash)
-        
-        return Session.sendPublisher(EtherServiceRequest(server: server, batch: BatchFactory().create(request)), server: server, analytics: analytics)
+
+        return Session
+            .sendPublisher(EtherServiceRequest(server: server, batch: BatchFactory().create(request)), server: server)
+            .eraseToAnyPublisher()
     }
 }

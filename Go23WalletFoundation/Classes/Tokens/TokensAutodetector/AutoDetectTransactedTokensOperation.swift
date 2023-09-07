@@ -1,62 +1,58 @@
 //
 //  AutoDetectTransactedTokensOperation.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 23.02.2022.
 //
 
 import Foundation
-import Combine
-import Go23WalletAddress
+import PromiseKit
 
-protocol AutoDetectTransactedTokensOperationDelegate: AnyObject {
+public protocol AutoDetectTransactedTokensOperationDelegate: class {
     var isAutoDetectingTransactedTokens: Bool { get set }
 
     func didDetect(tokensOrContracts: [TokenOrContract])
-    func autoDetectTransactedErc20AndNonErc20Tokens(wallet: Go23Wallet.Address) -> AnyPublisher<[TokenOrContract], Never>
+    func autoDetectTransactedErc20AndNonErc20Tokens(wallet: DerbyWallet.Address) -> Promise<[TokenOrContract]>
 }
 
-final class AutoDetectTransactedTokensOperation: Operation {
-    private var cancellable: AnyCancellable?
-    private let wallet: Wallet
-    
+public final class AutoDetectTransactedTokensOperation: Operation {
+
     weak private var delegate: AutoDetectTransactedTokensOperationDelegate?
-    override var isExecuting: Bool {
+    public override var isExecuting: Bool {
         return delegate?.isAutoDetectingTransactedTokens ?? false
     }
-    override var isFinished: Bool {
+    public override var isFinished: Bool {
         return !isExecuting
     }
-    override var isAsynchronous: Bool {
+    public override var isAsynchronous: Bool {
         return true
     }
 
-    init(server: RPCServer, wallet: Wallet, delegate: AutoDetectTransactedTokensOperationDelegate) {
+    private let session: WalletSession
+
+    public init(session: WalletSession, delegate: AutoDetectTransactedTokensOperationDelegate) {
         self.delegate = delegate
-        self.wallet = wallet
+        self.session = session
         super.init()
-        self.queuePriority = server.networkRequestsQueuePriority
+        self.queuePriority = session.server.networkRequestsQueuePriority
     }
 
-    override func cancel() {
-        cancellable?.cancel()
-        cancellable = nil
-    }
-
-    override func main() {
+    public override func main() {
         guard let delegate = delegate else { return }
 
-        cancellable = delegate.autoDetectTransactedErc20AndNonErc20Tokens(wallet: wallet.address)
-            .sink(receiveCompletion: { _ in
+        delegate.autoDetectTransactedErc20AndNonErc20Tokens(wallet: session.account.address).done { [weak self] values in
+            guard let strongSelf = self else { return }
 
-            }, receiveValue: { [weak self] values in
-                self?.willChangeValue(forKey: "isExecuting")
-                self?.willChangeValue(forKey: "isFinished")
-                delegate.isAutoDetectingTransactedTokens = false
-                self?.didChangeValue(forKey: "isExecuting")
-                self?.didChangeValue(forKey: "isFinished")
+            strongSelf.willChangeValue(forKey: "isExecuting")
+            strongSelf.willChangeValue(forKey: "isFinished")
+            delegate.isAutoDetectingTransactedTokens = false
+            strongSelf.didChangeValue(forKey: "isExecuting")
+            strongSelf.didChangeValue(forKey: "isFinished")
 
-                self?.delegate?.didDetect(tokensOrContracts: values)
-            })
+            guard !strongSelf.isCancelled else { return }
+            strongSelf.delegate?.didDetect(tokensOrContracts: values)
+        }.catch { error in
+            warnLog("Error while detecting tokens wallet: \(self.session.account.address.eip55String) error: \(error)")
+        }
     }
 }

@@ -1,8 +1,8 @@
 //
 //  BlockiesImage.swift
-//  Go23Wallet
+//  DerbyWallet
 //
-//  Created by Vladyslav Shepitko on 30.08.2022.
+//  Created by Tatan.
 //
 
 import UIKit

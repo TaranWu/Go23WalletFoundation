@@ -1,21 +1,20 @@
 //
 //  Uniswap.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 21.08.2020.
 //
 
 import Foundation
 import Combine
-import Go23WalletAddress
 
 public struct Uniswap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
     public var objectWillChange: AnyPublisher<Void, Never> {
         return .empty()
     }
 
-    public let action: String
-
+    public let action: String 
+    
     public func rpcServer(forToken token: TokenActionsIdentifiable) -> RPCServer? {
         return .main
     }
@@ -69,29 +68,29 @@ public struct Uniswap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
             static let output = "outputCurrency"
         }
 
-        case inputOutput(from: Go23Wallet.Address, to: AddressOrEnsName)
-        case input(Go23Wallet.Address)
+        case inputOutput(from: DerbyWallet.Address, to: AddressOrEnsName)
+        case input(DerbyWallet.Address)
         case none
 
         var urlQueryItems: [URLQueryItem] {
             switch self {
             case .inputOutput(let inputAddress, let outputAddress):
                 return [
-                    .init(name: Keys.input, value: functional.rewriteContractInput(inputAddress)),
+                    .init(name: Keys.input, value: Functional.rewriteContractInput(inputAddress)),
                     .init(name: Keys.output, value: outputAddress.stringValue),
                 ]
             case .input(let address):
                 return [
-                    .init(name: Keys.input, value: functional.rewriteContractInput(address))
+                    .init(name: Keys.input, value: Functional.rewriteContractInput(address))
                 ]
             case .none:
                 return []
             }
         }
 
-        class functional {
-            static func rewriteContractInput(_ address: Go23Wallet.Address) -> String {
-                if address == Constants.nativeCryptoAddressInDatabase {
+        class Functional {
+            static func rewriteContractInput(_ address: DerbyWallet.Address) -> String {
+                if address.sameContract(as: Constants.nativeCryptoAddressInDatabase) {
                     //Uniswap likes it this way
                     return "ETH"
                 } else {

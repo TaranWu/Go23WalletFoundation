@@ -1,6 +1,6 @@
 //
 //  ArbitrumBridge.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 04.10.2021.
 //

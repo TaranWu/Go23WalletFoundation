@@ -1,6 +1,6 @@
 //
 //  NotificationService.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 25.03.2022.
 //
@@ -15,7 +15,7 @@ public protocol PushNotificationsService: AnyObject {
 }
 
 public protocol NotificationSourceServiceDelegate: AnyObject {
-    func showCreateBackup(in service: NotificationSourceService, etherReceived: BigInt, wallet: Wallet)
+    func showCreateBackupAfterReceiveNativeCryptoCurrencyPrompt(in service: NotificationSourceService, etherReceivedUsedForBackupPrompt: BigInt)
 }
 
 public protocol NotificationSourceService: AnyObject {
@@ -37,11 +37,7 @@ public final class NotificationService {
         receiveNotificationSubject.eraseToAnyPublisher()
     }
 
-    public init(sources: [NotificationSourceService],
-                walletBalanceService: WalletBalanceService,
-                notificationService: ScheduledNotificationService,
-                pushNotificationsService: PushNotificationsService) {
-
+    public init(sources: [NotificationSourceService], walletBalanceService: WalletBalanceService, notificationService: ScheduledNotificationService, pushNotificationsService: PushNotificationsService) {
         self.sources = sources
         self.notificationService = notificationService
         self.walletBalanceService = walletBalanceService

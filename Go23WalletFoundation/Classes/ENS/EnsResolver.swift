@@ -4,21 +4,18 @@
 import Foundation
 import Go23WalletENS
 import Combine
-import Go23WalletAddress
 
-public class EnsResolver {
+public class EnsResolver: ENSDelegateImpl {
     private let storage: EnsRecordsStorage
     private let server: RPCServer
-    private lazy var ens = ENS(delegate: ensDelegate, chainId: server.chainID)
-    private let ensDelegate: ENSDelegateImpl
+    private lazy var ens = ENS(delegate: self, chainId: server.chainID)
 
-    public init(storage: EnsRecordsStorage, blockchainProvider: BlockchainProvider) {
-        self.server = blockchainProvider.server
-        self.ensDelegate = ENSDelegateImpl(blockchainProvider: blockchainProvider)
+    public init(server: RPCServer, storage: EnsRecordsStorage) {
+        self.server = server
         self.storage = storage
     }
 
-    public func getENSAddressFromResolver(for name: String) -> AnyPublisher<Go23Wallet.Address, SmartContractError> {
+    public func getENSAddressFromResolver(for name: String) -> AnyPublisher<DerbyWallet.Address, SmartContractError> {
         if let cachedResult = cachedAddressValue(for: name) {
             return .just(cachedResult)
         }
@@ -32,7 +29,7 @@ public class EnsResolver {
 }
 
 extension EnsResolver: CachebleAddressResolutionServiceType {
-    public func cachedAddressValue(for name: String) -> Go23Wallet.Address? {
+    public func cachedAddressValue(for name: String) -> DerbyWallet.Address? {
         let key = EnsLookupKey(nameOrAddress: name, server: self.server)
         switch storage.record(for: key, expirationTime: Constants.Ens.recordExpiration)?.value {
         case .address(let address):

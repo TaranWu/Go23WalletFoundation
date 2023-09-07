@@ -1,6 +1,6 @@
 //
 //  TokensFilter.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 30.03.2020.
 //
@@ -8,28 +8,21 @@
 import Foundation
 import BigInt
 
-public protocol TokenScriptOverridesSupportable {
-    var tokenScriptOverrides: TokenScriptOverrides? { get }
-}
-
-public protocol TokenBalanceSupportable {
-    var balance: BalanceViewModel { get }
-}
-
 public protocol TokenFilterable: TokenScriptSupportable, TokenGroupIdentifiable, TokenActionsIdentifiable { }
 
 public protocol TokenSortable {
     var name: String { get }
-    var value: BigUInt { get }
-    var contractAddress: Go23Wallet.Address { get }
+    var value: BigInt { get }
+    var contractAddress: DerbyWallet.Address { get }
     var server: RPCServer { get }
     var shouldDisplay: Bool { get }
     var decimals: Int { get }
 }
 
 public extension TokenSortable {
-    var valueDecimal: Decimal {
-        return Decimal(bigUInt: value, decimals: decimals) ?? .zero
+    var valueDecimal: NSDecimalNumber? {
+        let value = EtherNumberFormatter.plain.string(from: value, decimals: decimals)
+        return value.optionalDecimalValue
     }
 }
 
@@ -78,15 +71,19 @@ public class TokensFilter {
         }
     }
 
+    private let assetDefinitionStore: AssetDefinitionStore
     private let tokenActionsService: TokenActionsService
+    private let coinTickersFetcher: CoinTickersFetcher
     private let tokenGroupIdentifier: TokenGroupIdentifierProtocol
 
-    public init(tokenActionsService: TokenActionsService, tokenGroupIdentifier: TokenGroupIdentifierProtocol) {
+    public init(assetDefinitionStore: AssetDefinitionStore, tokenActionsService: TokenActionsService, coinTickersFetcher: CoinTickersFetcher, tokenGroupIdentifier: TokenGroupIdentifierProtocol) {
+        self.assetDefinitionStore = assetDefinitionStore
         self.tokenActionsService = tokenActionsService
+        self.coinTickersFetcher = coinTickersFetcher
         self.tokenGroupIdentifier = tokenGroupIdentifier
     }
 
-    public func filterTokens<T>(tokens: [T], filter: WalletFilter) -> [T] where T: TokenFilterable & TokenScriptOverridesSupportable & TokenBalanceSupportable {
+    public func filterTokens<T>(tokens: [T], filter: WalletFilter) -> [T] where T: TokenFilterable {
         let filteredTokens: [T]
 
         func hasMatchingInNftBalance(token: T, string: String) -> Bool {
@@ -100,8 +97,8 @@ public class TokensFilter {
             return token.name.trimmed.lowercased().contains(string) ||
                 token.symbol.trimmed.lowercased().contains(string) ||
                 token.contractAddress.eip55String.lowercased().contains(string) ||
-                (token.tokenScriptOverrides?.titleInPluralForm.trimmed.lowercased().contains(string) ?? false) ||
-                (token.tokenScriptOverrides?.title.trimmed.lowercased().contains(string) ?? false)
+                token.title(withAssetDefinitionStore: assetDefinitionStore).trimmed.lowercased().contains(string) ||
+                token.titleInPluralForm(withAssetDefinitionStore: assetDefinitionStore).trimmed.lowercased().contains(string)
         }
 
         switch filter {
@@ -134,16 +131,16 @@ public class TokensFilter {
             case .development(let value):
                 switch value {
                 case .fiat:
-                    filteredTokens = tokens.filter { $0.balance.ticker != nil }
+                    filteredTokens = tokens.filter { $0.hasTicker(coinTickersFetcher: coinTickersFetcher) }
                 case .fiatAndBalance, .balanceAndFiat:
-                    filteredTokens = tokens.filter { $0.hasNonZeroBalance && $0.balance.ticker != nil }
+                    filteredTokens = tokens.filter { $0.hasNonZeroBalance && $0.hasTicker(coinTickersFetcher: coinTickersFetcher) }
                 case .balance:
                     filteredTokens = tokens.filter { $0.hasNonZeroBalance }
                 }
             case .tokenscript:
                 filteredTokens = tokens.filter {
-                    guard let overrides = $0.tokenScriptOverrides else { return false }
-                    return overrides.hasNoBaseAssetDefinition && (overrides.server?.matches(server: $0.server) ?? false)
+                    let xmlHandler = XMLHandler(token: $0, assetDefinitionStore: assetDefinitionStore)
+                    return xmlHandler.hasNoBaseAssetDefinition && (xmlHandler.server?.matches(server: $0.server) ?? false)
                 }
             case .custom(string: let string):
                 filteredTokens = tokens.filter {
@@ -157,7 +154,7 @@ public class TokensFilter {
 
     public func filterTokens(tokens: [PopularToken], walletTokens: [TokenViewModel], filter: WalletFilter) -> [PopularToken] {
         var filteredTokens: [PopularToken] = tokens.filter { token in
-            !walletTokens.contains(where: { $0.contractAddress == token.contractAddress }) && !token.name.isEmpty
+            !walletTokens.contains(where: { $0.contractAddress.sameContract(as: token.contractAddress) }) && !token.name.isEmpty
         }
 
         switch filter {
@@ -179,16 +176,18 @@ public class TokensFilter {
         return filteredTokens
     }
 
-    public func sortDisplayedTokens<T>(tokens: [T]) -> [T] where T: TokenSortable & TokenBalanceSupportable {
+    public func sortDisplayedTokens<T>(tokens: [T]) -> [T] where T: TokenSortable {
 
         func sortTokensByFiatValues(_ token1: T, _ token2: T) -> Bool {
-            let value1 = token1.balance.ticker.flatMap { ticker in
-                TickerHelper(ticker: ticker).fiatValue(value: token1.valueDecimal)
-            } ?? -1
+            let value1 = coinTickersFetcher.ticker(for: .init(address: token1.contractAddress, server: token1.server)).flatMap({ ticker in
+                EthCurrencyHelper(ticker: ticker)
+                    .fiatValue(value: token1.valueDecimal)
+            }) ?? -1
 
-            let value2 = token1.balance.ticker.flatMap { ticker in
-                TickerHelper(ticker: ticker).fiatValue(value: token2.valueDecimal)
-            } ?? -1
+            let value2 = coinTickersFetcher.ticker(for: .init(address: token2.contractAddress, server: token2.server)).flatMap({ ticker in
+                EthCurrencyHelper(ticker: ticker)
+                    .fiatValue(value: token2.valueDecimal)
+            }) ?? -1
 
             return value1 > value2
         }
@@ -252,9 +251,14 @@ fileprivate extension TokenFilterable {
     var hasNonZeroBalance: Bool {
         switch type {
         case .nativeCryptocurrency, .erc20:
-            return valueBI.signum() != .zero
+            return !valueBI.isZero
         case .erc875, .erc721, .erc721ForTickets, .erc1155:
             return !nonZeroBalance.isEmpty
         }
+    }
+
+    func hasTicker(coinTickersFetcher: CoinTickersFetcher) -> Bool {
+        let ticker = coinTickersFetcher.ticker(for: .init(address: contractAddress, server: server))
+        return ticker != nil
     }
 }

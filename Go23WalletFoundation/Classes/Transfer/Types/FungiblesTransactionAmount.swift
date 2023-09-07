@@ -1,6 +1,6 @@
 //
 //  FungiblesTransactionAmount.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 10.12.2021.
 //
@@ -9,8 +9,8 @@ import Foundation
 
 public struct FungiblesTransactionAmount {
     public var value: String
-    public let shortValue: String?
-    public let isAllFunds: Bool
+    public var shortValue: String?
+    public var isAllFunds: Bool = false
 
     public init(value: String, shortValue: String?, isAllFunds: Bool) {
         self.value = value

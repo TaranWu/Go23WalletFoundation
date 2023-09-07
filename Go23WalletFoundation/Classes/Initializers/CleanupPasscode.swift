@@ -1,6 +1,6 @@
 //
 //  CleanupPasscode.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 14.06.2022.
 //

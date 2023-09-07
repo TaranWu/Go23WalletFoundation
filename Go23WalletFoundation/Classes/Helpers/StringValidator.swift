@@ -1,13 +1,13 @@
 //
 //  StringValidator.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Jerome Chan on 2/12/21.
 //
 
 import Foundation
 
-public typealias StringValidatorResult = Swift.Result<Void, StringValidator.Errors>
+public typealias StringValidatorResult = Result<Void, StringValidator.Errors>
 
 public class StringValidator {
     public enum Errors: Error {

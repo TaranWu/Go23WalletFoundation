@@ -10,36 +10,23 @@ public class GetNextNonce {
     private let rpcURL: URL
     private let rpcHeaders: [String: String]
     private let server: RPCServer
+    private let wallet: DerbyWallet.Address
     private let analytics: AnalyticsLogger
 
-    public convenience init(server: RPCServer, analytics: AnalyticsLogger) {
-        self.init(rpcURL: server.rpcURL, rpcHeaders: server.rpcHeaders, server: server, analytics: analytics)
+    public convenience init(server: RPCServer, wallet: DerbyWallet.Address, analytics: AnalyticsLogger) {
+        self.init(rpcURL: server.rpcURL, rpcHeaders: server.rpcHeaders, server: server, wallet: wallet, analytics: analytics)
     }
 
-    public init(rpcURL: URL, rpcHeaders: [String: String], server: RPCServer, analytics: AnalyticsLogger) {
+    public init(rpcURL: URL, rpcHeaders: [String: String], server: RPCServer, wallet: DerbyWallet.Address, analytics: AnalyticsLogger) {
         self.rpcURL = rpcURL
         self.rpcHeaders = rpcHeaders
         self.server = server
+        self.wallet = wallet
         self.analytics = analytics
     }
 
-    public func getNextNonce(wallet: Go23Wallet.Address) -> Promise<Int> {
+    public func promise() -> Promise<Int> {
         let request = EtherServiceRequest(rpcURL: rpcURL, rpcHeaders: rpcHeaders, batch: BatchFactory().create(GetTransactionCountRequest(address: wallet, state: "pending")))
         return APIKitSession.send(request, server: server, analytics: analytics)
-    }
-}
-
-import Combine
-
-public class GetChainId {
-    private let analytics: AnalyticsLogger
-
-    public init(analytics: AnalyticsLogger) {
-        self.analytics = analytics
-    }
-
-    public func getChainId(server: RPCServer) -> AnyPublisher<Int, SessionTaskError> {
-        let request = ChainIdRequest()
-        return APIKitSession.sendPublisher(EtherServiceRequest(server: server, batch: BatchFactory().create(request)), server: server, analytics: analytics)
     }
 }

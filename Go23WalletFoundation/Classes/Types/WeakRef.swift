@@ -1,6 +1,6 @@
 //
 //  WeakRef.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 27.04.2022.
 //

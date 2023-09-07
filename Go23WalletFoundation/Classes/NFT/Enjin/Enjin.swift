@@ -1,48 +1,64 @@
 //
 //  Enjin.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 26.10.2021.
 //
 
 import Foundation
 import Apollo
-import Combine
-import Go23WalletCore
+import PromiseKit
+
+public struct EnjinError: Error {
+    var localizedDescription: String
+}
+
+public typealias EnjinAddressesToSemiFungibles = [DerbyWallet.Address: [GetEnjinTokenQuery.Data.EnjinToken]]
+public typealias EnjinTokenIdsToSemiFungibles = [String: GetEnjinTokenQuery.Data.EnjinToken]
 
 public final class Enjin {
-    private let server: RPCServer
-    private let networking: EnjinNetworking
-    private let storage: EnjinStorage
+    private lazy var networkProvider = EnjinNetworkProvider(queue: queue)
+    private let queue: DispatchQueue
 
-    public init(server: RPCServer, storage: EnjinStorage) {
-        self.storage = storage
-        self.server = server
-        self.networking = EnjinNetworking()
+    public typealias EnjinBalances = [GetEnjinBalancesQuery.Data.EnjinBalance]
+    public typealias MappedEnjinBalances = [DerbyWallet.Address: EnjinBalances]
+
+    public init(queue: DispatchQueue) {
+        self.queue = queue
     }
 
-    func token(tokenId: TokenId) -> EnjinToken? {
-        return storage.getEnjinToken(for: tokenId, server: server)
+    public func semiFungible(wallet: Wallet, server: RPCServer) -> Promise<EnjinAddressesToSemiFungibles> {
+        let key: AddressAndRPCServer = .init(address: wallet.address, server: server)
+
+        guard Enjin.isServerSupported(key.server) else {
+            return .value([:])
+        }
+
+        return fetchFromRemotePromise(wallet: wallet)
     }
 
-    public func fetchTokens(wallet: Wallet) -> AnyPublisher<[EnjinToken], PromiseError> {
-        guard Enjin.isServerSupported(server) else { return .just([]) }
-
-        return networking.getEnjinBalances(owner: wallet.address, offset: 1)
-            .flatMap { [networking] balances in
-                let balances = balances.compactMap { EnjinBalance(balance: $0) }
-                return networking.getEnjinTokens(balances: balances, owner: wallet.address)
-            }.handleEvents(receiveOutput: { [storage, server] response in
-                storage.addOrUpdate(enjinTokens: response.tokens, server: server)
-            }).map { $0.tokens }
-            .eraseToAnyPublisher()
+    private func fetchFromRemotePromise(wallet: Wallet) -> Promise<EnjinAddressesToSemiFungibles> {
+        return Promise<[DerbyWallet.Address: [GetEnjinBalancesQuery.Data.EnjinBalance]]> { seal in
+            let offset = 1
+            networkProvider.getEnjinBalances(forOwner: wallet.address, offset: offset) { result in
+                switch result {
+                case .success(let result):
+                    seal.fulfill(result.balances)
+                case .failure(let error):
+                    seal.reject(error)
+                }
+            }
+        }.then(on: queue, { [networkProvider] balances -> Promise<EnjinAddressesToSemiFungibles> in
+            let ids = (balances[wallet.address] ?? []).compactMap { $0.token?.id }
+            return networkProvider.getEnjinTokens(ids: ids, owner: wallet.address)
+        })
     }
 
     static func isServerSupported(_ server: RPCServer) -> Bool {
-        switch server.serverWithEnhancedSupport {
+        switch server {
         case .main:
             return true
-        case .xDai, .polygon, .binance_smart_chain, .heco, .arbitrum, .klaytnCypress, .klaytnBaobabTestnet, .rinkeby, nil:
+        case .rinkeby, .kovan, .ropsten, .poa, .sokol, .classic, .callisto, .custom, .goerli, .xDai, .artis_sigma1, .artis_tau1, .binance_smart_chain, .binance_smart_chain_testnet, .heco, .heco_testnet, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .candle, .polygon, .mumbai_testnet, .optimistic, .optimisticKovan, .cronosTestnet, .arbitrum, .arbitrumRinkeby, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .phi, .ioTeX, .ioTeXTestnet:
             return false
         }
     }

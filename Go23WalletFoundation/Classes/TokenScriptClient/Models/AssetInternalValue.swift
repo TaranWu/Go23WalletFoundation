@@ -4,7 +4,6 @@ import Foundation
 import Go23WalletOpenSea
 import BigInt
 import PromiseKit
-import Go23WalletAddress
 
 public enum AssetInternalValue: Codable {
     public var description: String {
@@ -33,7 +32,7 @@ public enum AssetInternalValue: Codable {
             return ".openSeaNonFungibleTraits"
         }
     }
-    case address(Go23Wallet.Address)
+    case address(DerbyWallet.Address)
     case string(String)
     case bytes(Data)
     case int(BigInt)
@@ -54,7 +53,7 @@ public enum AssetInternalValue: Codable {
         }
     }
 
-    public var addressValue: Go23Wallet.Address? {
+    public var addressValue: DerbyWallet.Address? {
         guard case .address(let value) = self else { return nil }
         return value
     }
@@ -91,6 +90,9 @@ public enum AssetInternalValue: Codable {
         guard case .bytes(let value) = self else { return nil }
         return value
     }
+    public var isSubscribableValue: Bool {
+        return subscribableValue != nil
+    }
 
     enum Key: CodingKey {
         case address
@@ -110,7 +112,7 @@ public enum AssetInternalValue: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: Key.self)
 
-        if let address = try? container.decode(Go23Wallet.Address.self, forKey: .address) {
+        if let address = try? container.decode(DerbyWallet.Address.self, forKey: .address) {
             self = .address(address)
             return
         }
@@ -170,7 +172,7 @@ extension Array where Element == Subscribable<AssetInternalValue> {
         return Promise { seal in
             var count = 0
             for each in self {
-                each.sinkFirst { _ in
+                each.subscribeOnce { _ in
                     count += 1
                     guard count == self.count else { return }
                     seal.fulfill(Void())
@@ -186,31 +188,31 @@ extension Dictionary where Key == AttributeId, Value == AssetInternalValue {
         self["tokenId"]?.uintValue
     }
 
-    public var fromAddressValue: Go23Wallet.Address? {
+    public var fromAddressValue: DerbyWallet.Address? {
         self["from"]?.addressValue
     }
 
-    public mutating func setFrom(address: Go23Wallet.Address) {
+    public mutating func setFrom(address: DerbyWallet.Address) {
         self["from"] = .address(address)
     }
 
-    public var toAddressValue: Go23Wallet.Address? {
+    public var toAddressValue: DerbyWallet.Address? {
         self["to"]?.addressValue
     }
 
-    public mutating func setTo(address: Go23Wallet.Address) {
+    public mutating func setTo(address: DerbyWallet.Address) {
         self["to"] = .address(address)
     }
 
-    public var senderAddressValue: Go23Wallet.Address? {
+    public var senderAddressValue: DerbyWallet.Address? {
         self["sender"]?.addressValue
     }
 
-    public var ownerAddressValue: Go23Wallet.Address? {
+    public var ownerAddressValue: DerbyWallet.Address? {
         self["owner"]?.addressValue
     }
 
-    public var spenderAddressValue: Go23Wallet.Address? {
+    public var spenderAddressValue: DerbyWallet.Address? {
         self["spender"]?.addressValue
     }
 

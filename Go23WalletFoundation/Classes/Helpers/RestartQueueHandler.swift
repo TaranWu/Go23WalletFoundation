@@ -1,44 +1,40 @@
 //
 //  RestartQueueHandler.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 09.03.2022.
 //
 
 import Foundation
 
-public protocol LoadUrlInDappBrowserProvider: AnyObject {
+public protocol LoadUrlInDappBrowserProvider {
     func didLoadUrlInDappBrowser(url: URL, in handler: RestartQueueHandler)
 }
 
 public final class RestartQueueHandler {
-    private let restartQueue: RestartTaskQueue
-    private let serversProvider: ServersProvidable
+    private let config: Config
 
-    public weak var provider: LoadUrlInDappBrowserProvider?
-
-    public convenience init() {
-        self.init(
-            serversProvider: BaseServersProvider(),
-            restartQueue: .init())
+    public init(config: Config) {
+        self.config = config
     }
 
-    public init(serversProvider: ServersProvidable,
-                restartQueue: RestartTaskQueue) {
-
-        self.serversProvider = serversProvider
-        self.restartQueue = restartQueue
+    public func processRestartQueueBeforeRestart(restartQueue: RestartTaskQueue) {
+        processRestartQueueBeforeRestart(config: config, restartQueue: restartQueue)
     }
 
-    public func add(_ task: RestartTaskQueue.Task) {
-        restartQueue.add(task)
+    public func processRestartQueueAfterRestart(provider: LoadUrlInDappBrowserProvider, restartQueue: RestartTaskQueue) {
+        for each in restartQueue.queue {
+            switch each {
+            case .addServer, .reloadServers, .editServer, .removeServer, .enableServer, .switchDappServer:
+                break
+            case .loadUrlInDappBrowser(let url):
+                restartQueue.remove(each)
+                provider.didLoadUrlInDappBrowser(url: url, in: self)
+            }
+        }
     }
 
-    public func remove(_ task: RestartTaskQueue.Task) {
-        restartQueue.remove(task)
-    }
-
-    public func processTasks() {
+    private func processRestartQueueBeforeRestart(config: Config, restartQueue: RestartTaskQueue) {
         for each in restartQueue.queue {
             switch each {
             case .addServer(let server):
@@ -46,50 +42,55 @@ public final class RestartQueueHandler {
                 RPCServer.customRpcs.append(server)
             case .editServer(let original, let edited):
                 restartQueue.remove(each)
-                replaceCustomRpcServer(original: original, edited: edited)
+                replaceServer(original: original, edited: edited)
             case .removeServer(let server):
                 restartQueue.remove(each)
                 removeServer(server)
             case .enableServer(let server):
                 restartQueue.remove(each)
-                var servers = serversProvider.enabledServers
+                var conf = config
+                // NOTE: we need to make sure that we don't enableServer test net server when main net is selected.
+                // update enabledServers with added server
+                var servers = conf.enabledServers.filter({ $0.isTestnet == server.isTestnet })
                 servers.append(server)
-                serversProvider.enabledServers = servers
+                conf.enabledServers = servers
             case .switchDappServer(server: let server):
                 restartQueue.remove(each)
                 Config.setChainId(server.chainID)
-            case .loadUrlInDappBrowser(let url):
-                restartQueue.remove(each)
-                provider?.didLoadUrlInDappBrowser(url: url, in: self)
+            case .loadUrlInDappBrowser:
+                break
             case .reloadServers(let servers):
                 restartQueue.remove(each)
-                serversProvider.enabledServers = servers
+                var conf = config
+                conf.enabledServers = servers
             }
         }
     }
 
-    private func replaceCustomRpcServer(original: CustomRPC, edited: CustomRPC) {
-        RPCServer.customRpcs = RPCServer.customRpcs.map { $0.chainID == original.chainID ? edited : $0 }
+    private func replaceServer(original: CustomRPC, edited: CustomRPC) {
+        RPCServer.customRpcs = RPCServer.customRpcs.map { (item: CustomRPC) -> CustomRPC in
+            if item.chainID == original.chainID {
+                return edited
+            }
+            return item
+        }
     }
 
     private func removeServer(_ server: CustomRPC) {
         //Must disable server first because we (might) not have done that if the user had disabled and then remove the server in the UI at the same time. And if we fallback to mainnet when an enabled server's chain ID is not found, this can lead to mainnet appearing twice in the Wallet tab
-        let servers = serversProvider.enabledServers.filter { $0.chainID != server.chainID }
-
-        if let i = RPCServer.customRpcs.firstIndex(of: server) {
-            RPCServer.customRpcs.remove(at: i)
-        }
-
-        serversProvider.enabledServers = servers
-
-        switchBrowserServer(awayFrom: server)
+        let servers = config.enabledServers.filter { $0.chainID != server.chainID }
+        var config = self.config
+        config.enabledServers = servers
+        guard let i = RPCServer.customRpcs.firstIndex(of: server) else { return }
+        RPCServer.customRpcs.remove(at: i)
+        switchBrowserServer(awayFrom: server, config: config)
     }
 
-    private func switchBrowserServer(awayFrom server: CustomRPC) {
-        guard serversProvider.browserRpcServer.chainID == server.chainID else { return }
+    private func switchBrowserServer(awayFrom server: CustomRPC, config: Config) {
+        guard Config.getChainId() == server.chainID else { return }
         //To be safe, we find a network that is either mainnet/testnet depending on the chain that was removed
         let isTestnet = server.isTestnet
-        if let targetServer = serversProvider.enabledServers.first(where: { $0.isTestnet == isTestnet }) {
+        if let targetServer = config.enabledServers.first(where: { $0.isTestnet == isTestnet }) {
             Config.setChainId(targetServer.chainID)
         }
     }

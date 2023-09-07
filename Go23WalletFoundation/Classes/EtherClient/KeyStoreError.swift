@@ -2,7 +2,7 @@
 
 import Foundation
 
-public enum KeystoreError: Error {
+public enum KeystoreError: LocalizedError {
     case failedToDeleteAccount
     case failedToDecryptKey
     case failedToImport(Error)
@@ -13,7 +13,6 @@ public enum KeystoreError: Error {
     case failedToParseJSON
     case accountNotFound
     case failedToSignMessage
-    case signDataIsEmpty
     case failedToExportPrivateKey
     case failedToExportSeed
     case accountMayNeedImportingAgainOrEnablePasscode

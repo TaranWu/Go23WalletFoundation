@@ -2,49 +2,47 @@
 
 import Foundation
 import RealmSwift
-import Combine
 
 public final class BookmarksStore {
-    private var bookmarks: Results<Bookmark> {
+    public var bookmarks: Results<Bookmark> {
         return realm.objects(Bookmark.self)
             .sorted(byKeyPath: "order", ascending: true)
     }
     private let realm: Realm
 
-    public var bookmarksChangeset: AnyPublisher<ChangeSet<[BookmarkObject]>, Never> {
-        return realm.objects(Bookmark.self)
-            .sorted(byKeyPath: "order", ascending: true)
-            .changesetPublisher
-            .map { changeSet -> ChangeSet<[BookmarkObject]> in
-                switch changeSet {
-                case .initial(let results):
-                    return .initial(Array(results.map { BookmarkObject(bookmark: $0) }))
-                case .error(let error):
-                    return .error(error)
-                case .update(let results, let deletions, let insertions, let modifications):
-                    return .update(Array(results.map { BookmarkObject(bookmark: $0) }), deletions: deletions, insertions: insertions, modifications: modifications)
-                }
-            }.eraseToAnyPublisher()
-    }
-
     public init(realm: Realm = .shared()) {
         self.realm = realm
     }
 
-    public func update(bookmark: BookmarkObject, title: String, url: String) {
+    private func findOriginalBookmarks(matchingBookmarks bookmarksToFind: [Bookmark]) -> [Bookmark] {
+        var originals = [Bookmark]()
+        for toDelete in bookmarksToFind {
+            var found = false
+            for original in bookmarks where original.id == toDelete.id {
+                originals.append(original)
+                found = true
+                break
+            }
+            if !found {
+                for original in bookmarks where original.url == toDelete.url {
+                    originals.append(original)
+                    break
+                }
+            }
+        }
+        return originals
+    }
+
+    public func update(bookmark: Bookmark, title: String, url: String) {
         try? realm.write {
-            let bookmark = Bookmark(bookmark: bookmark)
             bookmark.title = title
             bookmark.url = url
-
-            realm.add(bookmark, update: .all)
         }
     }
 
-    public func add(bookmarks: [BookmarkObject]) {
+    public func add(bookmarks: [Bookmark]) {
         var bookmarkOrder = self.bookmarks.count
         try? realm.write {
-            let bookmarks = bookmarks.map { Bookmark(bookmark: $0) }
             for each in bookmarks {
                 each.order = bookmarkOrder
                 bookmarkOrder += 1
@@ -53,12 +51,17 @@ public final class BookmarksStore {
         }
     }
 
-    public func delete(bookmark: BookmarkObject) {
+    public func delete(bookmarks bookmarksToDelete: [Bookmark]) {
+        //We may not receive the original Bookmark object(s), hence the lookup
+        let originalsToDelete = findOriginalBookmarks(matchingBookmarks: bookmarksToDelete)
+
         try? realm.write {
-            guard let bookmark = realm.object(ofType: Bookmark.self, forPrimaryKey: bookmark.id) else { return }
-            realm.delete(bookmark)
-            for (index, each) in Array(bookmarks).enumerated() {
-                each.order = index
+            realm.delete(originalsToDelete)
+            let bookmarksToChangeOrder = Array(bookmarks)
+            var bookmarkOrder = 0
+            for each in bookmarksToChangeOrder {
+                each.order = bookmarkOrder
+                bookmarkOrder += 1
             }
         }
     }

@@ -1,6 +1,6 @@
 //
 //  RunLoopThread.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 25.05.2022.
 //
@@ -18,10 +18,16 @@ public class RunLoopThread: Thread {
     }
 
     deinit {
+        if isRunLoopThreadLoggingEnabled {
+            debugLog("[Thread] \(name ?? String(describing: self)) deallocated")
+        }
     }
 
     public override func main() {
         autoreleasepool {
+            if isRunLoopThreadLoggingEnabled {
+                debugLog("[Thread] \(name ?? String(describing: self)) started")
+            }
             let runLoop = RunLoop.current
             runLoop.add(Port(), forMode: RunLoop.Mode.default)
 
@@ -30,6 +36,9 @@ public class RunLoopThread: Thread {
                     runLoop.run(mode: RunLoop.Mode.default, before: Date.distantFuture)
                 }
             }
+            if isRunLoopThreadLoggingEnabled {
+                debugLog("[Thread] \(name ?? String(describing: self)) cancelled")
+            }
             Thread.exit()
         }
     }
@@ -37,8 +46,15 @@ public class RunLoopThread: Thread {
     public func _perform(_ block: @escaping () -> Swift.Void) {
         guard self.isExecuting else {
             if !self.isCancelled {
+                if isRunLoopThreadLoggingEnabled {
+                    debugLog("[Thread] \(name ?? String(describing: self)) hasn't started up yet. Starting soon...")
+                }
                 Thread.sleep(forTimeInterval: 0.002)
                 self._perform(block)
+            } else {
+                if isRunLoopThreadLoggingEnabled {
+                    debugLog("[Thread] \(name ?? String(describing: self)) has already been cancelled!")
+                }
             }
             return
         }
@@ -53,7 +69,7 @@ public class RunLoopThread: Thread {
     }
 
     func stop() {
-        self._perform {
+        self._perform() {
             self.cancel()
         }
     }

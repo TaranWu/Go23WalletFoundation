@@ -2,12 +2,6 @@
 
 import Foundation
 
-public protocol SecuredPasswordStorage {
-    func password(forService service: String, account: String) -> String?
-    func setPasword(_ pasword: String, forService service: String, account: String)
-    func deletePasword(forService service: String, account: String)
-}
-
 public protocol Lock {
     var isPasscodeSet: Bool { get }
     var currentPasscode: String? { get }
@@ -27,8 +21,8 @@ public protocol Lock {
 
 open class SecuredLock: Lock {
     private struct Keys {
-        static let service = "Go23Wallet.lock"
-        static let account = "Go23Wallet.account"
+        static let service = "DerbyWallet.lock"
+        static let account = "DerbyWallet.account"
     }
 
     private let passcodeAttempts = "passcodeAttempts"

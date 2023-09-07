@@ -1,19 +1,17 @@
 //
 //  CoinTickerObject.swift
-//  Go23WalletFoundation
+//  DerbyWalletFoundation
 //
-//  Created by Vladyslav Shepitko on 05.09.2022.
+//  Created by Tatan.
 //
 
 import Foundation
 import RealmSwift
 
 class CoinTickerObject: Object {
-    @objc dynamic var primaryKey: String = ""
     @objc dynamic var id: String = ""
     @objc dynamic var symbol: String = ""
-    @objc dynamic var lastUpdatedAt = Date()
-    @objc dynamic var currency: String = ""
+    @objc dynamic var image: String = ""
     @objc dynamic var price_usd: Double = 0
     @objc dynamic var percent_change_24h: Double = 0
     var market_cap = RealmProperty<Double?>()
@@ -31,11 +29,9 @@ class CoinTickerObject: Object {
 
     convenience init(coinTicker: CoinTicker) {
         self.init()
-        self.primaryKey = "\(coinTicker.id)-\(coinTicker.currency.code)"
-        self.lastUpdatedAt = coinTicker.lastUpdatedAt
-        self.currency = coinTicker.currency.code
         self.id = coinTicker.id
         self.symbol = coinTicker.symbol
+        self.image = coinTicker.image
         self.price_usd = coinTicker.price_usd
         self.percent_change_24h = coinTicker.percent_change_24h
         self.market_cap.value = coinTicker.market_cap
@@ -53,11 +49,6 @@ class CoinTickerObject: Object {
     }
 
     override static func primaryKey() -> String? {
-        return "primaryKey"
-    }
-
-    override func isEqual(_ object: Any?) -> Bool {
-        guard let object = object as? CoinTickerObject else { return false }
-        return object.primaryKey == primaryKey
+        return "id"
     }
 }

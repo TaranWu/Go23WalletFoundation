@@ -4,19 +4,20 @@ import Foundation
 import Combine
 
 public final class ReportUsersActiveChains: Initializer {
-    private let serversProvider: ServersProvidable
+    private let config: Config
     private var cancelable = Set<AnyCancellable>()
 
-    public init(serversProvider: ServersProvidable) {
-        self.serversProvider = serversProvider
+    public init(config: Config) {
+        self.config = config
     }
 
     public func perform() {
         //NOTE: make 2 sec delay to avoid load on launch
-        serversProvider.enabledServersPublisher
+        Just(config.enabledServers).merge(with: config.enabledServersPublisher)
             .delay(for: .seconds(2), scheduler: RunLoop.main)
             .removeDuplicates()
-            .sink { crashlytics.track(enabledServers: Array($0)) }
-            .store(in: &cancelable)
+            .sink { servers in
+                crashlytics.track(enabledServers: servers)
+            }.store(in: &cancelable)
     }
 }

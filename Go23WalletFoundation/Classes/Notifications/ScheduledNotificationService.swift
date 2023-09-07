@@ -1,6 +1,6 @@
 //
 //  ScheduledNotificationService.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 25.03.2022.
 //

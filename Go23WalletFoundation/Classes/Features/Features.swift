@@ -20,6 +20,7 @@ public class Features {
             self.fileUrl = url
             self.readFromFileUrl()
         } catch {
+            verboseLog("[Features] init Exception: \(error)")
             return nil
         }
     }
@@ -31,6 +32,7 @@ public class Features {
             let jsonData = try decoder.decode([FeaturesAvailable: Bool].self, from: data)
             featuresDictionary.set(value: jsonData)
         } catch {
+            verboseLog("[Features] readFromFileUrl error: \(error)")
             featuresDictionary.set(value: [:])
         }
     }
@@ -42,6 +44,7 @@ public class Features {
                 try jsonString.write(to: fileUrl, atomically: true, encoding: .utf8)
             }
         } catch {
+            verboseLog("[Features] writeToFileUrl error: \(error)")
         }
     }
 
@@ -74,7 +77,7 @@ public class Features {
 public enum FeaturesAvailable: String, CaseIterable, Codable {
     case isActivityEnabled
     case isSpeedupAndCancelEnabled
-    case isLanguageSwitcherEnabled
+    case isLanguageSwitcherDisabled
     case shouldLoadTokenScriptWithFailedSignatures
     case isRenameWalletEnabledWhileLongPress
     case shouldPrintCURLForOutgoingRequest
@@ -91,32 +94,47 @@ public enum FeaturesAvailable: String, CaseIterable, Codable {
     case isSwapEnabled
     case isCoinbasePayEnabled
     case isLoggingEnabledForTickerMatches
-    case isChangeCurrencyEnabled
-    case isNftTransferEnabled
 
     public var defaultValue: Bool {
         switch self {
-        case .isActivityEnabled: return true
-        case .isSpeedupAndCancelEnabled: return true
-        case .isLanguageSwitcherEnabled: return false
-        case .shouldLoadTokenScriptWithFailedSignatures: return true
-        case .isRenameWalletEnabledWhileLongPress: return true
-        case .shouldPrintCURLForOutgoingRequest: return false
-        case .isPromptForEmailListSubscriptionEnabled: return true
-        case .isAlertsEnabled: return false
-        case .isUsingPrivateNetwork: return true
-        case .isUsingAppEnforcedTimeoutForMakingWalletConnectConnections: return true
-        case .isAttachingLogFilesToSupportEmailEnabled: return false
-        case .isExportJsonKeystoreEnabled: return true
-        case .is24SeedWordPhraseAllowed: return true
-        case .isAnalyticsUIEnabled: return true
-        case .isBlockscanChatEnabled: return true
-        case .isTokenScriptSignatureStatusEnabled: return false
-        case .isSwapEnabled: return true
-        case .isCoinbasePayEnabled: return true
-        case .isLoggingEnabledForTickerMatches: return false
-        case .isChangeCurrencyEnabled: return false
-        case .isNftTransferEnabled: return false
+        case .isActivityEnabled:
+            return true
+        case .isSpeedupAndCancelEnabled:
+            return true
+        case .isLanguageSwitcherDisabled:
+            return true
+        case .shouldLoadTokenScriptWithFailedSignatures:
+            return true
+        case .isRenameWalletEnabledWhileLongPress:
+            return true
+        case .shouldPrintCURLForOutgoingRequest:
+            return false
+        case .isPromptForEmailListSubscriptionEnabled:
+            return true
+        case .isAlertsEnabled:
+            return false
+        case .isUsingPrivateNetwork:
+            return true
+        case .isUsingAppEnforcedTimeoutForMakingWalletConnectConnections:
+            return true
+        case .isAttachingLogFilesToSupportEmailEnabled:
+            return false
+        case .isExportJsonKeystoreEnabled:
+            return true
+        case .is24SeedWordPhraseAllowed:
+            return true
+        case .isAnalyticsUIEnabled:
+            return true
+        case .isBlockscanChatEnabled:
+            return true
+        case .isTokenScriptSignatureStatusEnabled:
+            return false
+        case .isSwapEnabled:
+            return false
+        case .isCoinbasePayEnabled:
+            return true
+        case .isLoggingEnabledForTickerMatches:
+            return false
         }
     }
 

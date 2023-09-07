@@ -1,12 +1,11 @@
 //
 //  TickerIdFilter.swift
-//  Go23Wallet
+//  DerbyWallet
 //
-//  Created by Vladyslav Shepitko on 29.03.2022.
+//  Created by Tatan.
 //
 
 import Foundation
-import Go23WalletAddress
 
 public class TickerIdFilter {
     //TODO remove if we don't use it for debugging anymore
@@ -14,7 +13,7 @@ public class TickerIdFilter {
     public static var matchCounts: [String: Int] = [:]
 
     //https://polygonscan.com/address/0x0000000000000000000000000000000000001010
-    static private let polygonMaticContract = Go23Wallet.Address(string: "0x0000000000000000000000000000000000001010")!
+    static private let polygonMaticContract = DerbyWallet.Address(string: "0x0000000000000000000000000000000000001010")!
 
     func tickerIdObject(for token: TokenMappedToTicker, in tickerIds: [TickerId]) -> TickerIdString? {
         return tickerIds.first(where: { filterMathesInPlatforms(token: token, tickerId: $0) }).flatMap { $0.id }
@@ -49,18 +48,18 @@ public class TickerIdFilter {
         //NOTE maybe its need to handle values like: `"0x270DE58F54649608D316fAa795a9941b355A2Bd0/token-transfers"`
 
         if let contract = tickerId.platforms.first(where: { $0.server == token.server }) {
-            if contract.address == Constants.nullAddress {
+            if contract.address.sameContract(as: Constants.nullAddress) {
                 let result = tickerId.symbol.compare(token.symbol, options: .caseInsensitive) == .orderedSame
                 if Features.default.isAvailable(.isLoggingEnabledForTickerMatches) && result {
                     Self.matchCounts["by platform+symbol for 0x0", default: 0] += 1
                 }
                 return result
-            } else if contract.address == token.contractAddress {
+            } else if contract.address.sameContract(as: token.contractAddress) {
                 if Features.default.isAvailable(.isLoggingEnabledForTickerMatches) {
                     Self.matchCounts["by platform+contract", default: 0] += 1
                 }
                 return true
-            } else if token.server == .polygon && token.contractAddress == Constants.nativeCryptoAddressInDatabase && contract.address == Self.polygonMaticContract {
+            } else if token.server == .polygon && token.contractAddress == Constants.nativeCryptoAddressInDatabase && contract.address.sameContract(as: Self.polygonMaticContract) {
                 if Features.default.isAvailable(.isLoggingEnabledForTickerMatches) {
                     Self.matchCounts["by platform + Polygon 0x0 = Matic contract", default: 0] += 1
                 }
@@ -92,11 +91,11 @@ public class TickerIdFilter {
         //NOTE maybe its need to handle values like: `"0x270DE58F54649608D316fAa795a9941b355A2Bd0/token-transfers"`
 
         if let platform = object.platforms.first(where: { $0.server == token.server }) {
-            if platform.contractAddress == Constants.nullAddress {
+            if platform.contractAddress.sameContract(as: Constants.nullAddress) {
                 return object.symbol.compare(token.symbol, options: .caseInsensitive) == .orderedSame
-            } else if platform.contractAddress == token.contractAddress {
+            } else if platform.contractAddress.sameContract(as: token.contractAddress) {
                 return true
-            } else if token.server == .polygon && token.contractAddress == Constants.nativeCryptoAddressInDatabase && platform.contractAddress == Self.polygonMaticContract {
+            } else if token.server == .polygon && token.contractAddress == Constants.nativeCryptoAddressInDatabase && platform.contractAddress.sameContract(as: Self.polygonMaticContract) {
                 return true
             } else {
                 return false

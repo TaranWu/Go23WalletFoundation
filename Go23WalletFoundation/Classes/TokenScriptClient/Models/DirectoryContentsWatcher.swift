@@ -60,14 +60,14 @@ public extension DirectoryContentsWatcher {
         private typealias CancelBlock = () -> Void
 
         private enum State {
-            case Started(source: DispatchSourceFileSystemObject, fileHandle: CInt, callback: DirectoryContentsWatcher.UpdateClosure, cancel: CancelBlock)
-            case Stopped
+            case started(source: DispatchSourceFileSystemObject, fileHandle: CInt, callback: DirectoryContentsWatcher.UpdateClosure, cancel: CancelBlock)
+            case stopped
         }
 
         private let path: String
         private let refreshInterval: TimeInterval
         private let queue: DispatchQueue
-        private var state: State = .Stopped
+        private var state: State = .stopped
         private var isProcessing: Bool = false
         private var cancelReload: CancelBlock?
         private var previousContent: [String: Date]?
@@ -88,13 +88,13 @@ public extension DirectoryContentsWatcher {
         }
 
         deinit {
-            if case .Started = state {
+            if case .started = state {
                 _ = try? stop()
             }
         }
 
         public func start(closure: @escaping DirectoryContentsWatcher.UpdateClosure) throws {
-            guard case .Stopped = state else {
+            guard case .stopped = state else {
                 throw Error.alreadyStarted
             }
             try startObserving(closure)
@@ -104,7 +104,7 @@ public extension DirectoryContentsWatcher {
          Stops observing changes.
          */
         public func stop() throws {
-            guard case let .Started(_, _, _, cancel) = state else {
+            guard case let .started(_, _, _, cancel) = state else {
                 throw Error.alreadyStopped
             }
             cancelReload?()
@@ -112,7 +112,7 @@ public extension DirectoryContentsWatcher {
             cancel()
 
             isProcessing = false
-            state = .Stopped
+            state = .stopped
         }
 
         private func startObserving(_ closure: @escaping DirectoryContentsWatcher.UpdateClosure) throws {
@@ -157,12 +157,12 @@ public extension DirectoryContentsWatcher {
 
             source.resume()
 
-            state = .Started(source: source, fileHandle: handle, callback: closure, cancel: cancelBlock)
+            state = .started(source: source, fileHandle: handle, callback: closure, cancel: cancelBlock)
             refresh()
         }
 
         private func needsToReload() {
-            guard case .Started = state else { return }
+            guard case .started = state else { return }
 
             cancelReload?()
             cancelReload = throttle(after: refreshInterval) { [weak self] in
@@ -175,7 +175,7 @@ public extension DirectoryContentsWatcher {
          Force refresh, can only be used if the watcher was started and it's not processing.
          */
         public func refresh() {
-            guard case let .Started(_, _, closure, _) = state, isProcessing == false else {
+            guard case let .started(_, _, closure, _) = state, isProcessing == false else {
                 return
             }
             isProcessing = true

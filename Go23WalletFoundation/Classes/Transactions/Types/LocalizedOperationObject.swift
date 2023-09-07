@@ -2,10 +2,9 @@
 
 import Foundation
 import RealmSwift
-import Go23WalletAddress
 
 class LocalizedOperationObject: Object {
-    //TODO good to have getters/setter computed properties for `from` and `to` too that is typed Go23Wallet.Address. But have to be careful and check if they can be empty or "0x"
+    //TODO good to have getters/setter computed properties for `from` and `to` too that is typed DerbyWallet.Address. But have to be careful and check if they can be empty or "0x"
     @objc dynamic var from: String = ""
     @objc dynamic var to: String = ""
     @objc dynamic var contract: String? = .none
@@ -15,6 +14,29 @@ class LocalizedOperationObject: Object {
     @objc dynamic var name: String? = .none
     @objc dynamic var symbol: String? = .none
     @objc dynamic var decimals: Int = 18
+
+    convenience init(
+        from: String,
+        to: String,
+        contract: DerbyWallet.Address?,
+        type: String,
+        value: String,
+        tokenId: String,
+        symbol: String?,
+        name: String?,
+        decimals: Int
+    ) {
+        self.init()
+        self.from = from
+        self.to = to
+        self.contract = contract?.eip55String
+        self.type = type
+        self.value = value
+        self.tokenId = tokenId
+        self.symbol = symbol
+        self.name = name
+        self.decimals = decimals
+    }
 
     convenience init(object: LocalizedOperationObjectInstance) {
         self.init()
@@ -29,13 +51,17 @@ class LocalizedOperationObject: Object {
         self.decimals = object.decimals
     }
 
-    var contractAddress: Go23Wallet.Address? {
-        return contract.flatMap { Go23Wallet.Address(uncheckedAgainstNullAddress: $0) }
+    var operationType: OperationType {
+        return OperationType(string: type)
+    }
+
+    var contractAddress: DerbyWallet.Address? {
+        return contract.flatMap { DerbyWallet.Address(uncheckedAgainstNullAddress: $0) }
     }
 }
 
-public struct LocalizedOperationObjectInstance: Equatable, Hashable {
-    //TODO good to have getters/setter computed properties for `from` and `to` too that is typed Go23Wallet.Address. But have to be careful and check if they can be empty or "0x"
+public struct LocalizedOperationObjectInstance: Equatable {
+    //TODO good to have getters/setter computed properties for `from` and `to` too that is typed DerbyWallet.Address. But have to be careful and check if they can be empty or "0x"
     public var from: String = ""
     public var to: String = ""
     public var contract: String? = .none
@@ -58,16 +84,17 @@ public struct LocalizedOperationObjectInstance: Equatable, Hashable {
         self.decimals = object.decimals
     }
 
-    public init(from: String,
-                to: String,
-                contract: Go23Wallet.Address?,
-                type: String,
-                value: String,
-                tokenId: String,
-                symbol: String?,
-                name: String?,
-                decimals: Int) {
-
+    public init(
+        from: String,
+        to: String,
+        contract: DerbyWallet.Address?,
+        type: String,
+        value: String,
+        tokenId: String,
+        symbol: String?,
+        name: String?,
+        decimals: Int
+    ) {
         self.from = from
         self.to = to
         self.contract = contract?.eip55String
@@ -83,16 +110,16 @@ public struct LocalizedOperationObjectInstance: Equatable, Hashable {
         return OperationType(string: type)
     }
 
-    public var contractAddress: Go23Wallet.Address? {
-        return contract.flatMap { Go23Wallet.Address(uncheckedAgainstNullAddress: $0) }
+    public var contractAddress: DerbyWallet.Address? {
+        return contract.flatMap { DerbyWallet.Address(uncheckedAgainstNullAddress: $0) }
     }
 
-    public func isSend(from: Go23Wallet.Address) -> Bool {
+    public func isSend(from: DerbyWallet.Address) -> Bool {
         guard operationType.isTransfer else { return false }
         return from.sameContract(as: self.from)
     }
 
-    public func isReceived(by to: Go23Wallet.Address) -> Bool {
+    public func isReceived(by to: DerbyWallet.Address) -> Bool {
         guard operationType.isTransfer else { return false }
         return to.sameContract(as: self.to)
     }

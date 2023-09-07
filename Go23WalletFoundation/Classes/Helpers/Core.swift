@@ -14,10 +14,6 @@ public func isRunningTests() -> Bool {
     return ProcessInfo.processInfo.environment["XCInjectBundleInto"] != nil
 }
 
-public func isGo23Wallet() -> Bool {
-    return true
-}
-
 public func isRunningOnMac() -> Bool {
     if ProcessInfo.processInfo.isMacCatalystApp {
         return true

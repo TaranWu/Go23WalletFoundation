@@ -8,7 +8,7 @@ PODS:
     - SipHash (~> 1.2)
   - BlockiesSwift (0.1.2)
   - CombineExt (1.8.0)
-  - CryptoSwift (1.6.0)
+  - CryptoSwift (1.7.1)
   - Go23EthereumABI (0.1.0):
     - BigInt (~> 3.1)
     - CryptoSwift (~> 1.0)
@@ -76,21 +76,21 @@ PODS:
     - PromiseKit/CorePromise
   - PromiseKit/UIKit (6.3.5):
     - PromiseKit/CorePromise
-  - Realm (10.37.0):
-    - Realm/Headers (= 10.37.0)
-  - Realm/Headers (10.37.0)
-  - RealmSwift (10.37.0):
-    - Realm (= 10.37.0)
+  - Realm (10.39.1):
+    - Realm/Headers (= 10.39.1)
+  - Realm/Headers (10.39.1)
+  - RealmSwift (10.39.1):
+    - Realm (= 10.39.1)
   - Result (5.0.0)
   - secp256k1_ios (0.1.3)
   - SipHash (1.2.2)
   - SwiftProtobuf (1.18.0)
   - SwiftyJSON (5.0.0)
-  - TrustWalletCore (2.6.34):
-    - TrustWalletCore/Core (= 2.6.34)
-  - TrustWalletCore/Core (2.6.34):
+  - TrustWalletCore (3.1.35):
+    - TrustWalletCore/Core (= 3.1.35)
+  - TrustWalletCore/Core (3.1.35):
     - TrustWalletCore/Types
-  - TrustWalletCore/Types (2.6.34):
+  - TrustWalletCore/Types (3.1.35):
     - SwiftProtobuf
 
 DEPENDENCIES:
@@ -138,7 +138,7 @@ SPEC CHECKSUMS:
   BigInt: 76b5dfdfa3e2e478d4ffdf161aeede5502e2742f
   BlockiesSwift: 22d8d56dd187e6bfd16cb8c8fbd4fd4896c3e65d
   CombineExt: c4daa97ef75754d8ef319bd79edeef82652f3eea
-  CryptoSwift: 562f8eceb40e80796fffc668b0cad9313284cfa6
+  CryptoSwift: d3d18dc357932f7e6d580689e065cf1f176007c1
   Go23EthereumABI: 4b797baa72fb3d83620280a723ea6818e86af4ac
   Go23EthereumAddress: 020aef86a999274abb99331c49ad085c0a2c1b46
   Go23JSONRPCKit: 8135796b7e3b193d27a19fbd8a34653106ca993a
@@ -152,14 +152,14 @@ SPEC CHECKSUMS:
   Go23Web3Swift: a2b151b6042392804bbf542c0cccac7a12cc804e
   Kanna: 01cfbddc127f5ff0963692f285fcbc8a9d62d234
   PromiseKit: 32c36425387e9cfc7f1206f27bfd906d0b53c0d6
-  Realm: 9c5fc6f8f5cb70b299f2e3064d2b9f6cb0f1523d
-  RealmSwift: 7be7bb45911c16400dd1bfce3a01764ecb4cae7a
+  Realm: 1f3157edf145f4d9036765ab550c8cb18f62b700
+  RealmSwift: 8a69a1cb788cd5865966f49667b130567e07bceb
   Result: ed341d2f236af425b803e690e9bd8fd0a0cb7c5a
   secp256k1_ios: ac9ef04e761f43c58012b28548afa91493761f17
   SipHash: fad90a4683e420c52ef28063063dbbce248ea6d4
   SwiftProtobuf: c3c12645230d9b09c72267e0de89468c5543bd86
   SwiftyJSON: 36413e04c44ee145039d332b4f4e2d3e8d6c4db7
-  TrustWalletCore: a92d85baa15932279cce925559e93695558cafdd
+  TrustWalletCore: 188beb78722894c4cd4419ea30ef2dc793489401
 
 PODFILE CHECKSUM: 1a8eddf2604937c5b2723dc070a57e37a22155c8
 

@@ -1,6 +1,6 @@
 //
 //  ClientSideTokenSourceProvider.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 08.07.2022.
 //
@@ -11,15 +11,15 @@ import Combine
 public class ClientSideTokenSourceProvider: TokenSourceProvider {
     private lazy var tokensAutodetector: TokensAutodetector = {
         let detectedContractsProvider = DetectedContractsProvider(tokensDataStore: tokensDataStore)
-        let contractToImportStorage = ContractToImportFileStorage(server: session.server)
-        let autodetector = SingleChainTokensAutodetector(session: session, contractToImportStorage: contractToImportStorage, detectedTokens: detectedContractsProvider, withAutoDetectTransactedTokensQueue: autoDetectTransactedTokensQueue, withAutoDetectTokensQueue: autoDetectTokensQueue, importToken: session.importToken, networkService: networkService)
+        let autodetector = SingleChainTokensAutodetector(session: session, detectedTokens: detectedContractsProvider, withAutoDetectTransactedTokensQueue: autoDetectTransactedTokensQueue, withAutoDetectTokensQueue: autoDetectTokensQueue, importToken: importToken)
         return autodetector
     }()
-    private let networkService: NetworkService
+
     private var cancelable = Set<AnyCancellable>()
     private let tokensDataStore: TokensDataStore
     private let autoDetectTransactedTokensQueue: OperationQueue
     private let autoDetectTokensQueue: OperationQueue
+    private let importToken: ImportToken
     private let refreshSubject = PassthroughSubject<Void, Never>.init()
     private let balanceFetcher: TokenBalanceFetcherType
 
@@ -37,7 +37,7 @@ public class ClientSideTokenSourceProvider: TokenSourceProvider {
 
     public var tokens: [Token] { tokensDataStore.enabledTokens(for: [session.server]) }
 
-    public var tokensPublisher: AnyPublisher<[Token], Never> {
+    private (set) lazy public var tokensPublisher: AnyPublisher<[Token], Never> = {
         let initialOrForceSnapshot = Publishers.Merge(Just<Void>(()), refreshSubject)
             .map { [tokensDataStore, session] _ in tokensDataStore.enabledTokens(for: [session.server]) }
             .eraseToAnyPublisher()
@@ -47,23 +47,17 @@ public class ClientSideTokenSourceProvider: TokenSourceProvider {
 
         return Publishers.Merge(initialOrForceSnapshot, addedOrChanged)
             .eraseToAnyPublisher()
-    }
+    }()
 
     public let session: WalletSession
 
-    public init(session: WalletSession,
-                autoDetectTransactedTokensQueue: OperationQueue,
-                autoDetectTokensQueue: OperationQueue,
-                tokensDataStore: TokensDataStore,
-                balanceFetcher: TokenBalanceFetcherType,
-                networkService: NetworkService) {
-
+    public init(session: WalletSession, autoDetectTransactedTokensQueue: OperationQueue, autoDetectTokensQueue: OperationQueue, importToken: ImportToken, tokensDataStore: TokensDataStore, balanceFetcher: TokenBalanceFetcherType) {
         self.session = session
         self.tokensDataStore = tokensDataStore
         self.autoDetectTransactedTokensQueue = autoDetectTransactedTokensQueue
         self.autoDetectTokensQueue = autoDetectTokensQueue
+        self.importToken = importToken
         self.balanceFetcher = balanceFetcher
-        self.networkService = networkService
     }
 
     public func start() {
@@ -74,10 +68,10 @@ public class ClientSideTokenSourceProvider: TokenSourceProvider {
     }
 
     private func startTokenAutodetection() {
-        tokensAutodetector
-            .tokensOrContractsDetected
-            .sink { [tokensDataStore] in tokensDataStore.addOrUpdate(tokensOrContracts: $0) }
-            .store(in: &cancelable)
+        tokensAutodetector.tokensOrContractsDetected
+            .sink { [tokensDataStore] tokensOrContracts in
+                tokensDataStore.addOrUpdate(tokensOrContracts: tokensOrContracts)
+            }.store(in: &cancelable)
 
         tokensAutodetector.start()
     }
@@ -97,19 +91,19 @@ public class ClientSideTokenSourceProvider: TokenSourceProvider {
             self.tokensDataStore = tokensDataStore
         }
 
-        func alreadyAddedContracts(for server: RPCServer) -> [Go23Wallet.Address] {
+        func alreadyAddedContracts(for server: RPCServer) -> [DerbyWallet.Address] {
             tokensDataStore.enabledTokens(for: [server]).map { $0.contractAddress }
         }
 
-        func deletedContracts(for server: RPCServer) -> [Go23Wallet.Address] {
+        func deletedContracts(for server: RPCServer) -> [DerbyWallet.Address] {
             tokensDataStore.deletedContracts(forServer: server).map { $0.address }
         }
 
-        func hiddenContracts(for server: RPCServer) -> [Go23Wallet.Address] {
+        func hiddenContracts(for server: RPCServer) -> [DerbyWallet.Address] {
             tokensDataStore.hiddenContracts(forServer: server).map { $0.address }
         }
 
-        func delegateContracts(for server: RPCServer) -> [Go23Wallet.Address] {
+        func delegateContracts(for server: RPCServer) -> [DerbyWallet.Address] {
             tokensDataStore.delegateContracts(forServer: server).map { $0.address }
         }
     }
@@ -118,6 +112,6 @@ public class ClientSideTokenSourceProvider: TokenSourceProvider {
 extension ClientSideTokenSourceProvider: TokenBalanceFetcherDelegate {
     public func didUpdateBalance(value actions: [AddOrUpdateTokenAction], in fetcher: TokenBalanceFetcher) {
         crashlytics.logLargeNftJsonFiles(for: actions, fileSizeThreshold: 10)
-        tokensDataStore.addOrUpdate(with: actions)
+        tokensDataStore.addOrUpdate(actions)
     }
 }

@@ -25,7 +25,7 @@ public struct UserEntryOrigin {
     func extractValue(fromUserEntry userEntry: String) -> AssetInternalValue? {
         switch asType {
         case .address:
-            return Go23Wallet.Address(string: userEntry.trimmed).flatMap { .address($0) }
+            return DerbyWallet.Address(string: userEntry.trimmed).flatMap { .address($0) }
         case .uint:
             guard let userEntryNumber = BigUInt(userEntry, radix: 16) else { return BigUInt(userEntry).flatMap { .uint($0) } }
             let number: BigUInt = (bitmask & userEntryNumber) >> bitShift

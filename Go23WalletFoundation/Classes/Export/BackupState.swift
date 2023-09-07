@@ -2,7 +2,6 @@
 
 import Foundation
 import BigInt
-import Go23WalletAddress
 
 public enum WalletSecurityLevel {
     case notBackedUp
@@ -15,7 +14,7 @@ public struct WalletsBackupState: Codable {
         case newWallet
         case receivedNativeCryptoCurrency(BigInt)
         case intervalPassed
-        case balanceExceededThreshold
+        case nativeCryptoCurrencyDollarValueExceededThreshold
     }
 
     public struct BackupState: Codable {
@@ -34,10 +33,10 @@ public struct WalletsBackupState: Codable {
         }
     }
 
-    public var prompt = [Go23Wallet.Address: Prompt]()
-    public var backupState = [Go23Wallet.Address: BackupState]()
+    public var prompt = [DerbyWallet.Address: Prompt]()
+    public var backupState = [DerbyWallet.Address: BackupState]()
     
-    public init(prompt: [Go23Wallet.Address: Prompt] = [:], backupState: [Go23Wallet.Address: BackupState] = [:]) {
+    public init(prompt: [DerbyWallet.Address: Prompt] = [:], backupState: [DerbyWallet.Address: BackupState] = [:]) {
         self.prompt = prompt
         self.backupState = backupState
     }
@@ -76,7 +75,7 @@ extension WalletsBackupState.Prompt: Codable {
         case 2:
             self = .intervalPassed
         case 3:
-            self = .balanceExceededThreshold
+            self = .nativeCryptoCurrencyDollarValueExceededThreshold
         default:
             throw CodingError.unknownValue
         }
@@ -92,7 +91,7 @@ extension WalletsBackupState.Prompt: Codable {
             try container.encode(nativeCryptoCurrency, forKey: .associatedValue)
         case .intervalPassed:
             try container.encode(2, forKey: .rawValue)
-        case .balanceExceededThreshold:
+        case .nativeCryptoCurrencyDollarValueExceededThreshold:
             try container.encode(3, forKey: .rawValue)
         }
     }

@@ -4,6 +4,6 @@ import Foundation
 
 extension Decimal {
     public var doubleValue: Double {
-        return Double(description) ?? .nan
+        return NSDecimalNumber(decimal: self).doubleValue
     }
 }

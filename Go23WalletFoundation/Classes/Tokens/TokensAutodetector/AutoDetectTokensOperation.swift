@@ -1,23 +1,22 @@
 //
 //  AutoDetectTokensOperation.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 23.02.2022.
 //
 
 import Foundation
-import Combine
+import PromiseKit
 
-protocol AutoDetectTokensOperationDelegate: AnyObject {
+protocol AutoDetectTokensOperationDelegate: class {
     var isAutoDetectingTokens: Bool { get set }
 
     func didDetect(tokensOrContracts: [TokenOrContract])
-    func autoDetectTokensImpl(withContracts contractsToDetect: [ContractToImport]) -> AnyPublisher<[TokenOrContract], Never>
+    func autoDetectTokensImpl(withContracts contractsToDetect: [(name: String, contract: DerbyWallet.Address)], server: RPCServer) -> Promise<[TokenOrContract]>
 }
 
 final class AutoDetectTokensOperation: Operation {
-    private let tokens: [ContractToImport]
-    private var cancellable: AnyCancellable?
+    private let tokens: [(name: String, contract: DerbyWallet.Address)]
 
     weak private var delegate: AutoDetectTokensOperationDelegate?
     override var isExecuting: Bool {
@@ -29,34 +28,30 @@ final class AutoDetectTokensOperation: Operation {
     override var isAsynchronous: Bool {
         return true
     }
+    private let session: WalletSession
 
-    init(server: RPCServer, delegate: AutoDetectTokensOperationDelegate, tokens: [ContractToImport]) {
+    init(session: WalletSession, delegate: AutoDetectTokensOperationDelegate, tokens: [(name: String, contract: DerbyWallet.Address)]) {
         self.delegate = delegate
+        self.session = session
         self.tokens = tokens
         super.init()
-        self.queuePriority = server.networkRequestsQueuePriority
-    }
-
-    override func cancel() {
-        cancellable?.cancel()
-        cancellable = nil
-    }
+        self.queuePriority = session.server.networkRequestsQueuePriority
+    } 
 
     override func main() {
-        guard let delegate = delegate else { return }
+        guard let strongDelegate = delegate else { return }
 
-        cancellable = delegate.autoDetectTokensImpl(withContracts: tokens)
-            .sink(receiveCompletion: { _ in
+        strongDelegate.autoDetectTokensImpl(withContracts: tokens, server: session.server).done { [weak self] values in
+            guard let strongSelf = self else { return }
 
-            }, receiveValue: { [weak self] values in
+            strongSelf.willChangeValue(forKey: "isExecuting")
+            strongSelf.willChangeValue(forKey: "isFinished")
+            strongDelegate.isAutoDetectingTokens = false
+            strongSelf.didChangeValue(forKey: "isExecuting")
+            strongSelf.didChangeValue(forKey: "isFinished")
 
-                self?.willChangeValue(forKey: "isExecuting")
-                self?.willChangeValue(forKey: "isFinished")
-                delegate.isAutoDetectingTokens = false
-                self?.didChangeValue(forKey: "isExecuting")
-                self?.didChangeValue(forKey: "isFinished")
-
-                self?.delegate?.didDetect(tokensOrContracts: values)
-            })
+            guard !strongSelf.isCancelled else { return }
+            strongSelf.delegate?.didDetect(tokensOrContracts: values)
+        }.cauterize()
     } 
 }

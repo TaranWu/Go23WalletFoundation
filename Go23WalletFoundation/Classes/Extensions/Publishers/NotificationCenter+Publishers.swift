@@ -1,6 +1,6 @@
 //
 //  NotificationCenter+Publishers.swift
-//  Go23Wallet
+//  DerbyWallet
 //
 //  Created by Vladyslav Shepitko on 04.04.2022.
 //

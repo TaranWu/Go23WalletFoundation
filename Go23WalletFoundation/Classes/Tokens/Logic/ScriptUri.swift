@@ -1,17 +1,49 @@
 // Copyright © 2022 Stormbird PTE. LTD.
 
-import Foundation
-import Combine
+import Foundation 
+import PromiseKit
 
-//EIP-5169 https://github.com/ethereum/EIPs/pull/5169
-class ScriptUri {
-    private let blockchainProvider: BlockchainProvider
+public class ScriptUri {
+    private let server: RPCServer
+    private let abiString = """
+                            [
+                                {
+                                  "constant" : false,
+                                  "inputs" : [
+                                  ],
+                                  "name" : "scriptURI",
+                                  "outputs" : [
+                                    {
+                                      "name" : "",
+                                      "type" : "string"
+                                    }
+                                  ],
+                                  "payable" : false,
+                                  "stateMutability" : "nonpayable",
+                                  "type" : "function"
+                                }
+                            ]
+                            """
 
-    init(blockchainProvider: BlockchainProvider) {
-        self.blockchainProvider = blockchainProvider
+    public init(forServer server: RPCServer) {
+        self.server = server
     }
 
-    func get(forContract contract: Go23Wallet.Address) -> AnyPublisher<URL, SessionTaskError> {
-        blockchainProvider.call(Erc721ScriptUriMethodCall(contract: contract))
+    public func get(forContract contract: DerbyWallet.Address) -> Promise<URL> {
+        let functionName = "scriptURI"
+        return firstly {
+            callSmartContract(withServer: server, contract: contract, functionName: functionName, abiString: abiString)
+        }.map { urlStringResult in
+            if let urlString = urlStringResult["0"] as? String {
+                if let url = URL(string: urlString) {
+                    let url = url.rewrittenIfIpfs
+                    return url
+                } else {
+                    throw createSmartContractCallError(forContract: contract, functionName: functionName)
+                }
+            } else {
+                throw createSmartContractCallError(forContract: contract, functionName: functionName)
+            }
+        }
     }
 }

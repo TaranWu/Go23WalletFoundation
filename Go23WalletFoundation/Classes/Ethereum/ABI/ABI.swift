@@ -1,13 +1,14 @@
 //
 //  ABI.swift
-//  Go23Wallet
+//  DerbyWallet
 //
-//  Created by Vladyslav Shepitko on 11.05.2021.
+//  Created by 
 //
 
 import Foundation
+import Go23WalletAddress
 
-extension Go23Wallet {
+extension DerbyWallet {
     public enum Ethereum {
         public enum ABI {}
     }
