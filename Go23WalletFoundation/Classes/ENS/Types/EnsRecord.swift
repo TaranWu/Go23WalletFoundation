@@ -1,6 +1,6 @@
 //
 //  EnsRecord.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 06.06.2022.
 //
@@ -33,7 +33,7 @@ extension EnsRecord {
     public enum Value {
         case record(EnsTextRecord)
         case ens(EnsName)
-        case address(DerbyWallet.Address)
+        case address(Go23Wallet.Address)
     }
 }
 
@@ -45,7 +45,7 @@ extension EnsRecord.Value: Equatable {
         case (.ens(let e1), .ens(let e2)):
             return e1 == e2
         case (.address(let a1), .address(let a2)):
-            return a1.sameContract(as: a2)
+            return a1 == a2
         default:
             return false
         }

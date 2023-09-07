@@ -1,6 +1,6 @@
 //
 //  ConfigureApp.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 09.05.2022.
 //

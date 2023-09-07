@@ -41,7 +41,7 @@ public enum SolidityType: String {
         case .address:
             return originalValue
         case .string(let value):
-            return DerbyWallet.Address(string: value).flatMap { .address($0) }
+            return Go23Wallet.Address(string: value).flatMap { .address($0) }
         case .int:
             return nil
         case .uint:

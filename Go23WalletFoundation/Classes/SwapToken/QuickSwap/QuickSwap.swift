@@ -1,6 +1,6 @@
 //
 //  QuickSwap.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 21.08.2020.
 //
@@ -60,29 +60,29 @@ public class QuickSwap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
             static let output = "outputCurrency"
         }
 
-        case inputOutput(from: DerbyWallet.Address, to: AddressOrEnsName)
-        case input(DerbyWallet.Address)
+        case inputOutput(from: Go23Wallet.Address, to: AddressOrEnsName)
+        case input(Go23Wallet.Address)
         case none
 
         var urlQueryItems: [URLQueryItem] {
             switch self {
             case .inputOutput(let inputAddress, let outputAddress):
                 return [
-                    .init(name: Keys.input, value: Functional.rewriteContractInput(inputAddress)),
+                    .init(name: Keys.input, value: functional.rewriteContractInput(inputAddress)),
                     .init(name: Keys.output, value: outputAddress.stringValue),
                 ]
             case .input(let address):
                 return [
-                    .init(name: Keys.input, value: Functional.rewriteContractInput(address))
+                    .init(name: Keys.input, value: functional.rewriteContractInput(address))
                 ]
             case .none:
                 return []
             }
         }
 
-        class Functional {
-            static func rewriteContractInput(_ address: DerbyWallet.Address) -> String {
-                if address.sameContract(as: Constants.nativeCryptoAddressInDatabase) {
+        class functional {
+            static func rewriteContractInput(_ address: Go23Wallet.Address) -> String {
+                if address == Constants.nativeCryptoAddressInDatabase {
                     //QuickSwap (forked from Uniswap) likes it this way
                     return "ETH"
                 } else {
@@ -103,10 +103,10 @@ public class QuickSwap: SupportedTokenActionsProvider, SwapTokenViaUrlProvider {
     }
 
     public func isSupport(token: TokenActionsIdentifiable) -> Bool {
-        switch token.server {
+        switch token.server.serverWithEnhancedSupport {
         case .polygon:
             return true
-        case .main, .kovan, .ropsten, .rinkeby, .poa, .sokol, .classic, .callisto, .goerli, .artis_sigma1, .artis_tau1, .binance_smart_chain, .binance_smart_chain_testnet, .heco, .heco_testnet, .custom, .fantom, .fantom_testnet, .avalanche, .avalanche_testnet, .candle, .xDai, .mumbai_testnet, .optimistic, .optimisticKovan, .cronosTestnet, .arbitrum, .arbitrumRinkeby, .palm, .palmTestnet, .klaytnCypress, .klaytnBaobabTestnet, .phi, .ioTeX, .ioTeXTestnet:
+        case .main, .xDai, .binance_smart_chain, .heco, .rinkeby, .arbitrum, .klaytnCypress, .klaytnBaobabTestnet, nil:
             return false
         }
     }

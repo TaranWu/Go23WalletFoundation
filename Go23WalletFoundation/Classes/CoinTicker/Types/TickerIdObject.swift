@@ -1,8 +1,8 @@
 //
 //  TickerIdObject.swift
-//  DerbyWalletFoundation
+//  Go23WalletFoundation
 //
-//  Created by Tatan.
+//  Created by Vladyslav Shepitko on 05.09.2022.
 //
 
 import Foundation

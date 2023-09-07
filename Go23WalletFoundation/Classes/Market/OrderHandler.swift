@@ -1,20 +1,19 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
 import BigInt
-import WalletCore
 
 public struct Order {
     public var price: BigUInt
     public var indices: [UInt16]
     public var expiry: BigUInt
-    public var contractAddress: DerbyWallet.Address
+    public var contractAddress: Go23Wallet.Address
     public var count: BigUInt
     public var nonce: BigUInt
     public var tokenIds: [BigUInt]?
     public var spawnable: Bool
     public var nativeCurrencyDrop: Bool
 
-    public init(price: BigUInt, indices: [UInt16], expiry: BigUInt, contractAddress: DerbyWallet.Address, count: BigUInt, nonce: BigUInt, tokenIds: [BigUInt]?, spawnable: Bool, nativeCurrencyDrop: Bool) {
+    public init(price: BigUInt, indices: [UInt16], expiry: BigUInt, contractAddress: Go23Wallet.Address, count: BigUInt, nonce: BigUInt, tokenIds: [BigUInt]?, spawnable: Bool, nativeCurrencyDrop: Bool) {
         self.price = price
         self.indices = indices
         self.expiry = expiry
@@ -75,9 +74,9 @@ public class OrderHandler {
         self.prompt = prompt
     }
 
-    public func signOrders(orders: [Order], account: DerbyWallet.Address, tokenType: TokenType) throws -> [SignedOrder] {
+    public func signOrders(orders: [Order], account: Go23Wallet.Address, tokenType: TokenType) async throws -> [SignedOrder] {
         let messages = createMessagesFromOrders(orders: orders, tokenType: tokenType)
-        return try bulkSignOrders(messages: messages, account: account, orders: orders)
+        return try await bulkSignOrders(messages: messages, account: account, orders: orders)
     }
 
     private func createMessagesFromOrders(orders: [Order], tokenType: TokenType) -> [Data] {
@@ -109,9 +108,9 @@ public class OrderHandler {
         return messages
     }
 
-    private func bulkSignOrders(messages: [Data], account: DerbyWallet.Address, orders: [Order]) throws -> [SignedOrder] {
+    private func bulkSignOrders(messages: [Data], account: Go23Wallet.Address, orders: [Order]) async throws -> [SignedOrder] {
         var signedOrders = [SignedOrder]()
-        let signatures = try keystore.signMessageBulk(messages, for: account, prompt: prompt).get()
+        let signatures = try await keystore.signMessageBulk(messages, for: account, prompt: prompt).get()
         for i in 0..<signatures.count {
             let signedOrder = SignedOrder(
                     order: orders[i],
@@ -127,7 +126,7 @@ public class OrderHandler {
             price: BigUInt,
             expiryBuffer: BigUInt,
             indices: [UInt16],
-            contractAddress: DerbyWallet.Address
+            contractAddress: Go23Wallet.Address
     ) -> [UInt8] {
         let arrayLength: Int = 84 + indices.count * 2
         var buffer = [UInt8]()
@@ -147,7 +146,7 @@ public class OrderHandler {
             price: BigUInt,
             expiryBuffer: BigUInt,
             tokenIds: [BigUInt],
-            contractAddress: DerbyWallet.Address
+            contractAddress: Go23Wallet.Address
     ) -> [UInt8] {
         let arrayLength: Int = 84 + tokenIds.count * 32
         var buffer = [UInt8]()
@@ -173,4 +172,10 @@ public class OrderHandler {
         return arrayOfUint8
     }
 
+}
+
+extension Data {
+    var hexString: String {
+        return map({ String(format: "%02x", $0) }).joined()
+    }
 }

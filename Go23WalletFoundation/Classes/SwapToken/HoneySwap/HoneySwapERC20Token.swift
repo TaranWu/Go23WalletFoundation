@@ -1,11 +1,12 @@
 //
 //  HoneySwapERC20Token.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 19.02.2021.
 //
 
 import Foundation
+import Go23WalletAddress
 
 extension HoneySwap {
 
@@ -27,10 +28,10 @@ extension HoneySwap {
 
         let symbol: String
         let name: String
-        let address: DerbyWallet.Address
+        let address: Go23Wallet.Address
         let decimal: Int
 
-        init(symbol: String, name: String, address: DerbyWallet.Address, decimal: Int) {
+        init(symbol: String, name: String, address: Go23Wallet.Address, decimal: Int) {
             self.symbol = symbol
             self.name = name
             self.address = address
@@ -42,7 +43,7 @@ extension HoneySwap {
 
             let addressValue = try container.decode(String.self, forKey: .address)
 
-            if let value = DerbyWallet.Address(uncheckedAgainstNullAddress: addressValue) {
+            if let value = Go23Wallet.Address(uncheckedAgainstNullAddress: addressValue) {
                 address = value
                 symbol = try container.decode(String.self, forKey: .symbol)
                 name = try container.decode(String.self, forKey: .name)

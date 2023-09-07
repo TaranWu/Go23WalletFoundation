@@ -2,6 +2,7 @@
 
 import Foundation
 import BigInt
+import Go23WalletAddress
 
 public struct UnsignedSwapTransaction: Codable {
     private enum Keys: String, CodingKey {
@@ -20,11 +21,11 @@ public struct UnsignedSwapTransaction: Codable {
 
     public let server: RPCServer
     public let data: Data
-    public let from: DerbyWallet.Address
-    public let to: DerbyWallet.Address
-    public let gasLimit: BigInt
-    public let gasPrice: BigInt
-    public let value: BigInt
+    public let from: Go23Wallet.Address
+    public let to: Go23Wallet.Address
+    public let gasLimit: BigUInt?
+    public let gasPrice: BigUInt?
+    public let value: BigUInt
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: Keys.self)
@@ -33,16 +34,16 @@ public struct UnsignedSwapTransaction: Codable {
         let dataString = try container.decode(String.self, forKey: .data)
         let fromString = try container.decode(String.self, forKey: .from)
         let toString = try container.decode(String.self, forKey: .to)
-        let gasLimitString = try container.decode(String.self, forKey: .gasLimit)
-        let gasPriceString = try container.decode(String.self, forKey: .gasPrice)
+        let gasLimitString = try container.decodeIfPresent(String.self, forKey: .gasLimit)
+        let gasPriceString = try container.decodeIfPresent(String.self, forKey: .gasPrice)
         let valueString = try container.decode(String.self, forKey: .value)
 
         server = RPCServer(chainID: chainId)
         data = Data(hex: dataString)
-        from = try DerbyWallet.Address(string: fromString) ?? { throw ParsingError(fieldName: .from) }()
-        to = try DerbyWallet.Address(string: toString) ?? { throw ParsingError(fieldName: .to) }()
-        gasLimit = try BigInt(gasLimitString.drop0x, radix: 16) ?? { throw ParsingError(fieldName: .gasLimit) }()
-        gasPrice = try BigInt(gasPriceString.drop0x, radix: 16) ?? { throw ParsingError(fieldName: .gasPrice) }()
-        value = try BigInt(valueString.drop0x, radix: 16) ?? { throw ParsingError(fieldName: .value) }()
+        from = try Go23Wallet.Address(string: fromString) ?? { throw ParsingError(fieldName: .from) }()
+        to = try Go23Wallet.Address(string: toString) ?? { throw ParsingError(fieldName: .to) }()
+        gasLimit = try gasLimitString.flatMap { BigUInt($0.drop0x, radix: 16) }
+        gasPrice = try gasPriceString.flatMap { BigUInt($0.drop0x, radix: 16) }
+        value = try BigUInt(valueString.drop0x, radix: 16) ?? { throw ParsingError(fieldName: .value) }()
     }
 }

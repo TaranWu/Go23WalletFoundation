@@ -4,6 +4,7 @@ import BigInt
 import Foundation
 import CryptoSwift
 import Go23TrustKeystore
+import Combine
 
 public enum FileBasedKeystoreError: LocalizedError {
     case protectionDisabled
@@ -14,20 +15,21 @@ public class LegacyFileBasedKeystore {
     private let securedStorage: SecuredStorage
     private let datadir = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
     private let keyStore: LegacyKeyStore
-    private let etherkeystore: Keystore
+    private var cancellable = Set<AnyCancellable>()
+
     let keystoreDirectory: URL
 
-    public init(securedStorage: SecuredStorage, keyStoreSubfolder: String = "/keystore", keystore: Keystore) throws {
+    public init(securedStorage: SecuredStorage, keyStoreSubfolder: String = "/keystore") throws {
         self.keystoreDirectory = URL(fileURLWithPath: datadir + keyStoreSubfolder)
         self.securedStorage = securedStorage
         self.keyStore = try LegacyKeyStore(keydir: keystoreDirectory)
-        self.etherkeystore = keystore
     }
 
     public func getPrivateKeyFromKeystoreFile(json: String, password: String) -> Result<Data, KeystoreError> {
-        guard let data = json.data(using: .utf8) else { return .failure(.failedToDecryptKey) }
-        guard let key = try? JSONDecoder().decode(KeystoreKey.self, from: data) else { return .failure(.failedToImportPrivateKey) }
-        guard let privateKey = try? key.decrypt(password: password) else { return .failure(.failedToDecryptKey) }
+        guard let data = json.data(using: .utf8) else { return .failure(KeystoreError.failedToDecryptKey) }
+        guard let key = try? JSONDecoder().decode(KeystoreKey.self, from: data) else { return .failure(KeystoreError.failedToImportPrivateKey) }
+        guard let privateKey = try? key.decrypt(password: password) else { return .failure(KeystoreError.failedToDecryptKey) }
+
         return .success(privateKey)
     }
 
@@ -44,7 +46,7 @@ public class LegacyFileBasedKeystore {
         }
     }
 
-    private func exportPrivateKey(account: DerbyWallet.Address) -> Result<Data, KeystoreError> {
+    private func exportPrivateKey(account: Go23Wallet.Address) -> Result<Data, KeystoreError> {
         guard let password = getPassword(for: account) else { return .failure(KeystoreError.accountNotFound) }
         guard let account = getAccount(forAddress: account) else { return .failure(.accountNotFound) }
         do {
@@ -67,17 +69,17 @@ public class LegacyFileBasedKeystore {
             } catch {
                 return .failure(.failedToDeleteAccount)
             }
-        case .watch:
+        case .watch, .hardware:
             return .success(())
         }
     }
 
-    public func getPassword(for account: DerbyWallet.Address) -> String? {
+    public func getPassword(for account: Go23Wallet.Address) -> String? {
         //This has to be lowercased due to legacy reasons — it had been written to as lowercased() earlier
         return securedStorage.get(account.eip55String.lowercased(), prompt: nil, withContext: nil)
     }
 
-    public func getAccount(forAddress address: DerbyWallet.Address) -> Account? {
+    public func getAccount(forAddress address: Go23Wallet.Address) -> Account? {
         return keyStore.account(for: .init(address: address))
     }
 
@@ -86,19 +88,25 @@ public class LegacyFileBasedKeystore {
             let key = try KeystoreKey(password: passphrase, key: privateKey)
             let data = try JSONEncoder().encode(key)
             let dict = try JSONSerialization.jsonObject(with: data, options: []) as! [String: Any]
+
             return .success(dict)
         } catch {
             return .failure(KeystoreError.failedToImportPrivateKey)
         }
     }
 
-    public func migrateKeystoreFilesToRawPrivateKeysInKeychain() {
+    public func migrateKeystoreFilesToRawPrivateKeysInKeychain(using etherkeystore: Keystore) {
         guard !etherkeystore.hasMigratedFromKeystoreFiles else { return }
 
         for each in keyStore.accounts {
-            switch exportPrivateKey(account: DerbyWallet.Address(address: each.address)) {
+            switch exportPrivateKey(account: Go23Wallet.Address(address: each.address)) {
             case .success(let privateKey):
-                etherkeystore.importWallet(type: .privateKey(privateKey: privateKey), completion: { _ in })
+                etherkeystore.importWallet(privateKey: privateKey)
+                    .sink(receiveCompletion: { _ in
+                        //no-op
+                    }, receiveValue: { _ in
+                        //no-op
+                    }).store(in: &cancellable)
             case .failure:
                 break
             }

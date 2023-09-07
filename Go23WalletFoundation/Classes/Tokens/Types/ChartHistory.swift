@@ -1,6 +1,6 @@
 //
 //  ChartHistory.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 30.03.2021.
 //
@@ -29,19 +29,21 @@ public enum ChartHistoryPeriod: Int, CaseIterable, Codable {
             return "1Y"
         }
     }
-    
-    public var index: Int {
-        switch self {
-        case .day:
-            return 0
-        case .month:
-            return 1
-        case .threeMonth:
-            return 2
-        case .week:
-            return 3
-        case .year:
-            return 4
+
+    public init?(index: Int) {
+        switch index {
+        case 0:
+            self = .day
+        case 1:
+            self = .month
+        case 2:
+            self = .threeMonth
+        case 3:
+            self = .week
+        case 4:
+            self = .year
+        default:
+            return nil
         }
     }
 }
@@ -57,28 +59,34 @@ public struct MappedChartHistory: Codable {
 }
 
 public struct ChartHistory {
-    public static var empty: ChartHistory = .init(prices: [])
+    public static func empty(currency: Currency) -> ChartHistory {
+        return .init(prices: [], currency: currency)
+    }
 
     public let prices: [HistoryValue]
+    public let currency: Currency
 }
 
 extension ChartHistory: Codable, CustomDebugStringConvertible {
     private enum CodingKeys: String, CodingKey {
         case prices
+        case currency
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         prices = try container.decode([HistoryValue].self, forKey: .prices)
+        currency = try container.decodeIfPresent(Currency.self, forKey: .currency) ?? .default
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(prices, forKey: .prices)
+        try container.encode(currency, forKey: .currency)
     }
 
     public var debugDescription: String {
-        return "prices: \(prices.count)"
+        return "prices: \(prices.count), currency: \(currency)"
     }
 }
 
@@ -87,10 +95,11 @@ extension ChartHistory {
         case jsonDecodeFailure
     }
 
-    init(json: JSON) throws {
+    init(json: JSON, currency: Currency) throws {
         guard json["prices"].null == nil else { throw DecodingError.jsonDecodeFailure }
-
-        prices = json["prices"].arrayValue.map { json -> HistoryValue in
+        
+        self.currency = currency
+        self.prices = json["prices"].arrayValue.map { json -> HistoryValue in
             let timestamp = json.arrayValue[0].numberValue.doubleValue / 1000.0
             let value = json.arrayValue[1].numberValue.doubleValue
 

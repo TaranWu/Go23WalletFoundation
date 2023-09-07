@@ -7,6 +7,7 @@
 import BigInt
 import Foundation
 import Go23TrustKeystore
+import Go23WalletAddress
 
 public indirect enum ABIValue: Equatable {
     /// Unsigned integer with `0 < bits <= 256`, `bits % 8 == 0`
@@ -19,7 +20,7 @@ public indirect enum ABIValue: Equatable {
     case address(Address)
 
     //TODO eventually replace `address` with this
-    case address2(DerbyWallet.Address)
+    case address2(Go23Wallet.Address)
 
     /// Boolean
     case bool(Bool)
@@ -70,8 +71,8 @@ public indirect enum ABIValue: Equatable {
             return .ufixed(bits, scale)
         case .bytes(let data):
             return .bytes(data.count)
-        case .function(let funtionName, _):
-            return .function(funtionName)
+        case .function(let f, _):
+            return .function(f)
         case .array(let type, let array):
             return .array(type, array.count)
         case .dynamicBytes:
@@ -139,7 +140,7 @@ public indirect enum ABIValue: Equatable {
             self = .int(bits: bits, value)
         case (.address, let address as Address):
             self = .address(address)
-        case (.address, let address as DerbyWallet.Address):
+        case (.address, let address as Go23Wallet.Address):
             self = .address2(address)
         case (.bool, let value as Bool):
             self = .bool(value)
@@ -149,8 +150,8 @@ public indirect enum ABIValue: Equatable {
             self = .ufixed(bits: bits, scale, value)
         case (.bytes, let data as Data):
             self = .bytes(data)
-        case (.function(let funtionName), let args as [Any]):
-            self = .function(funtionName, try funtionName.castArguments(args))
+        case (.function(let f), let args as [Any]):
+            self = .function(f, try f.castArguments(args))
         case (.array(let type, _), let array as [Any]):
             self = .array(type, try array.map({ try ABIValue($0, type: type) }))
         case (.dynamicBytes, let data as Data):
@@ -187,8 +188,8 @@ public indirect enum ABIValue: Equatable {
             return value
         case .bytes(let value):
             return value
-        case .function(let funtionName, let args):
-            return (funtionName, args)
+        case .function(let f, let args):
+            return (f, args)
         case .array(_, let array):
             return array.map({ $0.nativeValue })
         case .dynamicBytes(let value):

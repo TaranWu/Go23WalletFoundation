@@ -4,7 +4,7 @@ import Foundation
 import Go23JSONRPCKit
 
 struct GetTransactionRequest: Go23JSONRPCKit.Request {
-    typealias Response = PendingTransaction?
+    typealias Response = EthereumTransaction?
 
     let hash: String
 
@@ -20,12 +20,10 @@ struct GetTransactionRequest: Go23JSONRPCKit.Request {
         if resultObject is NSNull {
             return nil
         }
-        guard
-            let dict = resultObject as? [String: AnyObject],
-            let transaction = PendingTransaction.from(dict)
-        else {
+        guard let dict = resultObject as? [String: AnyObject] else {
             throw CastError(actualValue: resultObject, expectedType: Response.self)
         }
-        return transaction
+        
+        return EthereumTransaction(dictionary: dict)
     }
 }

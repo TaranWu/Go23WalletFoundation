@@ -1,11 +1,13 @@
 // Copyright Stormbird PTE. LTD.
 
 import Foundation
-import ObjectiveC 
+import ObjectiveC
 import Combine
+import Go23WalletAddress
 
 public struct Config {
     public struct Development {
+        public let shouldReadClipboardForWalletConnectUrl = false
         public let shouldNotSendTransactions = false
         ///Useful to reduce network calls
         public let isAutoFetchingDisabled = false
@@ -20,28 +22,19 @@ public struct Config {
 
     public let development = Development()
 
-    //TODO `currency` was originally a instance-side property, but was refactored out. Maybe better if it it's moved elsewhere
-    public static func getCurrency() -> Currency {
-        let defaults = UserDefaults.standardOrForTests
-
-        //If it is saved currency
-        if let currency = defaults.string(forKey: Keys.currencyID) {
-            return Currency(rawValue: currency)!
+    public var currency: Currency {
+        get {
+            if let currency = defaults.string(forKey: Keys.currency) {
+                return Currency(rawValue: currency)!
+            } else if let currency = Currency.allCases.first(where: { $0.code == Config.locale.currencySymbol }) {
+                return currency
+            } else {
+                return Currency.default
+            }
         }
-        //If the is not saved currency try to use user local currency if it is supported.
-        let availableCurrency = Currency.allValues.first { currency in
-            return currency.rawValue == Config.locale.currencySymbol
+        set {
+            defaults.set(newValue.code, forKey: Keys.currency)
         }
-        if let isAvailableCurrency = availableCurrency {
-            return isAvailableCurrency
-        }
-        //If non of the previous is not working return USD.
-        return Currency.USD
-    }
-
-    public static func setCurrency(_ currency: Currency) {
-        let defaults = UserDefaults.standardOrForTests
-        defaults.set(currency.rawValue, forKey: Keys.currencyID)
     }
 
     //TODO `locale` was originally a instance-side property, but was refactored out. Maybe better if it it's moved elsewhere
@@ -93,62 +86,62 @@ public struct Config {
         return id
     }
 
-    private static func generateLastFetchedErc20InteractionBlockNumberKey(_ wallet: DerbyWallet.Address) -> String {
+    private static func generateLastFetchedErc20InteractionBlockNumberKey(_ wallet: Go23Wallet.Address) -> String {
         "\(Keys.lastFetchedAutoDetectedTransactedTokenErc20BlockNumber)-\(wallet.eip55String)"
     }
 
-    private static func generateLastFetchedErc721InteractionBlockNumberKey(_ wallet: DerbyWallet.Address) -> String {
+    private static func generateLastFetchedErc721InteractionBlockNumberKey(_ wallet: Go23Wallet.Address) -> String {
         "\(Keys.lastFetchedAutoDetectedTransactedTokenErc721BlockNumber)-\(wallet.eip55String)"
     }
 
-    private static func generateLastFetchedAutoDetectedTransactedTokenErc20BlockNumberKey(_ wallet: DerbyWallet.Address) -> String {
+    private static func generateLastFetchedAutoDetectedTransactedTokenErc20BlockNumberKey(_ wallet: Go23Wallet.Address) -> String {
         "\(Keys.lastFetchedAutoDetectedTransactedTokenErc20BlockNumber)-\(wallet.eip55String)"
     }
 
-    private static func generateLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumberKey(_ wallet: DerbyWallet.Address) -> String {
+    private static func generateLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumberKey(_ wallet: Go23Wallet.Address) -> String {
         "\(Keys.lastFetchedAutoDetectedTransactedTokenNonErc20BlockNumber)-\(wallet.eip55String)"
     }
 
-    public static func setLastFetchedErc20InteractionBlockNumber(_ blockNumber: Int, server: RPCServer, wallet: DerbyWallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) {
+    public static func setLastFetchedErc20InteractionBlockNumber(_ blockNumber: Int, server: RPCServer, wallet: Go23Wallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) {
         var dictionary: [String: NSNumber] = (defaults.value(forKey: generateLastFetchedErc20InteractionBlockNumberKey(wallet)) as? [String: NSNumber]) ?? .init()
         dictionary["\(server.chainID)"] = NSNumber(value: blockNumber)
         defaults.set(dictionary, forKey: generateLastFetchedErc20InteractionBlockNumberKey(wallet))
     }
 
-    public static func getLastFetchedErc20InteractionBlockNumber(_ server: RPCServer, wallet: DerbyWallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) -> Int? {
+    public static func getLastFetchedErc20InteractionBlockNumber(_ server: RPCServer, wallet: Go23Wallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) -> Int? {
         guard let dictionary = defaults.value(forKey: generateLastFetchedErc20InteractionBlockNumberKey(wallet)) as? [String: NSNumber] else { return nil }
         return dictionary["\(server.chainID)"]?.intValue
     }
 
-    public static func setLastFetchedErc721InteractionBlockNumber(_ blockNumber: Int, server: RPCServer, wallet: DerbyWallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) {
+    public static func setLastFetchedErc721InteractionBlockNumber(_ blockNumber: Int, server: RPCServer, wallet: Go23Wallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) {
         var dictionary: [String: NSNumber] = (defaults.value(forKey: generateLastFetchedErc721InteractionBlockNumberKey(wallet)) as? [String: NSNumber]) ?? .init()
         dictionary["\(server.chainID)"] = NSNumber(value: blockNumber)
         defaults.set(dictionary, forKey: generateLastFetchedErc721InteractionBlockNumberKey(wallet))
     }
 
-    public static func getLastFetchedErc721InteractionBlockNumber(_ server: RPCServer, wallet: DerbyWallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) -> Int? {
+    public static func getLastFetchedErc721InteractionBlockNumber(_ server: RPCServer, wallet: Go23Wallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) -> Int? {
         guard let dictionary = defaults.value(forKey: generateLastFetchedErc721InteractionBlockNumberKey(wallet)) as? [String: NSNumber] else { return nil }
         return dictionary["\(server.chainID)"]?.intValue
     }
 
-    public static func setLastFetchedAutoDetectedTransactedTokenErc20BlockNumber(_ blockNumber: Int, server: RPCServer, wallet: DerbyWallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) {
+    public static func setLastFetchedAutoDetectedTransactedTokenErc20BlockNumber(_ blockNumber: Int, server: RPCServer, wallet: Go23Wallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) {
         var dictionary: [String: NSNumber] = (defaults.value(forKey: generateLastFetchedAutoDetectedTransactedTokenErc20BlockNumberKey(wallet)) as? [String: NSNumber]) ?? .init()
         dictionary["\(server.chainID)"] = NSNumber(value: blockNumber)
         defaults.set(dictionary, forKey: generateLastFetchedAutoDetectedTransactedTokenErc20BlockNumberKey(wallet))
     }
 
-    public static func getLastFetchedAutoDetectedTransactedTokenErc20BlockNumber(_ server: RPCServer, wallet: DerbyWallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) -> Int? {
+    public static func getLastFetchedAutoDetectedTransactedTokenErc20BlockNumber(_ server: RPCServer, wallet: Go23Wallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) -> Int? {
         guard let dictionary = defaults.value(forKey: generateLastFetchedAutoDetectedTransactedTokenErc20BlockNumberKey(wallet)) as? [String: NSNumber] else { return nil }
         return dictionary["\(server.chainID)"]?.intValue
     }
 
-    public static func setLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumber(_ blockNumber: Int, server: RPCServer, wallet: DerbyWallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) {
+    public static func setLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumber(_ blockNumber: Int, server: RPCServer, wallet: Go23Wallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) {
         var dictionary: [String: NSNumber] = (defaults.value(forKey: generateLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumberKey(wallet)) as? [String: NSNumber]) ?? .init()
         dictionary["\(server.chainID)"] = NSNumber(value: blockNumber)
         defaults.set(dictionary, forKey: generateLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumberKey(wallet))
     }
 
-    public static func getLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumber(_ server: RPCServer, wallet: DerbyWallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) -> Int? {
+    public static func getLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumber(_ server: RPCServer, wallet: Go23Wallet.Address, defaults: UserDefaults = UserDefaults.standardOrForTests) -> Int? {
         guard let dictionary = defaults.value(forKey: generateLastFetchedAutoDetectedTransactedTokenNonErc20BlockNumberKey(wallet)) as? [String: NSNumber] else { return nil }
         return dictionary["\(server.chainID)"]?.intValue
     }
@@ -156,7 +149,7 @@ public struct Config {
     public struct Keys {
         static let chainID = "chainID"
         static let isCryptoPrimaryCurrency = "isCryptoPrimaryCurrency"
-        static let currencyID = "currencyID"
+        static let currency = "currencyID"
         static let dAppBrowser = "dAppBrowser"
         //There *is* a trailing space in the key
         static let walletAddressesAlreadyPromptedForBackUp = "walletAddressesAlreadyPromptedForBackUp "
@@ -173,6 +166,7 @@ public struct Config {
         static let customRpcServers = "customRpcServers"
         static let homePageURL = "homePageURL"
         static let sendAnalyticsEnabled = "sendAnalyticsEnabled"
+        static let sendCrashReportingEnabled = "sendCrashReportingEnabled"
     }
 
     public let defaults: UserDefaults
@@ -199,6 +193,23 @@ public struct Config {
         }
     }
 
+    public var isSendCrashReportingEnabled: Bool {
+        sendCrashReportingEnabled ?? false
+    }
+
+    public var sendCrashReportingEnabled: Bool? {
+        get {
+            guard let value = defaults.value(forKey: Keys.sendCrashReportingEnabled) as? Bool else {
+                return nil
+            }
+
+            return value
+        }
+        set {
+            defaults.set(newValue, forKey: Keys.sendCrashReportingEnabled)
+        }
+    }
+
     public var sendPrivateTransactionsProvider: SendPrivateTransactionsProvider? {
         get {
             guard Features.default.isAvailable(.isUsingPrivateNetwork) else { return nil }
@@ -206,8 +217,8 @@ public struct Config {
                 //Default, for legacy reasons
                 return .ethermine
             } else {
-                let provider = defaults.string(forKey: Keys.privateNetworkProvider)
-                return provider.flatMap { SendPrivateTransactionsProvider(rawValue: $0) }
+                let s = defaults.string(forKey: Keys.privateNetworkProvider)
+                return s.flatMap { SendPrivateTransactionsProvider(rawValue: $0) }
             }
         }
         set {
@@ -223,9 +234,9 @@ public struct Config {
                     //TODO remote log. Why is this possible? Note it's not nil (which is possible for new installs)
                     return Constants.defaultEnabledServers
                 } else {
-                    let servers: [RPCServer] = chainIds.map { .init(chainID: $0) }.filter { $0.conflictedServer == nil }
-                    //TODO remove filter after some time as every user should have upgraded and no longer has a mix of mainnet and testnet enabled at the same time. We could have done this filtering one-time per wallet outside of here, but doing it here is more localized
-                        return servers
+                    //Remove duplicates. Useful for the occasion where users have enabled a chain, then we disable that chain in an update and the user might now end up with the Ethereum mainnet twice (default when we can't find a chain that we removed) in their enabled list
+                    let servers: [RPCServer] = Array(Set(chainIds.map { .init(chainID: $0) }.filter { $0.conflictedServer == nil }))
+                    return servers
                 }
             } else {
                 return Constants.defaultEnabledServers
@@ -280,7 +291,7 @@ public struct Config {
         }
     }
 
-    public func addToWalletAddressesAlreadyPromptedForBackup(address: DerbyWallet.Address) {
+    public func addToWalletAddressesAlreadyPromptedForBackup(address: Go23Wallet.Address) {
         var addresses: [String]
         if let value = defaults.array(forKey: Keys.walletAddressesAlreadyPromptedForBackUp) {
             addresses = value as! [String]
@@ -302,10 +313,10 @@ public struct Config {
 }
 
 extension Config {
-    var walletNames: [DerbyWallet.Address: String] {
+    var walletNames: [Go23Wallet.Address: String] {
         if let names = defaults.dictionary(forKey: Keys.walletNames) as? [String: String] {
-            let tuples = names.compactMap { key, value -> (DerbyWallet.Address, String)? in
-                guard let address = DerbyWallet.Address(string: key) else { return nil }
+            let tuples = names.compactMap { key, value -> (Go23Wallet.Address, String)? in
+                guard let address = Go23Wallet.Address(string: key) else { return nil }
                 return (address, value)
             }
             return Dictionary(uniqueKeysWithValues: tuples)

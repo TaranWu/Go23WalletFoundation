@@ -1,6 +1,6 @@
 //
 //  TokenSwapperError.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 11.05.2022.
 //
@@ -39,11 +39,11 @@ extension TokenSwapper {
                 return "Token not found. Make sure you have added token"
             case .swapPairNotFound:
                 return "Swap Pair Not Found"
-            case .general(let swapError):
-                if let error = swapError as? SwapError {
+            case .general(let e):
+                if let error = e as? SwapError {
                     return error.localizedDescription
                 } else {
-                    return swapError.localizedDescription
+                    return e.localizedDescription
                 }
             }
         }

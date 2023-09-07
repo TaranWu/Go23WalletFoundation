@@ -1,6 +1,6 @@
 //
 //  NonFungibleErc1155JsonBalanceFetcher.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 20.07.2022.
 //
@@ -10,143 +10,110 @@ import Combine
 import Go23WalletCore
 import Go23WalletOpenSea
 import BigInt
-import PromiseKit
 import SwiftyJSON
+import Go23WalletAddress
 
 //TODO: think about the name, remove queue later, replace with any publisher
-public class NonFungibleErc1155JsonBalanceFetcher {
-    typealias TokenIdMetaData = (contract: DerbyWallet.Address, tokenId: BigUInt, jsonAndItsSource: NonFungibleBalanceAndItsSource<JsonString>)
+class NonFungibleErc1155JsonBalanceFetcher {
+    typealias TokenIdMetaData = (contract: Go23Wallet.Address, tokenId: BigUInt, jsonAndItsSource: NonFungibleBalanceAndItsSource<JsonString>)
 
-    private let nonFungibleJsonBalanceFetcher: NonFungibleJsonBalanceFetcher
+    private let jsonFromTokenUri: JsonFromTokenUri
     private let erc1155TokenIdsFetcher: Erc1155TokenIdsFetcher
     private let erc1155BalanceFetcher: Erc1155BalanceFetcher
-    private let account: Wallet
-    private let queue: DispatchQueue
     private let server: RPCServer
-    private let tokensService: TokenProvidable & TokenAddable
-    private let analytics: AnalyticsLogger
-    private let assetDefinitionStore: AssetDefinitionStore
+    private let tokensService: TokenProvidable
+    private let importToken: TokenImportable & TokenOrContractFetchable
 
-    public init(assetDefinitionStore: AssetDefinitionStore, analytics: AnalyticsLogger, tokensService: TokenProvidable & TokenAddable, account: Wallet, server: RPCServer, erc1155TokenIdsFetcher: Erc1155TokenIdsFetcher, nonFungibleJsonBalanceFetcher: NonFungibleJsonBalanceFetcher, erc1155BalanceFetcher: Erc1155BalanceFetcher, queue: DispatchQueue) {
-        self.assetDefinitionStore = assetDefinitionStore
-        self.account = account
+    init(tokensService: TokenProvidable,
+         server: RPCServer,
+         erc1155TokenIdsFetcher: Erc1155TokenIdsFetcher,
+         jsonFromTokenUri: JsonFromTokenUri,
+         erc1155BalanceFetcher: Erc1155BalanceFetcher,
+         importToken: TokenImportable & TokenOrContractFetchable) {
+
         self.server = server
         self.erc1155TokenIdsFetcher = erc1155TokenIdsFetcher
-        self.queue = queue
         self.tokensService = tokensService
-        self.nonFungibleJsonBalanceFetcher = nonFungibleJsonBalanceFetcher
-        self.analytics = analytics
+        self.jsonFromTokenUri = jsonFromTokenUri
         self.erc1155BalanceFetcher = erc1155BalanceFetcher
+        self.importToken = importToken
     }
 
-    public func fetchErc1155NonFungibleJsons(enjinTokens: EnjinTokenIdsToSemiFungibles) -> Promise<[DerbyWallet.Address: [NonFungibleBalanceAndItsSource<NonFungibleFromTokenUri>]]> {
-        //Local copies so we don't access the wrong ones during async operation
-
-        return firstly {
-            erc1155TokenIdsFetcher.detectContractsAndTokenIds()
-        }.then(on: queue, { contractsAndTokenIds in
-            self.addUnknownErc1155ContractsToDatabase(contractsAndTokenIds: contractsAndTokenIds.tokens)
-        }).then(on: queue, { contractsAndTokenIds -> Promise<(contractsAndTokenIds: Erc1155TokenIds.ContractsAndTokenIds, tokenIdMetaDatas: [TokenIdMetaData])> in
-                self._fetchErc1155NonFungibleJsons(contractsAndTokenIds: contractsAndTokenIds, enjinTokens: enjinTokens)
+    func fetchErc1155NonFungibleJsons() -> AnyPublisher<[Go23Wallet.Address: [NonFungibleBalanceAndItsSource<NonFungibleFromTokenUri>]], SessionTaskError> {
+        return erc1155TokenIdsFetcher
+            .detectContractsAndTokenIds()
+            .mapError { SessionTaskError(error: $0) }
+            .flatMap { [weak self] contractsAndTokenIds -> AnyPublisher<Erc1155TokenIds.ContractsAndTokenIds, SessionTaskError> in
+                guard let strongSelf = self else { return .empty() }
+                return strongSelf.addUnknownErc1155ContractsToDatabase(contractsAndTokenIds: contractsAndTokenIds.tokens)
+            }.flatMap { [weak self] contractsAndTokenIds -> AnyPublisher<(contractsAndTokenIds: Erc1155TokenIds.ContractsAndTokenIds, tokenIdMetaDatas: [TokenIdMetaData]), SessionTaskError> in
+                guard let strongSelf = self else { return .empty() }
+                return strongSelf._fetchErc1155NonFungibleJsons(contractsAndTokenIds: contractsAndTokenIds)
                     .map { (contractsAndTokenIds: contractsAndTokenIds, tokenIdMetaDatas: $0) }
-        }).then(on: queue, { [erc1155BalanceFetcher, queue] (contractsAndTokenIds, tokenIdMetaDatas) -> Promise<[DerbyWallet.Address: [NonFungibleBalanceAndItsSource<NonFungibleFromTokenUri>]]> in
+                    .eraseToAnyPublisher()
+            }.flatMap { [erc1155BalanceFetcher] (contractsAndTokenIds, tokenIdMetaDatas) -> AnyPublisher<[Go23Wallet.Address: [NonFungibleBalanceAndItsSource<NonFungibleFromTokenUri>]], SessionTaskError> in
+                let contractsToTokenIds: [Go23Wallet.Address: [BigInt]] = contractsAndTokenIds
+                    .mapValues { tokenIds -> [BigInt] in tokenIds.compactMap { BigInt($0) } }
 
-            let contractsToTokenIds: [DerbyWallet.Address: [BigInt]] = contractsAndTokenIds
-                .mapValues { tokenIds -> [BigInt] in tokenIds.compactMap { BigInt($0) } }
-
-            let promises = contractsToTokenIds.map { contract, tokenIds in
-                erc1155BalanceFetcher
-                    .fetch(contract: contract, tokenIds: Set(tokenIds))
-                    .map { (contract: contract, balances: $0 ) }
-            }
-
-            return firstly {
-                when(fulfilled: promises)
-            }.map(on: queue, { contractsAndBalances in
-                var contractToTokenIds: [DerbyWallet.Address: [NonFungibleBalanceAndItsSource<NonFungibleFromTokenUri>]] = .init()
-
-                for each in tokenIdMetaDatas {
-                    guard let data = each.jsonAndItsSource.value.data(using: .utf8) else { continue }
-                    guard let nonFungible = nonFungible(fromJsonData: data, tokenType: .erc1155) as? NonFungibleFromTokenUri else { continue }
-                    var nonFungibles = contractToTokenIds[each.contract] ?? .init()
-                    nonFungibles.append(.init(tokenId: each.jsonAndItsSource.tokenId, value: nonFungible, source: each.jsonAndItsSource.source))
-                    contractToTokenIds[each.contract] = nonFungibles
+                let promises = contractsToTokenIds.map { contract, tokenIds in
+                    erc1155BalanceFetcher
+                        .getErc1155Balance(contract: contract, tokenIds: Set(tokenIds))
+                        .map { (contract: contract, balances: $0 ) }
                 }
-                let contractToOpenSeaNonFungiblesWithUpdatedBalances: [DerbyWallet.Address: [NonFungibleBalanceAndItsSource<NonFungibleFromTokenUri>]] = TokenBalanceFetcher.Functional.fillErc1155NonFungiblesWithBalance(contractToNonFungibles: contractToTokenIds, contractsAndBalances: contractsAndBalances)
 
-                return contractToOpenSeaNonFungiblesWithUpdatedBalances
-            })
-        })
+                return Publishers.MergeMany(promises)
+                    .collect()
+                    .map { contractsAndBalances in
+                        var contractToTokenIds: [Go23Wallet.Address: [NonFungibleBalanceAndItsSource<NonFungibleFromTokenUri>]] = .init()
+
+                        for each in tokenIdMetaDatas {
+                            guard let data = each.jsonAndItsSource.value.data(using: .utf8) else { continue }
+                            guard let nonFungible = nonFungible(fromJsonData: data, tokenType: .erc1155) as? NonFungibleFromTokenUri else { continue }
+                            var nonFungibles = contractToTokenIds[each.contract] ?? .init()
+                            nonFungibles.append(.init(tokenId: each.jsonAndItsSource.tokenId, value: nonFungible, source: each.jsonAndItsSource.source))
+                            contractToTokenIds[each.contract] = nonFungibles
+                        }
+                        let contractToOpenSeaNonFungiblesWithUpdatedBalances: [Go23Wallet.Address: [NonFungibleBalanceAndItsSource<NonFungibleFromTokenUri>]] = TokenBalanceFetcher.functional.fillErc1155NonFungiblesWithBalance(contractToNonFungibles: contractToTokenIds, contractsAndBalances: contractsAndBalances)
+
+                        return contractToOpenSeaNonFungiblesWithUpdatedBalances
+                    }.eraseToAnyPublisher()
+            }.eraseToAnyPublisher()
+
         //TODO: log error remotely
     }
 
-    private func _fetchErc1155NonFungibleJsons(contractsAndTokenIds: Erc1155TokenIds.ContractsAndTokenIds, enjinTokens: EnjinTokenIdsToSemiFungibles) -> Promise<[TokenIdMetaData]> {
-        var allGuarantees: [Guarantee<TokenIdMetaData>] = .init()
+    private func _fetchErc1155NonFungibleJsons(contractsAndTokenIds: Erc1155TokenIds.ContractsAndTokenIds) -> AnyPublisher<[TokenIdMetaData], SessionTaskError> {
+        var allGuarantees: [AnyPublisher<TokenIdMetaData, SessionTaskError>] = .init()
         for (contract, tokenIds) in contractsAndTokenIds {
-            let guarantees = tokenIds.map { tokenId -> Guarantee<TokenIdMetaData> in
-                nonFungibleJsonBalanceFetcher.fetchNonFungibleJson(forTokenId: String(tokenId), tokenType: .erc1155, address: contract, enjinTokens: enjinTokens)
-                    .map(on: queue, { jsonAndItsUri -> TokenIdMetaData in
+            let guarantees = tokenIds.map { tokenId -> AnyPublisher<TokenIdMetaData, SessionTaskError> in
+                return jsonFromTokenUri.fetchJsonFromTokenUri(for: String(tokenId), tokenType: .erc1155, address: contract)
+                    .map { jsonAndItsUri -> TokenIdMetaData in
                         return (contract: contract, tokenId: tokenId, jsonAndItsSource: jsonAndItsUri)
-                    })
+                    }.eraseToAnyPublisher()
             }
+
             allGuarantees.append(contentsOf: guarantees)
         }
-        return when(fulfilled: allGuarantees)
+
+        return Publishers.MergeMany(allGuarantees)
+            .collect()
+            .eraseToAnyPublisher()
     }
 
-    private func addUnknownErc1155ContractsToDatabase(contractsAndTokenIds: Erc1155TokenIds.ContractsAndTokenIds) -> Promise<Erc1155TokenIds.ContractsAndTokenIds> {
-        return firstly {
-            fetchUnknownErc1155ContractsDetails(contractsAndTokenIds: contractsAndTokenIds)
-        }.map(on: queue, { [tokensService] tokensToAdd in
-            tokensService.addCustom(tokens: tokensToAdd, shouldUpdateBalance: false)
-
-            return contractsAndTokenIds
-        })
+    private func addUnknownErc1155ContractsToDatabase(contractsAndTokenIds: Erc1155TokenIds.ContractsAndTokenIds) -> AnyPublisher<Erc1155TokenIds.ContractsAndTokenIds, SessionTaskError> {
+        importUnknownErc1155Contracts(contractsAndTokenIds: contractsAndTokenIds)
     }
 
-    private func fetchUnknownErc1155ContractsDetails(contractsAndTokenIds: Erc1155TokenIds.ContractsAndTokenIds) -> Promise<[ERCToken]> {
-        let contractsToAdd: [DerbyWallet.Address] = contractsAndTokenIds.keys.filter { contract in
-            tokensService.token(for: contract, server: server) == nil
-        }
-        guard !contractsToAdd.isEmpty else { return Promise<[ERCToken]>.value(.init()) }
-        let (promise, seal) = Promise<[ERCToken]>.pending()
-        //Can't use `DispatchGroup` because `ContractDataDetector.fetch()` doesn't call `completion` once and only once
-        var contractsProcessed: Set<DerbyWallet.Address> = .init()
-        var erc1155TokensToAdd: [ERCToken] = .init()
-        func markContractProcessed(_ contract: DerbyWallet.Address) {
-            contractsProcessed.insert(contract)
-            if contractsProcessed.count == contractsToAdd.count {
-                seal.fulfill(erc1155TokensToAdd)
-            }
-        }
-        for each in contractsToAdd {
-            ContractDataDetector(address: each, account: account, server: server, assetDefinitionStore: assetDefinitionStore, analytics: analytics).fetch { data in
-                switch data {
-                case .name, .symbol, .balance, .decimals:
-                    break
-                case .nonFungibleTokenComplete(let name, let symbol, let balance, let tokenType):
-                    let token = ERCToken(
-                            contract: each,
-                            server: self.server,
-                            name: name,
-                            symbol: symbol,
-                            //Doesn't matter for ERC1155 since it's not used at the token level
-                            decimals: 0,
-                            type: tokenType,
-                            balance: balance
-                    )
-                    erc1155TokensToAdd.append(token)
-                    markContractProcessed(each)
-                case .fungibleTokenComplete:
-                    markContractProcessed(each)
-                case .delegateTokenComplete:
-                    markContractProcessed(each)
-                case .failed:
-                    //TODO we are ignoring `.failed` here because it is called multiple times and we need to wait until `ContractDataDetector.fetch()`'s `completion` is called once and only once
-                    break
+    private func importUnknownErc1155Contracts(contractsAndTokenIds: Erc1155TokenIds.ContractsAndTokenIds) -> AnyPublisher<Erc1155TokenIds.ContractsAndTokenIds, SessionTaskError> {
+        let promises = contractsAndTokenIds.keys.map { importToken.importToken(for: $0, onlyIfThereIsABalance: false).mapToResult() }
+        return Publishers.MergeMany(promises)
+            .collect()
+            .map { [server] results -> Erc1155TokenIds.ContractsAndTokenIds in
+                let tokens = results.compactMap { return try? $0.get() }
+                return contractsAndTokenIds.filter { value in
+                    tokens.contains(where: { $0.contractAddress == value.key && $0.server == server })
                 }
-            }
-        }
-        return promise
+            }.setFailureType(to: SessionTaskError.self)
+            .eraseToAnyPublisher()
     }
 }

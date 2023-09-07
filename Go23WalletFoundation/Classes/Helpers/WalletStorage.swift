@@ -1,20 +1,21 @@
 //
 //  WalletStorage.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 22.06.2022.
 //
 
 import Foundation
 import Go23WalletCore
+import Go23WalletAddress
 
 public protocol WalletStorage {
-    func name(for address: DerbyWallet.Address) -> String?
-    func addOrUpdate(name: String?, for address: DerbyWallet.Address)
+    func name(for address: Go23Wallet.Address) -> String?
+    func addOrUpdate(name: String?, for address: Go23Wallet.Address)
 }
 
 public class FileWalletStorage: NSObject, WalletStorage {
-    private let storage: Storage<[DerbyWallet.Address: String]>
+    private let storage: Storage<[Go23Wallet.Address: String]>
 
     public init(config: Config = .init()) {
         storage = .init(fileName: "wallet_names", defaultValue: [:])
@@ -22,11 +23,11 @@ public class FileWalletStorage: NSObject, WalletStorage {
         FileWalletStorage.migrateWalletNamesFromUserDefaults(config: config, into: self)
     }
 
-    public func name(for address: DerbyWallet.Address) -> String? {
+    public func name(for address: Go23Wallet.Address) -> String? {
         storage.value[address]
     }
 
-    public func addOrUpdate(name: String?, for address: DerbyWallet.Address) {
+    public func addOrUpdate(name: String?, for address: Go23Wallet.Address) {
         if let name = name, name.nonEmpty {
             storage.value[address] = name
         } else {

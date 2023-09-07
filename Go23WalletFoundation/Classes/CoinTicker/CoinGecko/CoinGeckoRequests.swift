@@ -1,15 +1,14 @@
 //
 //  CoinGeckoRequests.swift
-//  DerbyWalletFoundation
+//  Go23WalletFoundation
 //
-//  Created by Tatan.
+//  Created by Vladyslav Shepitko on 15.09.2022.
 //
 
 import Foundation
-import Alamofire
 
 extension CoinGeckoNetworkProvider {
-    private static var allHTTPHeaderFields: [String : String]? = [
+    private static var allHTTPHeaderFields: [String: String]? = [
         "Content-type": "application/json",
         "client": Bundle.main.bundleIdentifier ?? "",
         "client-build": Bundle.main.buildNumber ?? "",

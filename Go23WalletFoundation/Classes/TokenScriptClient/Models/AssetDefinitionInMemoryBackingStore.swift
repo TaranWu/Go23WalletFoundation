@@ -1,9 +1,10 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
 import Foundation
+import Go23WalletAddress
 
 public class AssetDefinitionInMemoryBackingStore: AssetDefinitionBackingStore {
-    private var xmls = [DerbyWallet.Address: String]()
+    private var xmls = [Go23Wallet.Address: String]()
 
     public weak var delegate: AssetDefinitionBackingStoreDelegate?
     public var badTokenScriptFileNames: [TokenScriptFileIndices.FileName] {
@@ -13,11 +14,11 @@ public class AssetDefinitionInMemoryBackingStore: AssetDefinitionBackingStore {
         return (official: [], overrides: [], all: [])
     }
 
-    public var contractsWithTokenScriptFileFromOfficialRepo: [DerbyWallet.Address] {
+    public var contractsWithTokenScriptFileFromOfficialRepo: [Go23Wallet.Address] {
         return .init()
     }
     public init() { }
-    public subscript(contract: DerbyWallet.Address) -> String? {
+    public subscript(contract: Go23Wallet.Address) -> String? {
         get {
             return xmls[contract]
         }
@@ -27,29 +28,29 @@ public class AssetDefinitionInMemoryBackingStore: AssetDefinitionBackingStore {
         }
     }
 
-    public func lastModifiedDateOfCachedAssetDefinitionFile(forContract contract: DerbyWallet.Address) -> Date? {
+    public func lastModifiedDateOfCachedAssetDefinitionFile(forContract contract: Go23Wallet.Address) -> Date? {
         return nil
     }
 
-    public func forEachContractWithXML(_ body: (DerbyWallet.Address) -> Void) {
+    public func forEachContractWithXML(_ body: (Go23Wallet.Address) -> Void) {
         xmls.forEach { contract, _ in
             body(contract)
         }
     }
 
-    public func isOfficial(contract: DerbyWallet.Address) -> Bool {
+    public func isOfficial(contract: Go23Wallet.Address) -> Bool {
         return false
     }
 
-    public func isCanonicalized(contract: DerbyWallet.Address) -> Bool {
+    public func isCanonicalized(contract: Go23Wallet.Address) -> Bool {
         return true
     }
 
-    public func hasConflictingFile(forContract contract: DerbyWallet.Address) -> Bool {
+    public func hasConflictingFile(forContract contract: Go23Wallet.Address) -> Bool {
         return false
     }
 
-    public func hasOutdatedTokenScript(forContract contract: DerbyWallet.Address) -> Bool {
+    public func hasOutdatedTokenScript(forContract contract: Go23Wallet.Address) -> Bool {
         return false
     }
 
@@ -57,11 +58,11 @@ public class AssetDefinitionInMemoryBackingStore: AssetDefinitionBackingStore {
         return nil
     }
 
-    public func writeCacheTokenScriptSignatureVerificationType(_ verificationType: TokenScriptSignatureVerificationType, forContract contract: DerbyWallet.Address, forXmlString xmlString: String) {
+    public func writeCacheTokenScriptSignatureVerificationType(_ verificationType: TokenScriptSignatureVerificationType, forContract contract: Go23Wallet.Address, forXmlString xmlString: String) {
         //do nothing
     }
 
-    public func deleteFileDownloadedFromOfficialRepoFor(contract: DerbyWallet.Address) {
+    public func deleteFileDownloadedFromOfficialRepoFor(contract: Go23Wallet.Address) {
         xmls[contract] = nil
     }
 }

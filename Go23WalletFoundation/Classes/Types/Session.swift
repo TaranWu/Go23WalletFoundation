@@ -13,41 +13,54 @@ public final class WalletSession: Equatable {
     public let account: Wallet
     public let server: RPCServer
     public let config: Config
-    public let chainState: ChainState
-    public lazy private (set) var tokenProvider: TokenProviderType = {
-        return TokenProvider(account: account, server: server, analytics: analytics, queue: queue)
-    }()
+    public let blockNumberProvider: BlockNumberProvider
+    public let tokenProvider: TokenProviderType
+    public let importToken: TokenImportable & TokenOrContractFetchable
     public var sessionID: String {
-        return WalletSession.Functional.sessionID(account: account, server: server)
+        return WalletSession.functional.sessionID(account: account, server: server)
     }
-    public lazy private (set) var queue: DispatchQueue = {
-        return DispatchQueue(label: "com.WalletSession.\(account.address.eip55String).\(server)")
-    }()
+    public let blockchainProvider: BlockchainProvider
+    public let nftProvider: NFTProvider
+    public let tokenAdaptor: TokenAdaptor
 
-    public init(account: Wallet, server: RPCServer, config: Config, analytics: AnalyticsLogger) {
+    public init(account: Wallet,
+                server: RPCServer,
+                config: Config,
+                analytics: AnalyticsLogger,
+                ercTokenProvider: TokenProviderType,
+                importToken: TokenImportable & TokenOrContractFetchable,
+                blockchainProvider: BlockchainProvider,
+                nftProvider: NFTProvider,
+                tokenAdaptor: TokenAdaptor) {
+
+        self.tokenAdaptor = tokenAdaptor
+        self.nftProvider = nftProvider
         self.analytics = analytics
         self.account = account
         self.server = server
         self.config = config
-        self.chainState = ChainState(config: config, server: server, analytics: analytics)
+        self.importToken = importToken
+        self.tokenProvider = ercTokenProvider
+        self.blockchainProvider = blockchainProvider
+        self.blockNumberProvider = BlockNumberProvider(storage: config, blockchainProvider: blockchainProvider)
 
         if config.development.isAutoFetchingDisabled {
             //no-op
         } else {
-            self.chainState.start()
+            self.blockNumberProvider.start()
         }
     }
 
     public func stop() {
-        chainState.stop()
+        blockNumberProvider.stop()
     }
 }
 
 extension WalletSession {
-    public class Functional {}
+    public class functional {}
 }
 
-extension WalletSession.Functional {
+extension WalletSession.functional {
     public static func sessionID(account: Wallet, server: RPCServer) -> String {
         return "\(account.address.eip55String.lowercased())-\(server.chainID)"
     }

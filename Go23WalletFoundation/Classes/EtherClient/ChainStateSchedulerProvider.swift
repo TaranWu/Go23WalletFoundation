@@ -1,6 +1,6 @@
 //
-//  ChainStateSchedulerProvider.swift
-//  DerbyWallet
+//  BlockNumberSchedulerProvider.swift
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 20.08.2022.
 //
@@ -10,37 +10,38 @@ import Combine
 import Go23WalletCore
 import CombineExt
 
-public protocol ChainStateSchedulerProviderDelegate: AnyObject {
-    func didReceive(result: Result<Int, PromiseError>)
+public typealias BlockNumber = Int
+
+public protocol BlockNumberSchedulerProviderDelegate: AnyObject {
+    func didReceive(result: Result<BlockNumber, PromiseError>)
 }
 
-public final class ChainStateSchedulerProvider: SchedulerProvider {
-    private let server: RPCServer
-    private let analytics: AnalyticsLogger
-    private lazy var blockNumberProvider = GetBlockNumber(server: server, analytics: analytics)
+public final class BlockNumberSchedulerProvider: SchedulerProvider {
+    private let blockchainProvider: BlockchainProvider
 
-    var interval: TimeInterval { return Constants.ChainState.getChainStateInterval }
-    var name: String { "ChainStateSchedulerProvider" }
-    var operation: AnyPublisher<Void, SchedulerError> {
-        blockNumberProvider.getBlockNumber().publisher
+    var interval: TimeInterval { return Constants.BlockNumberProvider.getChainStateInterval }
+    var name: String { "BlockNumberSchedulerProvider.\(blockchainProvider.server)" }
+
+    var operation: AnyPublisher<Void, PromiseError> {
+        blockchainProvider
+            .blockNumber()
             .handleEvents(receiveOutput: { [weak self] response in
                 self?.didReceiveValue(response: response)
             }, receiveCompletion: { [weak self] result in
-                guard case .failure(let err) = result else { return }
-                self?.didReceiveError(error: err)
+                guard case .failure(let e) = result else { return }
+                self?.didReceiveError(error: PromiseError(error: e))
             }).mapToVoid()
-            .mapError { SchedulerError.promiseError($0) }
+            .mapError { PromiseError(error: $0) }
             .eraseToAnyPublisher()
     }
-    public weak var delegate: ChainStateSchedulerProviderDelegate?
+    public weak var delegate: BlockNumberSchedulerProviderDelegate?
 
-    public init(server: RPCServer, analytics: AnalyticsLogger) {
-        self.server = server
-        self.analytics = analytics
+    public init(blockchainProvider: BlockchainProvider) {
+        self.blockchainProvider = blockchainProvider
     }
 
-    private func didReceiveValue(response block: Int) {
-        delegate?.didReceive(result: .success(block))
+    private func didReceiveValue(response blockNumber: BlockNumber) {
+        delegate?.didReceive(result: .success(blockNumber))
     }
 
     private func didReceiveError(error: PromiseError) {

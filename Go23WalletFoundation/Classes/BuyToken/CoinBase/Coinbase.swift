@@ -1,8 +1,8 @@
 //
 //  Coinbase.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Tatan.
+//  Created by Vladyslav Shepitko on 23.08.2022.
 //
 
 import Foundation

@@ -14,17 +14,15 @@ public struct TokenScriptFileIndices: Codable {
 
     public var fileHashes = [FileName: FileContentsHash]()
     public var signatureVerificationTypes = [FileContentsHash: TokenScriptSignatureVerificationType]()
-    public var contractsToFileNames = [DerbyWallet.Address: [FileName]]()
+    public var contractsToFileNames = [Go23Wallet.Address: [FileName]]()
     public var contractsToEntities = [FileName: [Entity]]()
     public var badTokenScriptFileNames = [FileName]()
-    public var contractsToOldTokenScriptFileNames = [DerbyWallet.Address: [FileName]]()
+    public var contractsToOldTokenScriptFileNames = [Go23Wallet.Address: [FileName]]()
 
     public var conflictingTokenScriptFileNames: [FileName] {
         var result = [FileName]()
-        for (contract, fileNames) in contractsToFileNames {
-            if nonConflictingFileName(forContract: contract) == nil {
-                result.append(contentsOf: fileNames)
-            }
+        for (contract, fileNames) in contractsToFileNames where nonConflictingFileName(forContract: contract) == nil {
+            result.append(contentsOf: fileNames)
         }
         return Array(Set(result))
     }
@@ -52,7 +50,7 @@ public struct TokenScriptFileIndices: Codable {
     }
 
     ///Return the fileName if there are no other TokenScript files for that holding contract. There can be files with the exact same contents; those are fine because a TokenScript file downloaded from the official repo can support more than one holding contract, so those 2 contracts (0x1 and 0x2) will cause 0x1.tsml and 0x2.tsml to be downloaded with the same contents. This is not considered a conflict
-    public func nonConflictingFileName(forContract contract: DerbyWallet.Address) -> FileName? {
+    public func nonConflictingFileName(forContract contract: Go23Wallet.Address) -> FileName? {
         guard let fileNames = contractsToFileNames[contract] else { return nil }
         let uniqueHashes = Set(fileNames.map {
             fileHashes[$0]
@@ -64,7 +62,7 @@ public struct TokenScriptFileIndices: Codable {
         }
     }
 
-    public func hasConflictingFile(forContract contract: DerbyWallet.Address) -> Bool {
+    public func hasConflictingFile(forContract contract: Go23Wallet.Address) -> Bool {
         if contractsToFileNames[contract].isEmpty {
             return false
         } else {
@@ -72,7 +70,7 @@ public struct TokenScriptFileIndices: Codable {
         }
     }
 
-    public func contracts(inFileName fileName: FileName) -> [DerbyWallet.Address] {
+    public func contracts(inFileName fileName: FileName) -> [Go23Wallet.Address] {
         return Array(contractsToFileNames.filter { _, fileNames in fileNames.contains(fileName) }.keys)
     }
 

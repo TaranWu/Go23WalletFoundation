@@ -1,6 +1,6 @@
 //
 //  JsonWalletAddressesStore.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 22.01.2022.
 //
@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import Go23WalletCore
+import Go23WalletAddress
 
 public struct JsonWalletAddressesStore: WalletAddressesStore {
     private static let walletsFolderForTests = "testSuiteWalletsForWalletAddresses"
@@ -42,9 +43,6 @@ public struct JsonWalletAddressesStore: WalletAddressesStore {
 
     private var storage: StorageType
     private var walletAddresses: WalletAddresses
-    private var walletsSubject: CurrentValueSubject<Set<Wallet>, Never>
-    private var didAddWalletSubject: PassthroughSubject<DerbyWallet.Address, Never> = .init()
-    private var didRemoveWalletSubject: PassthroughSubject<Wallet, Never> = .init()
 
     public var recentlyUsedWallet: Wallet? {
         get {
@@ -58,18 +56,6 @@ public struct JsonWalletAddressesStore: WalletAddressesStore {
 
             saveWalletCollectionToFile()
         }
-    }
-
-    public var walletsPublisher: AnyPublisher<Set<Wallet>, Never> {
-        walletsSubject.eraseToAnyPublisher()
-    }
-
-    public var didAddWalletPublisher: AnyPublisher<DerbyWallet.Address, Never> {
-        didAddWalletSubject.eraseToAnyPublisher()
-    }
-
-    public var didRemoveWalletPublisher: AnyPublisher<Wallet, Never> {
-        didRemoveWalletSubject.eraseToAnyPublisher()
     }
 
     var hasAnyStoredData: Bool {
@@ -95,6 +81,18 @@ public struct JsonWalletAddressesStore: WalletAddressesStore {
         set {
             guard walletAddresses.watchAddresses != newValue else { return }
             walletAddresses.watchAddresses = newValue
+            saveWalletCollectionToFile()
+        }
+    }
+
+    //TODO have proper storage. Maybe a dictionary since we want to support more than 1 type of hardware wallet
+    public var ethereumAddressesWithHardwareWallet: [String] {
+        get {
+            walletAddresses.ethereumAddressesWithHardwareWallet ?? []
+        }
+        set {
+            guard walletAddresses.ethereumAddressesWithHardwareWallet != newValue else { return }
+            walletAddresses.ethereumAddressesWithHardwareWallet = newValue
             saveWalletCollectionToFile()
         }
     }
@@ -140,50 +138,55 @@ public struct JsonWalletAddressesStore: WalletAddressesStore {
         } else {
             walletAddresses = WalletAddresses()
         }
-        walletsSubject = .init(Set(walletAddresses.wallets))
     }
 
     mutating private func saveWalletCollectionToFile() {
         guard let data = try? JSONEncoder().encode(walletAddresses) else { return }
         storage.setData(data, forKey: Keys.walletAddresses)
-
-        walletsSubject.send(walletAddresses.wallets)
     }
 
-    mutating public func addToListOfWatchEthereumAddresses(_ address: DerbyWallet.Address) {
+    mutating public func add(wallet: Wallet) {
+        switch wallet.origin {
+        case .hd:
+            addToListOfEthereumAddressesWithSeed(wallet.address)
+        case .privateKey:
+            addToListOfEthereumAddressesWithPrivateKeys(wallet.address)
+        case .watch:
+            addToListOfWatchEthereumAddresses(wallet.address)
+        case .hardware:
+            addToListOfEthereumAddressesWithHardwareWallet(wallet.address)
+        }
+    }
+
+    mutating private func addToListOfWatchEthereumAddresses(_ address: Go23Wallet.Address) {
         watchAddresses = [watchAddresses, [address.eip55String]].flatMap { $0 }
-
-        didAddWalletSubject.send(address)
     }
 
-    mutating public func addToListOfEthereumAddressesWithPrivateKeys(_ address: DerbyWallet.Address) {
+    mutating private func addToListOfEthereumAddressesWithPrivateKeys(_ address: Go23Wallet.Address) {
         let updatedOwnedAddresses = Array(Set(ethereumAddressesWithPrivateKeys + [address.eip55String]))
         ethereumAddressesWithPrivateKeys = updatedOwnedAddresses
-
-        didAddWalletSubject.send(address)
     }
 
-    mutating public func addToListOfEthereumAddressesWithSeed(_ address: DerbyWallet.Address) {
+    mutating private func addToListOfEthereumAddressesWithSeed(_ address: Go23Wallet.Address) {
         let updated = Array(Set(ethereumAddressesWithSeed + [address.eip55String]))
         ethereumAddressesWithSeed = updated
-
-        didAddWalletSubject.send(address)
     }
 
-    mutating public func addToListOfEthereumAddressesProtectedByUserPresence(_ address: DerbyWallet.Address) {
+    mutating public func addToListOfEthereumAddressesProtectedByUserPresence(_ address: Go23Wallet.Address) {
         let updated = Array(Set(ethereumAddressesProtectedByUserPresence + [address.eip55String]))
         ethereumAddressesProtectedByUserPresence = updated
+    }
 
-        didAddWalletSubject.send(address)
+    mutating private func addToListOfEthereumAddressesWithHardwareWallet(_ address: Go23Wallet.Address) {
+        ethereumAddressesWithHardwareWallet = [ethereumAddressesWithHardwareWallet, [address.eip55String]].flatMap { $0 }
     }
 
     mutating public func removeAddress(_ account: Wallet) {
         ethereumAddressesWithPrivateKeys = ethereumAddressesWithPrivateKeys.filter { $0 != account.address.eip55String }
         ethereumAddressesWithSeed = ethereumAddressesWithSeed.filter { $0 != account.address.eip55String }
         ethereumAddressesProtectedByUserPresence = ethereumAddressesProtectedByUserPresence.filter { $0 != account.address.eip55String }
+        ethereumAddressesWithHardwareWallet = ethereumAddressesWithHardwareWallet.filter { $0 != account.address.eip55String }
         watchAddresses = watchAddresses.filter { $0 != account.address.eip55String }
-
-        didRemoveWalletSubject.send(account)
     }
 
 }
@@ -215,6 +218,7 @@ private struct WalletAddresses: Codable {
     var ethereumAddressesWithPrivateKeys: [String]?
     var ethereumAddressesWithSeed: [String]?
     var ethereumAddressesProtectedByUserPresence: [String]?
+    var ethereumAddressesWithHardwareWallet: [String]?
     var recentlyUsedWallet: String?
 
     init() {
@@ -222,14 +226,16 @@ private struct WalletAddresses: Codable {
         ethereumAddressesWithPrivateKeys = []
         ethereumAddressesWithSeed = []
         ethereumAddressesProtectedByUserPresence = []
+        ethereumAddressesWithHardwareWallet = []
         recentlyUsedWallet = nil
     }
 
     var wallets: Set<Wallet> {
-        let watchAddresses = (watchAddresses ?? []).compactMap { DerbyWallet.Address(string: $0) }.map { Wallet(address: $0, origin: .watch) }
-        let addressesWithPrivateKeys = (ethereumAddressesWithPrivateKeys ?? []).compactMap { DerbyWallet.Address(string: $0) }.map { Wallet(address: $0, origin: .privateKey) }
-        let addressesWithSeed = (ethereumAddressesWithSeed ?? []).compactMap { DerbyWallet.Address(string: $0) }.map { Wallet(address: $0, origin: .hd) }
+        let watchAddresses = (watchAddresses ?? []).compactMap { Go23Wallet.Address(string: $0) }.map { Wallet(address: $0, origin: .watch) }
+        let addressesWithPrivateKeys = (ethereumAddressesWithPrivateKeys ?? []).compactMap { Go23Wallet.Address(string: $0) }.map { Wallet(address: $0, origin: .privateKey) }
+        let addressesWithSeed = (ethereumAddressesWithSeed ?? []).compactMap { Go23Wallet.Address(string: $0) }.map { Wallet(address: $0, origin: .hd) }
+        let ethereumAddressesWithHardwareWallet = (ethereumAddressesWithHardwareWallet ?? []).compactMap { Go23Wallet.Address(string: $0) }.map { Wallet(address: $0, origin: .hardware) }
 
-        return Set(addressesWithSeed + addressesWithPrivateKeys + watchAddresses)
+        return Set(addressesWithSeed + addressesWithPrivateKeys + watchAddresses + ethereumAddressesWithHardwareWallet)
     }
 }

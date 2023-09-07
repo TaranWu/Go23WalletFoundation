@@ -1,6 +1,7 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
 import Foundation
+import Go23WalletAddress
 
 public class AssetDefinitionDiskBackingStoreWithOverrides: AssetDefinitionBackingStore {
     private let officialStore = AssetDefinitionDiskBackingStore()
@@ -19,7 +20,7 @@ public class AssetDefinitionDiskBackingStoreWithOverrides: AssetDefinitionBackin
         return (official: official, overrides: overrides, all: official + overrides)
     }
 
-    public var contractsWithTokenScriptFileFromOfficialRepo: [DerbyWallet.Address] {
+    public var contractsWithTokenScriptFileFromOfficialRepo: [Go23Wallet.Address] {
         return officialStore.contractsWithTokenScriptFileFromOfficialRepo
     }
 
@@ -38,7 +39,7 @@ public class AssetDefinitionDiskBackingStoreWithOverrides: AssetDefinitionBackin
         self.overridesStore.delegate = self
     }
 
-    public subscript(contract: DerbyWallet.Address) -> String? {
+    public subscript(contract: Go23Wallet.Address) -> String? {
         get {
             return overridesStore[contract] ?? officialStore[contract]
         }
@@ -47,14 +48,14 @@ public class AssetDefinitionDiskBackingStoreWithOverrides: AssetDefinitionBackin
         }
     }
 
-    public func isOfficial(contract: DerbyWallet.Address) -> Bool {
+    public func isOfficial(contract: Go23Wallet.Address) -> Bool {
         if overridesStore[contract] != nil {
             return false
         }
         return officialStore.isOfficial(contract: contract)
     }
 
-    public func isCanonicalized(contract: DerbyWallet.Address) -> Bool {
+    public func isCanonicalized(contract: Go23Wallet.Address) -> Bool {
         if overridesStore[contract] != nil {
             return overridesStore.isCanonicalized(contract: contract)
         } else {
@@ -62,7 +63,7 @@ public class AssetDefinitionDiskBackingStoreWithOverrides: AssetDefinitionBackin
         }
     }
 
-    public func hasConflictingFile(forContract contract: DerbyWallet.Address) -> Bool {
+    public func hasConflictingFile(forContract contract: Go23Wallet.Address) -> Bool {
         let official = officialStore.hasConflictingFile(forContract: contract)
         let overrides = overridesStore.hasConflictingFile(forContract: contract)
         if overrides {
@@ -72,7 +73,7 @@ public class AssetDefinitionDiskBackingStoreWithOverrides: AssetDefinitionBackin
         }
     }
 
-    public func hasOutdatedTokenScript(forContract contract: DerbyWallet.Address) -> Bool {
+    public func hasOutdatedTokenScript(forContract contract: Go23Wallet.Address) -> Bool {
         if overridesStore[contract] != nil {
             return overridesStore.hasOutdatedTokenScript(forContract: contract)
         } else {
@@ -80,13 +81,13 @@ public class AssetDefinitionDiskBackingStoreWithOverrides: AssetDefinitionBackin
         }
     }
 
-    public func lastModifiedDateOfCachedAssetDefinitionFile(forContract contract: DerbyWallet.Address) -> Date? {
+    public func lastModifiedDateOfCachedAssetDefinitionFile(forContract contract: Go23Wallet.Address) -> Date? {
         //Even with an override, we just want to fetch the latest official version. Doesn't imply we'll use the official version
         return officialStore.lastModifiedDateOfCachedAssetDefinitionFile(forContract: contract)
     }
 
-    public func forEachContractWithXML(_ body: (DerbyWallet.Address) -> Void) {
-        var overriddenContracts = [DerbyWallet.Address]()
+    public func forEachContractWithXML(_ body: (Go23Wallet.Address) -> Void) {
+        var overriddenContracts = [Go23Wallet.Address]()
         overridesStore.forEachContractWithXML { contract in
             overriddenContracts.append(contract)
             body(contract)
@@ -103,7 +104,7 @@ public class AssetDefinitionDiskBackingStoreWithOverrides: AssetDefinitionBackin
     }
 
     ///The implementation assumes that we never verifies the signature files in the official store when there's an override available
-    public func writeCacheTokenScriptSignatureVerificationType(_ verificationType: TokenScriptSignatureVerificationType, forContract contract: DerbyWallet.Address, forXmlString xmlString: String) {
+    public func writeCacheTokenScriptSignatureVerificationType(_ verificationType: TokenScriptSignatureVerificationType, forContract contract: Go23Wallet.Address, forXmlString xmlString: String) {
         if let xml = overridesStore[contract], xml == xmlString {
             overridesStore.writeCacheTokenScriptSignatureVerificationType(verificationType, forContract: contract, forXmlString: xmlString)
             return
@@ -114,7 +115,7 @@ public class AssetDefinitionDiskBackingStoreWithOverrides: AssetDefinitionBackin
         }
     }
 
-    public func deleteFileDownloadedFromOfficialRepoFor(contract: DerbyWallet.Address) {
+    public func deleteFileDownloadedFromOfficialRepoFor(contract: Go23Wallet.Address) {
         officialStore.deleteFileDownloadedFromOfficialRepoFor(contract: contract)
     }
 }

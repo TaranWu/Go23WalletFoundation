@@ -1,6 +1,6 @@
 import Foundation
 
-extension DerbyWallet.Ethereum.ABI {
+extension Go23Wallet.Ethereum.ABI {
     public static let erc20: Data = {
         """
         [

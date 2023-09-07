@@ -2,22 +2,42 @@
 
 import Foundation
 import PromiseKit
+import Go23Web3Swift
+import Go23WalletCore
+import Combine
 
-public class GetContractSymbol {
-    private let server: RPCServer
+final class GetContractSymbol {
+    private var inFlightPromises: [String: AnyPublisher<String, SessionTaskError>] = [:]
+    private let queue = DispatchQueue(label: "org.Go23Wallet.swift.getContractSymbol")
 
-    public init(forServer server: RPCServer) {
-        self.server = server
+    private let blockchainProvider: BlockchainProvider
+
+    init(blockchainProvider: BlockchainProvider) {
+        self.blockchainProvider = blockchainProvider
     }
 
-    public func getSymbol(for contract: DerbyWallet.Address) -> Promise<String> {
-        let functionName = "symbol"
-        return callSmartContract(withServer: server, contract: contract, functionName: functionName, abiString: Web3.Utils.erc20ABI).map { symbolsResult -> String in
-            if let symbol = symbolsResult["0"] as? String {
-                return symbol
-            } else {
-                throw createSmartContractCallError(forContract: contract, functionName: functionName)
-            }
-        }
+    func getSymbol(for contract: Go23Wallet.Address) -> AnyPublisher<String, SessionTaskError> {
+        return Just(contract)
+            .receive(on: queue)
+            .setFailureType(to: SessionTaskError.self)
+            .flatMap { [weak self, queue, blockchainProvider] contract -> AnyPublisher<String, SessionTaskError> in
+                let key = contract.eip55String
+
+                if let promise = self?.inFlightPromises[key] {
+                    return promise
+                } else {
+                    let promise = blockchainProvider
+                        .call(Erc20SymbolMethodCall(contract: contract))
+                        .receive(on: queue)
+                        .handleEvents(receiveCompletion: { _ in self?.inFlightPromises[key] = .none })
+                        .share()
+                        .eraseToAnyPublisher()
+
+                    self?.inFlightPromises[key] = promise
+
+                    return promise
+                }
+            }.eraseToAnyPublisher()
     }
+
 }

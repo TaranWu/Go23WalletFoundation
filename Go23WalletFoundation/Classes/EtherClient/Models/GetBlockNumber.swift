@@ -1,6 +1,6 @@
 //
 //  GetBlockNumber.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 20.08.2022.
 //

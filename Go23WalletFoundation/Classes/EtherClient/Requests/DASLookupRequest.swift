@@ -1,12 +1,13 @@
 //
 //  DASLookupRequest.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 08.10.2021.
 //
 
 import Go23JSONRPCKit
 import Foundation
+import Go23WalletAddress
 
 struct DASLookupRequest: Go23JSONRPCKit.Request {
     typealias Response = DASLookupResponse
@@ -22,7 +23,7 @@ struct DASLookupRequest: Go23JSONRPCKit.Request {
     }
 
     func response(from resultObject: Any) throws -> Response {
-        guard let data = try? JSONSerialization.data(withJSONObject: resultObject, options: []) else {
+        guard let data = try? Data(json: resultObject) else {
             throw CastError(actualValue: resultObject, expectedType: Response.self)
         }
         if let data = try? JSONDecoder().decode(DASLookupResponse.self, from: data) {
@@ -40,16 +41,16 @@ struct DASLookupResponse: Decodable {
     let errno: Int
     let errmsg: String
     let records: [Record]
-    let ownerAddress: DerbyWallet.Address?
+    let ownerAddress: Go23Wallet.Address?
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         errno = try container.decode(Int.self, forKey: .errno)
         errmsg = try container.decode(String.self, forKey: .errmsg)
         if let value = try? container.decodeIfPresent(DataClass.self, forKey: .data) {
-            records = value.accountData.records ?? []
+            records = value.accountData.records
             if value.accountData.ownerAddressChain == "ETH", let address = value.accountData.ownerAddress {
-                ownerAddress = DerbyWallet.Address(string: address)
+                ownerAddress = Go23Wallet.Address(string: address)
             } else {
                 ownerAddress = nil
             }

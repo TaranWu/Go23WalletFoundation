@@ -14,11 +14,12 @@ extension APIKitSession {
             case .success(let result):
                 seal.fulfill(result)
             case .failure(let error):
-                if let friendlyErr = convertToUserFriendlyError(error: error, server: server, baseUrl: request.baseURL) {
-                    if let err = friendlyErr as? RpcNodeRetryableRequestError {
-                        logRpcNodeError(err, analytics: analytics)
+                if let e = convertToUserFriendlyError(error: error, server: server, baseUrl: request.baseURL) {
+                    if let e = e as? RpcNodeRetryableRequestError {
+                        logRpcNodeError(e, analytics: analytics)
                     }
-                    seal.reject(friendlyErr)
+
+                    seal.reject(e)
                 } else {
                     seal.reject(error)
                 }
@@ -28,7 +29,7 @@ extension APIKitSession {
         return promise
     }
 
-    private static func logRpcNodeError(_ rpcNodeError: RpcNodeRetryableRequestError, analytics: AnalyticsLogger) {
+    static func logRpcNodeError(_ rpcNodeError: RpcNodeRetryableRequestError, analytics: AnalyticsLogger) {
         switch rpcNodeError {
         case .rateLimited(let server, let domainName):
             analytics.log(error: Analytics.WebApiErrors.rpcNodeRateLimited, properties: [Analytics.Properties.chain.rawValue: server.chainID, Analytics.Properties.domainName.rawValue: domainName])
@@ -53,98 +54,83 @@ extension APIKitSession {
     }
 
     //TODO we should make sure we only call this RPC nodes because the errors we map to mentions "RPC"
+    // swiftlint:disable function_body_length
     public static func convertToUserFriendlyError(error: SessionTaskError, server: RPCServer, baseUrl: URL) -> Error? {
         switch error {
-        case .connectionError(let err):
-            let message = err.localizedDescription
+        case .connectionError(let e):
+            let message = e.localizedDescription
             if message.hasPrefix("The network connection was lost") {
-                RemoteLogger.instance.logRpcOrOtherWebError("Connection Error | \(err.localizedDescription) | as: NetworkConnectionWasLostError()", url: baseUrl.absoluteString)
                 return RpcNodeRetryableRequestError.networkConnectionWasLost
             } else if message.hasPrefix("The certificate for this server is invalid") {
-                RemoteLogger.instance.logRpcOrOtherWebError("Connection Error | \(err.localizedDescription) | as: InvalidCertificateError()", url: baseUrl.absoluteString)
                 return RpcNodeRetryableRequestError.invalidCertificate
             } else if message.hasPrefix("The request timed out") {
-                RemoteLogger.instance.logRpcOrOtherWebError("Connection Error | \(err.localizedDescription) | as: RequestTimedOutError()", url: baseUrl.absoluteString)
                 return RpcNodeRetryableRequestError.requestTimedOut
             }
-            RemoteLogger.instance.logRpcOrOtherWebError("Connection Error | \(err.localizedDescription)", url: baseUrl.absoluteString)
             return nil
-        case .requestError(let err):
-            RemoteLogger.instance.logRpcOrOtherWebError("Request Error | \(err.localizedDescription)", url: baseUrl.absoluteString)
+        case .requestError(let e):
             return nil
-        case .responseError(let err):
-            if let jsonRpcError = err as? JSONRPCError {
+        case .responseError(let e):
+            if let jsonRpcError = e as? JSONRPCError {
                 switch jsonRpcError {
                 case .responseError(let code, let message, _):
                     //Lowercased as RPC nodes implementation differ
                     if message.lowercased().hasPrefix("insufficient funds") {
-                        return SendTransactionNotRetryableError.insufficientFunds(message: message)
+                        return SendTransactionNotRetryableError(type: .insufficientFunds(message: message), server: server)
                     } else if message.lowercased().hasPrefix("execution reverted") || message.lowercased().hasPrefix("vm execution error") || message.lowercased().hasPrefix("revert") {
-                        return SendTransactionNotRetryableError.executionReverted(message: message)
+                        return SendTransactionNotRetryableError(type: .executionReverted(message: message), server: server)
                     } else if message.lowercased().hasPrefix("nonce too low") || message.lowercased().hasPrefix("nonce is too low") {
-                        return SendTransactionNotRetryableError.nonceTooLow(message: message)
-                    } else if message.lowercased().hasPrefix("transaction underpriced") {
-                        return SendTransactionNotRetryableError.gasPriceTooLow(message: message)
+                        return SendTransactionNotRetryableError(type: .nonceTooLow(message: message), server: server)
+                    } else if message.lowercased().hasPrefix("transaction underpriced") || message.lowercased().hasPrefix("feetoolow") {
+                        return SendTransactionNotRetryableError(type: .gasPriceTooLow(message: message), server: server)
                     } else if message.lowercased().hasPrefix("intrinsic gas too low") || message.lowercased().hasPrefix("Transaction gas is too low") {
-                        return SendTransactionNotRetryableError.gasLimitTooLow(message: message)
+                        return SendTransactionNotRetryableError(type: .gasLimitTooLow(message: message), server: server)
                     } else if message.lowercased().hasPrefix("intrinsic gas exceeds gas limit") {
-                        return SendTransactionNotRetryableError.gasLimitTooHigh(message: message)
+                        return SendTransactionNotRetryableError(type: .gasLimitTooHigh(message: message), server: server)
                     } else if message.lowercased().hasPrefix("invalid sender") {
-                        return SendTransactionNotRetryableError.possibleChainIdMismatch(message: message)
+                        return SendTransactionNotRetryableError(type: .possibleChainIdMismatch(message: message), server: server)
                     } else if message == "Upfront cost exceeds account balance" {
                         //Spotted for Palm chain (mainnet)
-                        return SendTransactionNotRetryableError.insufficientFunds(message: message)
+                        return SendTransactionNotRetryableError(type: .insufficientFunds(message: message), server: server)
                     } else {
                         RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.responseError | code: \(code) | message: \(message)", url: baseUrl.absoluteString)
+                        return SendTransactionNotRetryableError(type: .unknown(code: code, message: message), server: server)
                     }
-                case .responseNotFound(_, let object):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.responseNotFound | object: \(object)", url: baseUrl.absoluteString)
-                case .resultObjectParseError(let err):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.resultObjectParseError | error: \(err.localizedDescription)", url: baseUrl.absoluteString)
-                case .errorObjectParseError(let err):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.errorObjectParseError | error: \(err.localizedDescription)", url: baseUrl.absoluteString)
-                case .unsupportedVersion(let str):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.unsupportedVersion | str: \(String(describing: str))", url: baseUrl.absoluteString)
-                case .unexpectedTypeObject(let obj):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.unexpectedTypeObject | obj: \(obj)", url: baseUrl.absoluteString)
-                case .missingBothResultAndError(let obj):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.missingBothResultAndError | obj: \(obj)", url: baseUrl.absoluteString)
-                case .nonArrayResponse(let obj):
-                    RemoteLogger.instance.logRpcOrOtherWebError("JSONRPCError.nonArrayResponse | obj: \(obj)", url: baseUrl.absoluteString)
+                case .responseNotFound(_, let object):break
+                case .resultObjectParseError(let e):break
+                case .errorObjectParseError(let e):break
+                case .unsupportedVersion(let str):break
+                case .unexpectedTypeObject(let obj):break
+                case .missingBothResultAndError(let obj):break
+                case .nonArrayResponse(let obj):break
                 }
                 return nil
             }
 
-            if let apiKitError = err as? APIKit.ResponseError {
+            if let apiKitError = e as? APIKit.ResponseError {
                 switch apiKitError {
                 case .nonHTTPURLResponse:
                     RemoteLogger.instance.logRpcOrOtherWebError("APIKit.ResponseError.nonHTTPURLResponse", url: baseUrl.absoluteString)
                 case .unacceptableStatusCode(let statusCode):
                     if statusCode == 401 {
-                        warnLog("[API] Invalid API key with baseURL: \(baseUrl.absoluteString)")
                         return RpcNodeRetryableRequestError.invalidApiKey(server: server, domainName: baseUrl.host ?? "")
                     } else if statusCode == 429 {
-                        warnLog("[API] Rate limited by baseURL: \(baseUrl.absoluteString)")
                         return RpcNodeRetryableRequestError.rateLimited(server: server, domainName: baseUrl.host ?? "")
-                    } else {
-                        RemoteLogger.instance.logRpcOrOtherWebError("APIKit.ResponseError.unacceptableStatusCode | status: \(statusCode)", url: baseUrl.absoluteString)
                     }
-                case .unexpectedObject(let obj):
-                    RemoteLogger.instance.logRpcOrOtherWebError("APIKit.ResponseError.unexpectedObject | obj: \(obj)", url: baseUrl.absoluteString)
+                case .unexpectedObject(let obj):break
                 }
                 return nil
             }
 
-            if RPCServer.binance_smart_chain_testnet.rpcURL.absoluteString == baseUrl.absoluteString, err.localizedDescription == "The data couldn’t be read because it isn’t in the correct format." {
-                RemoteLogger.instance.logRpcOrOtherWebError("\(err.localizedDescription) -> PossibleBinanceTestnetTimeoutError()", url: baseUrl.absoluteString)
+            if RPCServer.binance_smart_chain_testnet.rpcURL.absoluteString == baseUrl.absoluteString, e.localizedDescription == "The data couldn’t be read because it isn’t in the correct format." {
                 //This is potentially Binance testnet timing out
                 return RpcNodeRetryableRequestError.possibleBinanceTestnetTimeout
             }
 
-            RemoteLogger.instance.logRpcOrOtherWebError("Other Error: \(err) | \(err.localizedDescription)", url: baseUrl.absoluteString)
+            RemoteLogger.instance.logRpcOrOtherWebError("Other Error: \(e) | \(e.localizedDescription)", url: baseUrl.absoluteString)
             return nil
         }
     }
+    // swiftlint:enable function_body_length
 }
 
 extension RPCServer {

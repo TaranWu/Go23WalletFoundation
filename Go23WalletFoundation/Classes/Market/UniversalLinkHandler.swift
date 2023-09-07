@@ -103,7 +103,7 @@ public class UniversalLinkHandler {
         let expiry = getExpiryFromLinkBytes(linkBytes: linkBytes)
         guard let contractAddress = getNonNullContractAddressFromLinkBytes(linkBytes: linkBytes) else { return nil }
         let tokenIndices = getTokenIndicesFromLinkBytes(linkBytes: linkBytes)
-        guard let (valueV, valueR, valueS) = getVRSFromLinkBytes(linkBytes: linkBytes) else { return nil }
+        guard let (v, r, s) = getVRSFromLinkBytes(linkBytes: linkBytes) else { return nil }
         let order = Order(
                 price: price,
                 indices: tokenIndices,
@@ -116,7 +116,7 @@ public class UniversalLinkHandler {
                 nativeCurrencyDrop: false
         )
         let message = getMessageFromOrder(order: order)
-        return SignedOrder(order: order, message: message, signature: "0x" + valueR + valueS + valueV)
+        return SignedOrder(order: order, message: message, signature: "0x" + r + s + v)
     }
 
     //Note: native currency links can use szabo directly and
@@ -129,10 +129,10 @@ public class UniversalLinkHandler {
         let amount = Array(bytes[12...15])
         let expiry = Array(bytes[16...19])
         let contractBytes = Array(bytes[20...39])
-        guard let contractAddress = DerbyWallet.Address(uncheckedAgainstNullAddress: Data(bytes: contractBytes).hex()) else { return nil }
-        let valueV = String(bytes[104], radix: 16)
-        let valueR = Data(bytes: Array(bytes[40...71])).hex()
-        let valueS = Data(bytes: Array(bytes[72...103])).hex()
+        guard let contractAddress = Go23Wallet.Address(uncheckedAgainstNullAddress: Data(bytes: contractBytes).hex()) else { return nil }
+        let v = String(bytes[104], radix: 16)
+        let r = Data(bytes: Array(bytes[40...71])).hex()
+        let s = Data(bytes: Array(bytes[72...103])).hex()
         let order = Order(
                 price: BigUInt(0),
                 indices: [UInt16](),
@@ -151,7 +151,7 @@ public class UniversalLinkHandler {
                 expiry: expiry,
                 contractAddress: contractBytes
         )
-        return SignedOrder(order: order, message: message, signature: "0x" + valueR + valueS + valueV)
+        return SignedOrder(order: order, message: message, signature: "0x" + r + s + v)
     }
 
     private func handleSpawnableLink(linkBytes: [UInt8]) -> SignedOrder? {
@@ -161,7 +161,7 @@ public class UniversalLinkHandler {
         let expiry = getExpiryFromLinkBytes(linkBytes: bytes)
         guard let contractAddress = getNonNullContractAddressFromLinkBytes(linkBytes: bytes) else { return nil }
         let tokenIds = getTokenIdsFromSpawnableLink(linkBytes: bytes)
-        guard let (valueV, valueR, valueS) = getVRSFromLinkBytes(linkBytes: bytes) else { return nil }
+        guard let (v, r, s) = getVRSFromLinkBytes(linkBytes: bytes) else { return nil }
         let order = Order(
             price: price,
             indices: [UInt16](),
@@ -174,11 +174,11 @@ public class UniversalLinkHandler {
             nativeCurrencyDrop: false
         )
         let message = getMessageFromOrder(order: order)
-        return SignedOrder(order: order, message: message, signature: "0x" + valueR + valueS + valueV)
+        return SignedOrder(order: order, message: message, signature: "0x" + r + s + v)
     }
 
     private func getTokenIdsFromSpawnableLink(linkBytes: [UInt8]) -> [BigUInt] {
-        let sigPos = linkBytes.count - 65; //the last 65 bytes are the signature params
+        let sigPos = linkBytes.count - 65 //the last 65 bytes are the signature params
         let tokenPos = 28 //tokens start at this byte
         let bytes = Array(linkBytes[tokenPos..<sigPos])
         let tokenIds = bytes.chunked(into: 32)
@@ -268,9 +268,9 @@ public class UniversalLinkHandler {
     }
 
     //Specifically not for null (0x0...0) address
-    private func getNonNullContractAddressFromLinkBytes(linkBytes: [UInt8]) -> DerbyWallet.Address? {
+    private func getNonNullContractAddressFromLinkBytes(linkBytes: [UInt8]) -> Go23Wallet.Address? {
         let contractAddrBytes = Array(linkBytes[8...27])
-        return DerbyWallet.Address(string: Data(bytes: contractAddrBytes).hex())
+        return Go23Wallet.Address(string: Data(bytes: contractAddrBytes).hex())
     }
 
     private func getTokenIndicesFromLinkBytes(linkBytes: [UInt8]) -> [UInt16] {
@@ -306,17 +306,17 @@ public class UniversalLinkHandler {
         let signatureLength = 65
         guard linkBytes.count >= signatureLength else { return nil }
         var start = linkBytes.count - signatureLength
-        let valueR = Data(bytes: Array(linkBytes[start...start + 31])).hex()
+        let r = Data(bytes: Array(linkBytes[start...start + 31])).hex()
         start += 32
-        let valueS = Data(bytes: Array(linkBytes[start...start + 31])).hex()
-        var valueV = String(format: "%2X", linkBytes[linkBytes.count - 1]).trimmed
-        if var vInt = Int(valueV) {
+        let s = Data(bytes: Array(linkBytes[start...start + 31])).hex()
+        var v = String(format: "%2X", linkBytes[linkBytes.count - 1]).trimmed
+        if var vInt = Int(v) {
             if vInt < 5 {
                 vInt += Int(EthereumSigner.vitaliklizeConstant)
-                valueV = String(format: "%2X", vInt)
+                v = String(format: "%2X", vInt)
             }
         }
-        return (valueV, valueR, valueS)
+        return (v, r, s)
     }
 
     private func getMessageFromNativeCurrencyDropLink(

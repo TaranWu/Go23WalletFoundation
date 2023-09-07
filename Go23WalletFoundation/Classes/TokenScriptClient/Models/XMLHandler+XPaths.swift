@@ -3,6 +3,7 @@
 import Foundation
 import BigInt
 import Kanna
+import Go23WalletAddress
 
 extension String {
     public func addToXPath(namespacePrefix: String) -> String {
@@ -22,8 +23,8 @@ extension XMLHandler {
     }
 
     static func getHoldingContractElement(fromRoot root: XMLDocument, xmlContext: XmlContext) -> XMLElement? {
-        let prefix = xmlContext.namespacePrefix
-        return root.at_xpath("/\(prefix)token/\(prefix)contract[@name=../\(prefix)origins/\(prefix)ethereum/@contract]", namespaces: xmlContext.namespaces)
+        let p = xmlContext.namespacePrefix
+        return root.at_xpath("/\(p)token/\(p)contract[@name=../\(p)origins/\(p)ethereum/@contract]", namespaces: xmlContext.namespaces)
     }
 
     static func getContractElementByName(contractName: String, fromRoot root: XMLDocument, xmlContext: XmlContext) -> XMLElement? {
@@ -39,11 +40,11 @@ extension XMLHandler {
     }
 
     static func getAddressElementsForHoldingContracts(fromRoot root: XMLDocument, xmlContext: XmlContext, server: RPCServer? = nil) -> XPathObject {
-        let prefix = xmlContext.namespacePrefix
+        let p = xmlContext.namespacePrefix
         if let server = server {
-            return root.xpath("/\(prefix)token/\(prefix)contract[@name=../\(prefix)origins/\(prefix)ethereum/@contract]/\(prefix)address[@network='\(String(server.chainID))']", namespaces: xmlContext.namespaces)
+            return root.xpath("/\(p)token/\(p)contract[@name=../\(p)origins/\(p)ethereum/@contract]/\(p)address[@network='\(String(server.chainID))']", namespaces: xmlContext.namespaces)
         } else {
-            return root.xpath("/\(prefix)token/\(prefix)contract[@name=../\(prefix)origins/\(prefix)ethereum/@contract]/\(prefix)address", namespaces: xmlContext.namespaces)
+            return root.xpath("/\(p)token/\(p)contract[@name=../\(p)origins/\(p)ethereum/@contract]/\(p)address", namespaces: xmlContext.namespaces)
         }
     }
 
@@ -106,8 +107,9 @@ extension XMLHandler {
         return eventParameterName
     }
 
-    static func getEventDefinition(contract: DerbyWallet.Address, asnModuleNamedTypeElement: XMLElement, xmlContext: XmlContext) -> EventDefinition? {
+    static func getEventDefinition(contract: Go23Wallet.Address, asnModuleNamedTypeElement: XMLElement, xmlContext: XmlContext) -> EventDefinition? {
         guard let eventName = asnModuleNamedTypeElement["name"] else { return nil }
+        //Should remove the second XPath and only keep the first, with "type". https://github.com/AlphaWallet/alpha-wallet-ios/pull/1971#discussion_r445407138
         let parameters = asnModuleNamedTypeElement.xpath("type/sequence/element|sequence/element", namespaces: xmlContext.namespaces).compactMap { each -> EventParameter? in
             guard let name = each["name"], let type = each["type"] else { return nil }
             let isIndexed = each["indexed"] == "true"
@@ -230,8 +232,8 @@ extension XMLHandler {
         actionElement.at_xpath("exclude".addToXPath(namespacePrefix: xmlContext.namespacePrefix), namespaces: xmlContext.namespaces)?["selection"] ?? actionElement["exclude"]
     }
 
-    static func getRecipientAddress(fromEthereumFunctionElement ethereumFunctionElement: XMLElement, xmlContext: XmlContext) -> DerbyWallet.Address? {
-        return ethereumFunctionElement.at_xpath("ethereum:to", namespaces: xmlContext.namespaces)?.text.flatMap { DerbyWallet.Address(string: $0.trimmed) }
+    static func getRecipientAddress(fromEthereumFunctionElement ethereumFunctionElement: XMLElement, xmlContext: XmlContext) -> Go23Wallet.Address? {
+        return ethereumFunctionElement.at_xpath("ethereum:to", namespaces: xmlContext.namespaces)?.text.flatMap { Go23Wallet.Address(string: $0.trimmed) }
     }
 
     static func getTokenScriptTokenViewContents(fromViewElement element: XMLElement, xmlContext: XmlContext, xhtmlNamespacePrefix: String) -> (style: String, script: String, body: String) {

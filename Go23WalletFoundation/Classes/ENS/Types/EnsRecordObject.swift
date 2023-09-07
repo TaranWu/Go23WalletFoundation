@@ -1,6 +1,6 @@
 //
 //  EnsRecordObject.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 07.06.2022.
 //

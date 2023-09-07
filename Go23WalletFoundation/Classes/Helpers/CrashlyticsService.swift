@@ -1,6 +1,6 @@
 //
 //  CrashlyticsService.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 03.02.2021.
 //

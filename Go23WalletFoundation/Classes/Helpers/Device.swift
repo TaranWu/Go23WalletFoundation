@@ -1,11 +1,12 @@
 //
 //  Type.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 11.01.2022.
 //
 
 import UIKit
+import Go23WalletAddress
 
 /// Used to get information about current, device, screen or iOS version.
 ///
@@ -172,12 +173,12 @@ import UIKit
 /// Device.os14
 /// ```
 
-public extension DerbyWallet {
+public extension Go23Wallet {
     enum Device {}
 }
 
 /// Detecting device state
-extension DerbyWallet.Device {
+extension Go23Wallet.Device {
     /// Return `true` for landscape interface orientation
     static public var isLandscape: Bool {
         let statusBarOrientation: UIInterfaceOrientation
@@ -197,7 +198,7 @@ extension DerbyWallet.Device {
 }
 
 /// Battery state
-extension DerbyWallet.Device {
+extension Go23Wallet.Device {
     public struct Battery {
         /// Return battery state
         static public var state: UIDevice.BatteryState {
@@ -219,16 +220,16 @@ extension DerbyWallet.Device {
 }
 
 /// Multitasking / Slide Over for iPad
-public extension DerbyWallet.Device {
+public extension Go23Wallet.Device {
     /// Return `true` is iPad is in multitasking / slide over layout mode
     static var isSlideOverLayout: Bool {
-        guard DerbyWallet.Device.isPad else { return false }
+        guard Go23Wallet.Device.isPad else { return false }
         guard let rootWindow = UIApplication.shared.delegate?.window, let window = rootWindow else { return false }
         return !window.frame.equalTo(window.screen.bounds)
     }
 }
 
-public extension DerbyWallet.Device {
+public extension Go23Wallet.Device {
     /// Device types
     ///
     /// - Parameter phone:
@@ -268,14 +269,19 @@ public extension DerbyWallet.Device {
         case phone11Pro
         case phone11ProMax
         case phoneSE2
-        case iPhone12mini
-        case iPhone12
-        case iPhone12Pro
-        case iPhone12ProMax
-        case iPhone13mini
-        case iPhone13
-        case iPhone13Pro
-        case iPhone13ProMax
+        case phone12mini
+        case phone12
+        case phone12Pro
+        case phone12ProMax
+        case phoneSE3
+        case phone13mini
+        case phone13
+        case phone13Pro
+        case phone13ProMax
+        case phone14
+        case phone14Plus
+        case phone14Pro
+        case phone14ProMax
         case pad1
         case pad2
         case padMini
@@ -284,6 +290,9 @@ public extension DerbyWallet.Device {
         case pad5
         case pad6
         case pad7
+        case pad8
+        case pad9
+        case pad10
         case padAir
         case padMini2
         case padAir2
@@ -291,6 +300,8 @@ public extension DerbyWallet.Device {
         case padMini4
         case padMini5
         case padAir3
+        case padAir4
+        case padAir5
         case padPro9_7
         case padPro12_9
         case padPro12_9_2th
@@ -298,8 +309,11 @@ public extension DerbyWallet.Device {
         case padPro11
         case padPro12_9_3th
         case padPro11_2th
+        case padPro11_3th
+        case padPro11_4th
         case padPro12_9_4th
         case padPro12_9_5th
+        case padPro12_9_6th
         case podTouch1
         case podTouch2
         case podTouch3
@@ -326,26 +340,26 @@ public extension DerbyWallet.Device {
             case .phone11: return .inches_6_1
             case .phone11Pro: return .inches_5_8
             case .phone11ProMax: return .inches_6_5
-            case .phoneSE2: return .inches_4_7
-            case .iPhone12mini, .iPhone12, .iPhone12Pro: return .inches_6_1
-            case .iPhone12ProMax: return .inches_6_7
-            case .iPhone13mini: return .inches_5_4
-            case .iPhone13, .iPhone13Pro: return .inches_6_1
-            case .iPhone13ProMax: return .inches_6_7
-            case .padPro12_9_5th: return .inches_9_7
+            case .phoneSE2, .phoneSE3: return .inches_4_7
+            case .phone12mini, .phone12, .phone12Pro: return .inches_6_1
+            case .phone12ProMax, .phone14Plus, .phone14ProMax: return .inches_6_7
+            case .phone13mini: return .inches_5_4
+            case .phone13, .phone13Pro, .phone14, .phone14Pro: return .inches_6_1
+            case .phone13ProMax: return .inches_6_7
             case .padMini, .padMini2, .padMini3, .padMini4, .padMini5: return .inches_7_9
             case .pad1, .pad2, .pad3, .pad4, .pad5, .pad6, .padAir, .padAir2, .padPro9_7: return .inches_9_7
-            case .pad7: return .inches_4_7
-            case .padPro12_9, .padPro12_9_2th, .padPro12_9_3th, .padPro12_9_4th: return .inches_12_9
+            case .pad7, .pad8, .pad9: return .inches_10_2
+            case .pad10, .padAir4, .padAir5: return .inches_10_9
+            case .padPro12_9, .padPro12_9_2th, .padPro12_9_3th, .padPro12_9_4th, .padPro12_9_5th, .padPro12_9_6th: return .inches_12_9
             case .padPro10_5, .padAir3: return .inches_10_5
-            case .padPro11, .padPro11_2th: return .inches_11
+            case .padPro11, .padPro11_2th, .padPro11_3th, .padPro11_4th: return .inches_11
             case .unknown, .simulator: return .unknown
             }
         }
     }
 }
 /// Used to determinate device type
-extension DerbyWallet.Device {
+extension Go23Wallet.Device {
 
     /// Return raw device version code string or empty string if any problem appears.
     static public var versionCode: String {
@@ -363,15 +377,16 @@ extension DerbyWallet.Device {
     /// Return device type
     ///
     /// - seealso: Type
-    static public var type: DerbyWallet.Device.DeviceType {
-        let versionCode = DerbyWallet.Device.versionCode
+    static public var type: Go23Wallet.Device.DeviceType {
+        let versionCode = Go23Wallet.Device.versionCode
         if versionCode.starts(with: "iPhone") {
             return .phone
         } else if versionCode.starts(with: "iPad") {
             return .pad
         } else if versionCode.starts(with: "iPod") {
             return .pod
-        } else if versionCode == "i386" || versionCode == "x86_64" || versionCode == "arm64" {
+        } else if TARGET_OS_SIMULATOR != 0 {
+            //Original check was: `versionCode == "i386" || versionCode == "x86_64" || versionCode == "arm64"`. But we want this to have no false-negatives since wrongly identifying as simulator can cause certain functionality to be unlocked for production/appstore users
             return .simulator
         }
         return .unknown
@@ -410,7 +425,7 @@ extension DerbyWallet.Device {
 
     // MARK: Version
     static public var version: Version {
-        switch DerbyWallet.Device.versionCode {
+        switch Go23Wallet.Device.versionCode {
         // Phones
         case "iPhone3,1", "iPhone3,2", "iPhone3,3": return .phone4
         case "iPhone4,1", "iPhone4,2", "iPhone4,3": return .phone4S
@@ -434,14 +449,19 @@ extension DerbyWallet.Device {
         case "iPhone12,3": return .phone11Pro
         case "iPhone12,5": return .phone11ProMax
         case "iPhone12,8": return .phoneSE2
-        case "iPhone13,1": return .iPhone12mini
-        case "iPhone13,2": return .iPhone12
-        case "iPhone13,3": return .iPhone12Pro
-        case "iPhone13,4": return .iPhone12ProMax
-        case "iPhone14,4": return .iPhone12mini
-        case "iPhone14,5": return .iPhone13
-        case "iPhone14,2": return .iPhone13Pro
-        case "iPhone14,3": return .iPhone12ProMax
+        case "iPhone13,1": return .phone12mini
+        case "iPhone13,2": return .phone12
+        case "iPhone13,3": return .phone12Pro
+        case "iPhone13,4": return .phone12ProMax
+        case "iPhone14,4": return .phone12mini
+        case "iPhone14,5": return .phone13
+        case "iPhone14,2": return .phone13Pro
+        case "iPhone14,3": return .phone12ProMax
+        case "iPhone14,6": return .phoneSE3
+        case "iPhone14,7": return .phone14
+        case "iPhone14,8": return .phone14Plus
+        case "iPhone15,2": return .phone14Pro
+        case "iPhone15,3": return .phone14ProMax
 
         // Pads
         case "iPad1,1": return .pad1
@@ -461,13 +481,21 @@ extension DerbyWallet.Device {
         case "iPad7,3", "iPad7,4": return .padPro10_5
         case "iPad7,5", "iPad7,6": return .pad6
         case "iPad7,11", "iPad7,12": return .pad7
+        case "iPad11,6", "iPad11,7": return .pad8
+        case "iPad12,1", "iPad12,2": return .pad9
+        case "iPad13,18", "iPad13,19": return .pad10
         case "iPad8,1", "iPad8,2", "iPad8,3", "iPad8,4": return .padPro11
         case "iPad8,5", "iPad8,6", "iPad8,7", "iPad8,8": return .padPro12_9_3th
         case "iPad8,9", "iPad8,10": return .padPro11_2th
         case "iPad8,11", "iPad8,12": return .padPro12_9_4th
         case "iPad11,1", "iPad11,2": return .padMini5
         case "iPad11,3", "iPad11,4": return  .padAir3
+        case "iPad13,1", "iPad13,2": return .padAir4
+        case "iPad13,16", "iPad13,17": return .padAir5
         case "iPad13,8", "iPad13,9", "iPad13,10", "iPad13,11": return .padPro12_9_5th
+        case "iPad13,4", "iPad13,5", "iPad13,6", "iPad13,7": return .padPro11_3th
+        case "iPad14,3-A", "iPad14,3-B", "iPad14,4-A", "iPad14,4-B": return .padPro11_4th
+        case "iPad14,5-A", "iPad14,5-B", "iPad14,6-A", "iPad14,6-B": return .padPro12_9_6th
 
         // Pods
         case "iPod1,1": return .podTouch1
@@ -487,7 +515,7 @@ extension DerbyWallet.Device {
     }
 }
 
-extension DerbyWallet.Device.Version {
+extension Go23Wallet.Device.Version {
    public var readableName: String {
         switch self {
         case .phone4: return "iPhone 4"
@@ -512,6 +540,7 @@ extension DerbyWallet.Device.Version {
         case .phone11Pro: return "iPhone 11 Pro"
         case .phone11ProMax:  return "iPhone 11 Pro Max"
         case .phoneSE2: return "iPhone SE 2nd Gen"
+        case .phoneSE3: return "iPhone SE 3rd Gen"
 
         case .pad1: return "iPad"
         case .pad2: return "2nd Gen iPad"
@@ -536,6 +565,14 @@ extension DerbyWallet.Device.Version {
         case .padPro12_9_3th: return "iPad Pro 12.9 inch 3rd Gen"
         case .padPro11_2th: return "iPad Pro 11 inch 2nd Gen"
         case .padPro12_9_4th: return "iPad Pro 12.9 inch 4th Gen"
+        case .pad8: return "iPad 8th Gen"
+        case .pad9: return "iPad 9th Gen"
+        case .pad10: return "iPad 10th Gen"
+        case .padAir4: return "iPad Air 4th Gen"
+        case .padAir5: return "iPad Air 5th Gen"
+        case .padPro11_3th: return "iPad Pro 11 inch 3rd Gen"
+        case .padPro11_4th: return "iPad Pro 11 inch 4th Gen"
+        case .padPro12_9_6th: return "iPad Pro 12 inch 6th Gen"
 
         case .podTouch1: return "iPod Touch 1"
         case .podTouch2: return "iPod Touch 2"
@@ -546,20 +583,24 @@ extension DerbyWallet.Device.Version {
         case .podTouch7: return "7th Gen iPod"
         case .simulator: return "Simulator"
         case .unknown: return "Unknown"
-        case .iPhone12mini: return "iPhone 12 Mini"
-        case .iPhone12: return "iPhone 12"
-        case .iPhone12Pro: return "iPhone 12 Pro"
-        case .iPhone12ProMax: return "iPhone 12 Pro Max"
-        case .iPhone13mini: return "iPhone 13 Mini"
-        case .iPhone13: return "iPhone 13"
-        case .iPhone13Pro: return "iPhone 13 Pro"
-        case .iPhone13ProMax: return "iPhone 13 Pro Max"
+        case .phone12mini: return "iPhone 12 Mini"
+        case .phone12: return "iPhone 12"
+        case .phone12Pro: return "iPhone 12 Pro"
+        case .phone12ProMax: return "iPhone 12 Pro Max"
+        case .phone13mini: return "iPhone 13 Mini"
+        case .phone13: return "iPhone 13"
+        case .phone13Pro: return "iPhone 13 Pro"
+        case .phone13ProMax: return "iPhone 13 Pro Max"
         case .padPro12_9_5th: return "iPad Pro 5 12.9"
+        case .phone14: return "iPhone 14"
+        case .phone14Plus: return "iPhone 14 Plus"
+        case .phone14Pro: return "iPhone 14 Pro"
+        case .phone14ProMax: return "iPhone 14 Pro Max"
         }
     }
 }
 
-public extension DerbyWallet.Device {
+public extension Go23Wallet.Device {
     /// Available screen sizes
     ///
     /// - parameter unknown:
@@ -582,6 +623,7 @@ public extension DerbyWallet.Device {
         case inches_6_5  = 6.5
         case inches_6_7  = 6.7
         case inches_7_9  = 7.9
+        case inches_8_3  = 8.3
         case inches_9_7  = 9.7
         case inches_10_2 = 10.2
         case inches_10_5 = 10.5
@@ -594,7 +636,7 @@ public extension DerbyWallet.Device {
             switch self {
             case .inches_3_5, .inches_4_0: return .old
             case .inches_4_7: return .small
-            case .inches_5_4, .inches_5_5, .inches_7_9, .inches_5_8, .inches_6_1, .inches_6_5, .inches_6_7: return .medium
+            case .inches_5_4, .inches_5_5, .inches_7_9, .inches_5_8, .inches_6_1, .inches_6_5, .inches_6_7, .inches_8_3: return .medium
             case .inches_9_7, .inches_10_2, .inches_10_5, .inches_10_9, .inches_11, .inches_12_9: return .big
             case .unknown: return .unknown
             }
@@ -603,49 +645,49 @@ public extension DerbyWallet.Device {
 }
 
 /// Comparing Screen and Screen
-public func == (lhs: DerbyWallet.Device.Screen, rhs: DerbyWallet.Device.Screen) -> Bool {
+public func == (lhs: Go23Wallet.Device.Screen, rhs: Go23Wallet.Device.Screen) -> Bool {
     guard lhs.rawValue > 0 && rhs.rawValue > 0 else { return false }
     return lhs.rawValue == rhs.rawValue
 }
 
-public func < (lhs: DerbyWallet.Device.Screen, rhs: DerbyWallet.Device.Screen) -> Bool {
+public func < (lhs: Go23Wallet.Device.Screen, rhs: Go23Wallet.Device.Screen) -> Bool {
     guard lhs.rawValue > 0 && rhs.rawValue > 0 else { return false }
     return lhs.rawValue < rhs.rawValue
 }
 
-public func > (lhs: DerbyWallet.Device.Screen, rhs: DerbyWallet.Device.Screen) -> Bool {
+public func > (lhs: Go23Wallet.Device.Screen, rhs: Go23Wallet.Device.Screen) -> Bool {
     guard lhs.rawValue > 0 && rhs.rawValue > 0 else { return false }
     return lhs.rawValue > rhs.rawValue
 }
 
-public func <= (lhs: DerbyWallet.Device.Screen, rhs: DerbyWallet.Device.Screen) -> Bool {
+public func <= (lhs: Go23Wallet.Device.Screen, rhs: Go23Wallet.Device.Screen) -> Bool {
     guard lhs.rawValue > 0 && rhs.rawValue > 0 else { return false }
     return lhs.rawValue <= rhs.rawValue
 }
 
-public func >= (lhs: DerbyWallet.Device.Screen, rhs: DerbyWallet.Device.Screen) -> Bool {
+public func >= (lhs: Go23Wallet.Device.Screen, rhs: Go23Wallet.Device.Screen) -> Bool {
     guard lhs.rawValue > 0 && rhs.rawValue > 0 else { return false }
     return lhs.rawValue >= rhs.rawValue
 }
 
 /// Comparing Screen and Version
-public func == (lhs: DerbyWallet.Device.Screen, rhs: DerbyWallet.Device.Version) -> Bool {
+public func == (lhs: Go23Wallet.Device.Screen, rhs: Go23Wallet.Device.Version) -> Bool {
     return lhs == rhs.screen
 }
 
-public func < (lhs: DerbyWallet.Device.Screen, rhs: DerbyWallet.Device.Version) -> Bool {
+public func < (lhs: Go23Wallet.Device.Screen, rhs: Go23Wallet.Device.Version) -> Bool {
     return lhs < rhs.screen
 }
 
-public func > (lhs: DerbyWallet.Device.Screen, rhs: DerbyWallet.Device.Version) -> Bool {
+public func > (lhs: Go23Wallet.Device.Screen, rhs: Go23Wallet.Device.Version) -> Bool {
     return lhs > rhs.screen
 }
 
-public func <= (lhs: DerbyWallet.Device.Screen, rhs: DerbyWallet.Device.Version) -> Bool {
+public func <= (lhs: Go23Wallet.Device.Screen, rhs: Go23Wallet.Device.Version) -> Bool {
     return lhs <= rhs.screen
 }
 
-public func >= (lhs: DerbyWallet.Device.Screen, rhs: DerbyWallet.Device.Version) -> Bool {
+public func >= (lhs: Go23Wallet.Device.Screen, rhs: Go23Wallet.Device.Version) -> Bool {
     return lhs >= rhs.screen
 }
 
@@ -703,29 +745,40 @@ public func >= (lhs: Scale, rhs: Scale) -> Bool {
 }
 
 /// Detecting screen properties
-extension DerbyWallet.Device {
+extension Go23Wallet.Device {
 
     /// Detect device screen.
     ///
     /// - seealso: Screen
-    static public var screen: DerbyWallet.Device.Screen {
+    static public var screen: Go23Wallet.Device.Screen {
         let size = UIScreen.main.bounds.size
         switch max(size.width, size.height) {
         case 480: return .inches_3_5
         case 568: return .inches_4_0
-        case 667: return ( scale == .x3 ? .inches_5_5 : .inches_4_7 )
+        case 667: return .inches_4_7
         case 736: return .inches_5_5
-        case 812: return .inches_5_8
-        case 844, 834: return .inches_5_4
+        case 812:
+            switch version {
+            case .phone12mini, .phone13mini: return .inches_5_4
+            default: return .inches_5_8
+            }
+        case 844, 852: return .inches_6_1
         case 896: return ( scale == .x3 ? .inches_6_5 : .inches_6_1 )
-        case 926: return .inches_6_7
+        case 926, 932: return .inches_6_7
         case 1024:
             switch version {
-            case .padMini, .padMini2, .padMini3, .padMini4:
-                return .inches_7_9
-            default:
-                return .inches_9_7
+            case .padMini, .padMini2, .padMini3, .padMini4: return .inches_7_9
+            default: return .inches_9_7
             }
+        case 1080:
+            switch version {
+            case .pad10: return .inches_10_9
+            default: return .inches_10_2
+            }
+        case 1180: return .inches_10_9
+        case 1112: return .inches_10_5
+        case 1133: return .inches_8_3
+        case 1194: return .inches_11
         case 1366: return .inches_12_9
         default: return .unknown
         }
@@ -750,11 +803,11 @@ extension DerbyWallet.Device {
 }
 
 /// Work with sizes
-extension DerbyWallet.Device {
+extension Go23Wallet.Device {
 
     /// Returns size for a specific device (iPad or iPhone/iPod)
     static public func size<T: Any>(phone: T, pad: T) -> T {
-        return DerbyWallet.Device.isPad ? pad : phone
+        return Go23Wallet.Device.isPad ? pad : phone
     }
 
     /// Return size depending on specific screen family.
@@ -764,7 +817,7 @@ extension DerbyWallet.Device {
     ///
     /// - seealso: Screen, ScreenFamily
     static public func size<T: Any>(old: T? = nil, small: T, medium: T, big: T) -> T {
-        switch DerbyWallet.Device.screen.family {
+        switch Go23Wallet.Device.screen.family {
         case .old:
             return old ?? small
         case .small:
@@ -799,8 +852,8 @@ extension DerbyWallet.Device {
     /// * and 15 for other iPads
     ///
     /// - seealso: Screen
-    static public func size<T: Any>(sizes: [DerbyWallet.Device.Screen: T]) -> T? {
-        let screen = DerbyWallet.Device.screen
+    static public func size<T: Any>(sizes: [Go23Wallet.Device.Screen: T]) -> T? {
+        let screen = Go23Wallet.Device.screen
         var nearestValue: T?
         var distance = CGFloat.greatestFiniteMagnitude
 

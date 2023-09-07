@@ -1,16 +1,17 @@
 //
 //  CachedERC1155ContractDictionary.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Jerome Chan on 12/4/22.
 //
 
 import Foundation
+import Go23WalletAddress
 
 public class CachedERC1155ContractDictionary {
     private let fileUrl: URL
-    private var baseDictionary: [DerbyWallet.Address: Bool] = [DerbyWallet.Address: Bool]()
-    private var encoder: JSONEncoder
+    private var baseDictionary: [Go23Wallet.Address: Bool] = [Go23Wallet.Address: Bool]()
+    private let encoder: JSONEncoder
 
     public init?(fileName: String) {
         do {
@@ -26,11 +27,11 @@ public class CachedERC1155ContractDictionary {
         }
     }
 
-    public func isERC1155Contract(for address: DerbyWallet.Address) -> Bool? {
+    public func isERC1155Contract(for address: Go23Wallet.Address) -> Bool? {
         return baseDictionary[address]
     }
 
-    public func setContract(for address: DerbyWallet.Address, _ result: Bool) {
+    public func setContract(for address: Go23Wallet.Address, _ result: Bool) {
         baseDictionary[address] = result
         writeToFileUrl()
     }
@@ -39,8 +40,6 @@ public class CachedERC1155ContractDictionary {
         do {
             try FileManager.default.removeItem(at: fileUrl)
         } catch {
-            // Do nothing
-            verboseLog("CachedERC1155ContractDictionary::remove Exception: \(error)")
         }
     }
 
@@ -51,8 +50,6 @@ public class CachedERC1155ContractDictionary {
                 try jsonString.write(to: fileUrl, atomically: true, encoding: .utf8)
             }
         } catch {
-            // Do nothing
-            warnLog("[CachedERC1155ContractDictionary] writeToFileUrl error: \(error)")
         }
     }
 
@@ -60,10 +57,10 @@ public class CachedERC1155ContractDictionary {
         do {
             let decoder = JSONDecoder()
             let data = try Data(contentsOf: fileUrl)
-            let jsonData = try decoder.decode([DerbyWallet.Address: Bool].self, from: data)
+            let jsonData = try decoder.decode([Go23Wallet.Address: Bool].self, from: data)
             baseDictionary = jsonData
         } catch {
-            baseDictionary = [DerbyWallet.Address: Bool]()
+            baseDictionary = [Go23Wallet.Address: Bool]()
         }
     }
 

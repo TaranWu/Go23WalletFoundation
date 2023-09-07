@@ -1,4 +1,4 @@
-// Copyright DApps Platform Inc. All rights reserved.
+// Copyright © 2023 Stormbird PTE. LTD.
 
 import Foundation
 import BigInt
@@ -8,7 +8,7 @@ public enum DappAction {
     case signMessage(String)
     case signPersonalMessage(String)
     case signTypedMessage([EthTypedData])
-    case signTypedMessageV3(EIP712TypedData)
+    case signEip712v3And4(EIP712TypedData)
     case signTransaction(UnconfirmedTransaction)
     case sendTransaction(UnconfirmedTransaction)
     case sendRawTransaction(String)
@@ -36,7 +36,7 @@ extension DappAction {
             case .signTypedMessage:
                 if let data = command.object["data"] {
                     if let eip712Data = data.eip712v3And4Data {
-                        return .signTypedMessageV3(eip712Data)
+                        return .signEip712v3And4(eip712Data)
                     } else {
                         return .signTypedMessage(data.eip712PreV3Array)
                     }
@@ -60,30 +60,30 @@ extension DappAction {
     }
 
     private static func makeUnconfirmedTransaction(_ object: [String: DappCommandObjectValue], server: RPCServer, transactionType: TransactionType) -> UnconfirmedTransaction {
-        let value = BigInt((object["value"]?.value ?? "0").drop0x, radix: 16) ?? BigInt()
-        let nonce: BigInt? = {
+        let value = BigUInt((object["value"]?.value ?? "0").drop0x, radix: 16) ?? BigUInt()
+        let nonce: BigUInt? = {
             guard let value = object["nonce"]?.value else { return .none }
-            return BigInt(value.drop0x, radix: 16)
+            return BigUInt(value.drop0x, radix: 16)
         }()
-        let gasLimit: BigInt? = {
+        let gasLimit: BigUInt? = {
             guard let value = object["gasLimit"]?.value ?? object["gas"]?.value else { return .none }
-            return BigInt((value).drop0x, radix: 16)
+            return BigUInt((value).drop0x, radix: 16)
         }()
-        let gasPrice: BigInt? = {
+        let gasPrice: BigUInt? = {
             guard let value = object["gasPrice"]?.value else { return .none }
-            return BigInt((value).drop0x, radix: 16)
+            return BigUInt((value).drop0x, radix: 16)
         }()
         let data = Data(_hex: object["data"]?.value ?? "0x")
 
-        var recipient: DerbyWallet.Address?
-        var contract: DerbyWallet.Address?
+        var recipient: Go23Wallet.Address?
+        var contract: Go23Wallet.Address?
 
         if data.isEmpty || data.toHexString() == "0x" {
-            recipient = DerbyWallet.Address(string: object["to"]?.value ?? "")
+            recipient = Go23Wallet.Address(string: object["to"]?.value ?? "")
             contract = nil
         } else {
             recipient = nil
-            contract = DerbyWallet.Address(string: object["to"]?.value ?? "")
+            contract = Go23Wallet.Address(string: object["to"]?.value ?? "")
         }
 
         return UnconfirmedTransaction(
@@ -112,7 +112,11 @@ extension DappAction {
             return nil
         }
         let data = jsonString.data(using: .utf8)!
+        //We try the stricter form (DappCommand) first before using the one that is more forgiving
         if let command = try? decoder.decode(DappCommand.self, from: data) {
+            return .eth(command)
+        } else if let commandWithOptionalObjectValues = try? decoder.decode(DappCommandWithOptionalObjectValues.self, from: data) {
+            let command = commandWithOptionalObjectValues.toCommand
             return .eth(command)
         } else if let command = try? decoder.decode(AddCustomChainCommand.self, from: data) {
             return .walletAddEthereumChain(command)

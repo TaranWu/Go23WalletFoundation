@@ -1,109 +1,95 @@
 //
 //  Formatters.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Jerome Chan on 17/1/22.
 //
 
 import Foundation
 
-public struct Formatter {
+extension NumberFormatter {
 
-    public static let currency: NumberFormatter = {
+    public static func fiat(currency: Currency) -> NumberFormatter {
         let formatter = basicCurrencyFormatter()
+        formatter.positiveFormat = ",###.# " + currency.rawValue
+        formatter.negativeFormat = "-,###.# " + currency.rawValue
         formatter.minimumFractionDigits = Constants.formatterFractionDigits
         formatter.maximumFractionDigits = Constants.formatterFractionDigits
-        formatter.currencySymbol = "$"
+        
         return formatter
-    }()
+    }
 
-    public static let usd: NumberFormatter = {
+    public static func fiatShort(currency: Currency) -> NumberFormatter {
         let formatter = basicCurrencyFormatter()
-        formatter.positiveFormat = ",###.# " + Currency.USD.rawValue
-        formatter.negativeFormat = "-,###.# " + Currency.USD.rawValue
+        formatter.positiveFormat = "\(currency.symbol),###.#"
+        formatter.negativeFormat = "-\(currency.symbol),###.#"
         formatter.minimumFractionDigits = Constants.formatterFractionDigits
         formatter.maximumFractionDigits = Constants.formatterFractionDigits
-        return formatter
-    }()
 
-    public static let percent: NumberFormatter = {
+        return formatter
+    }
+
+    public static var percent: NumberFormatter {
         let formatter = basicCurrencyFormatter()
         formatter.positiveFormat = ",###.#"
         formatter.negativeFormat = "-,###.#"
         formatter.minimumFractionDigits = Constants.formatterFractionDigits
         formatter.maximumFractionDigits = Constants.formatterFractionDigits
         formatter.numberStyle = .percent
+        
         return formatter
-    }()
+    }
 
-    public static let shortCrypto: NumberFormatter = {
+    //NOTE: does't work when its stored static let, should be computed var
+    public static var shortCrypto: NumberFormatter {
         let formatter = basicCurrencyFormatter()
         formatter.positiveFormat = ",###.#"
         formatter.negativeFormat = "-,###.#"
         formatter.minimumFractionDigits = Constants.etherFormatterFractionDigits
         formatter.maximumFractionDigits = Constants.etherFormatterFractionDigits
-        formatter.numberStyle = .none
-        return formatter
-    }()
 
-    public static func shortCrypto(symbol: String) -> NumberFormatter {
-        let formatter = basicCurrencyFormatter()
-        formatter.positiveFormat = ",###.#" + " " + symbol
-        formatter.negativeFormat = "-,###.#" + " " + symbol
-        formatter.minimumFractionDigits = Constants.etherFormatterFractionDigits
-        formatter.maximumFractionDigits = Constants.etherFormatterFractionDigits
-        formatter.numberStyle = .none
         return formatter
     }
 
-    public static let priceChange: NumberFormatter = {
+    public static func priceChange(currency: Currency) -> NumberFormatter {
         let formatter = basicCurrencyFormatter()
-        formatter.positiveFormat = "+$,###.#"
-        formatter.negativeFormat = "-$,###.#"
+        formatter.currencyCode = currency.code
+        formatter.positiveFormat = "+\(currency.symbol),###.#"
+        formatter.negativeFormat = "-\(currency.symbol),###.#"
         formatter.minimumFractionDigits = Constants.formatterFractionDigits
         formatter.maximumFractionDigits = Constants.formatterFractionDigits
-        return formatter
-    }()
 
-    public static let fiat: NumberFormatter = {
-        let formatter = basicCurrencyFormatter()
-        formatter.positiveFormat = "$,###.#"
-        formatter.negativeFormat = "-$,###.#"
-        formatter.minimumFractionDigits = Constants.formatterFractionDigits
-        formatter.maximumFractionDigits = Constants.formatterFractionDigits
         return formatter
-    }()
+    }
 
-    public static let `default`: NumberFormatter = {
+    public static var scientificAmount: NumberFormatter {
         let formatter = NumberFormatter()
-        return formatter
-    }()
-
-    public static let scientificAmount: NumberFormatter = {
-        let formatter = Formatter.default
         formatter.numberStyle = .decimal
         formatter.usesGroupingSeparator = false
         formatter.locale = Locale(identifier: "en_US")
-        return formatter
-    }()
 
-    public static let currencyAccounting: NumberFormatter = {
+        return formatter
+    }
+
+    public static var currencyAccounting: NumberFormatter {
         let formatter = basicCurrencyFormatter()
         formatter.currencySymbol = ""
         formatter.minimumFractionDigits = Constants.formatterFractionDigits
         formatter.maximumFractionDigits = Constants.formatterFractionDigits
         formatter.numberStyle = .currencyAccounting
         formatter.isLenient = true
-        return formatter
-    }()
 
-    public static let alternateAmount: NumberFormatter = {
+        return formatter
+    }
+    //NOTE: don't use static let, some on formatters has changed in runtime, that brakes logic, use computed var
+    public static var alternateAmount: NumberFormatter {
         let formatter = basicCurrencyFormatter()
         formatter.currencySymbol = ""
         formatter.minimumFractionDigits = Constants.etherFormatterFractionDigits
         formatter.maximumFractionDigits = Constants.etherFormatterFractionDigits
+
         return formatter
-    }()
+    }
 }
 
 fileprivate func basicCurrencyFormatter() -> NumberFormatter {
@@ -128,8 +114,45 @@ fileprivate func basicNumberFormatter() -> NumberFormatter {
 
 extension NumberFormatter {
 
-    public func string(from source: Double) -> String? {
-        return self.string(from: source as NSNumber)
+    public func string(decimal source: Decimal) -> String? {
+        return self.string(from: source as NSNumber)?.trimmed
     }
 
+    public func string(double source: Double) -> String? {
+        return self.string(from: source as NSNumber)?.trimmed
+    }
+
+    public func string(double: Double, minimumFractionDigits: Int, maximumFractionDigits: Int) -> String {
+        let fractionDigits: Int
+        
+        let int = double.rounded(to: 0)
+        let minimumFractionNumber = Double("0." + String(1).leftPadding(to: minimumFractionDigits, pad: "0"))!
+        let maximumFractionNumber = Double("0." + String(1).leftPadding(to: maximumFractionDigits, pad: "0"))!
+
+        if int >= 1 || double == 0 {
+            fractionDigits = minimumFractionDigits
+        } else if double <= maximumFractionNumber {
+            fractionDigits = maximumFractionDigits
+        } else if double <= minimumFractionNumber {
+            fractionDigits = maximumFractionDigits
+        } else {
+            fractionDigits = minimumFractionDigits
+        }
+
+        self.maximumFractionDigits = fractionDigits
+        self.minimumFractionDigits = fractionDigits
+
+        return (self.string(from: double as NSNumber) ?? "").trimmed
+    }
+
+}
+
+fileprivate extension String {
+    func leftPadding(to: Int, pad: String = " ") -> String {
+
+        guard to > self.count else { return self }
+
+        let padding = String(repeating: pad, count: to - self.count)
+        return padding + self
+    }
 }

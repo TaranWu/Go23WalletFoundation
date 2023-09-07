@@ -1,8 +1,8 @@
 //
 //  PriceAlertDataStoreType.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Tatan.
+//  Created by Vladyslav Shepitko on 17.09.2021.
 //
 
 import Foundation
@@ -14,7 +14,7 @@ public enum PriceAlertUpdates {
     case value(value: Double, marketPrice: Double)
 }
 
-public protocol PriceAlertDataStoreType: class {
+public protocol PriceAlertDataStoreType: AnyObject {
     var alertsPublisher: AnyPublisher<[PriceAlert], Never> { get }
     var alerts: [PriceAlert] { get }
 

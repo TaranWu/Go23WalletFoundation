@@ -1,8 +1,8 @@
 //
 //  RequesterViewModel.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Tatan.
+//  Created by Vladyslav Shepitko on 16.06.2022.
 //
 
 import Foundation

@@ -1,6 +1,6 @@
 //
 //  RecipientResolver.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 20.08.2020.
 //
@@ -15,7 +15,7 @@ public class RecipientResolver {
         case ens
     }
 
-    public let address: DerbyWallet.Address?
+    public let address: Go23Wallet.Address?
     public var ensName: String?
 
     public var hasResolvedEnsName: Bool {
@@ -26,7 +26,7 @@ public class RecipientResolver {
     }
     private let domainResolutionService: DomainResolutionServiceType
 
-    public init(address: DerbyWallet.Address?, domainResolutionService: DomainResolutionServiceType) {
+    public init(address: Go23Wallet.Address?, domainResolutionService: DomainResolutionServiceType) {
         self.address = address
         self.domainResolutionService = domainResolutionService
     } 
@@ -39,17 +39,12 @@ public class RecipientResolver {
         return domainResolutionService.resolveEns(address: address)
             .map { ens -> EnsName? in return ens }
             .replaceError(with: nil)
-            .handleEvents(receiveOutput: { [weak self] ensName in
-                self?.ensName = ensName
-            }).mapToVoid()
+            .handleEvents(receiveOutput: { [weak self] in self?.ensName = $0 })
+            .mapToVoid()
             .eraseToAnyPublisher()
     }
 
     public var value: String? {
-        if let ensName = ensName, let address = address {
-            return String(format: "%@ | %@", ensName, address.truncateMiddle)
-        } else {
-            return ensName ?? address?.truncateMiddle
-        }
+        return address?.eip55String
     }
 }

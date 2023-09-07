@@ -1,15 +1,16 @@
 //
 //  ContractAddressObject.swift
-//  DerbyWalletFoundation
+//  Go23WalletFoundation
 //
-//  Created by Tatan.
+//  Created by Vladyslav Shepitko on 05.09.2022.
 //
 
 import Foundation
 import RealmSwift
+import Go23WalletAddress
 
 class ContractAddressObject: Object {
-    static func generatePrimaryKey(fromContract contract: DerbyWallet.Address, server: RPCServer) -> String {
+    static func generatePrimaryKey(fromContract contract: Go23Wallet.Address, server: RPCServer) -> String {
         return "\(contract.eip55String)-\(server.chainID)"
     }
 
@@ -21,11 +22,11 @@ class ContractAddressObject: Object {
         return .init(chainID: chainId)
     }
 
-    var contractAddress: DerbyWallet.Address {
-        return DerbyWallet.Address(uncheckedAgainstNullAddress: contract)!
+    var contractAddress: Go23Wallet.Address {
+        return Go23Wallet.Address(uncheckedAgainstNullAddress: contract)!
     }
 
-    convenience init(contract: DerbyWallet.Address = Constants.nullAddress, server: RPCServer) {
+    convenience init(contract: Go23Wallet.Address = Constants.nullAddress, server: RPCServer) {
         self.init()
         self.primaryKey = TokenObject.generatePrimaryKey(fromContract: contract, server: server)
         self.contract = contract.eip55String
@@ -39,6 +40,6 @@ class ContractAddressObject: Object {
     override func isEqual(_ object: Any?) -> Bool {
         guard let object = object as? ContractAddressObject else { return false }
         //NOTE: to improve perfomance seems like we can use check for primary key instead of checking contracts
-        return object.contractAddress.sameContract(as: contractAddress) && object.server == server
+        return object.contractAddress == contractAddress && object.server == server
     }
 }

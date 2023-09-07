@@ -1,6 +1,6 @@
 //
 //  SaveCustomRpcOverallModel.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Jerome Chan on 21/12/21.
 //

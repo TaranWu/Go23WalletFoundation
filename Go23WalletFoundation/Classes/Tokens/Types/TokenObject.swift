@@ -3,9 +3,10 @@
 import Foundation
 import RealmSwift
 import BigInt
+import Go23WalletAddress
 
 class TokenObject: Object {
-    static func generatePrimaryKey(fromContract contract: DerbyWallet.Address, server: RPCServer) -> String {
+    static func generatePrimaryKey(fromContract contract: Go23Wallet.Address, server: RPCServer) -> String {
         return "\(contract.eip55String)-\(server.chainID)"
     }
 
@@ -41,17 +42,16 @@ class TokenObject: Object {
         set { rawType = newValue.rawValue }
     }
 
-    convenience init(
-            contract: DerbyWallet.Address = Constants.nullAddress,
-            server: RPCServer,
-            name: String = "",
-            symbol: String = "",
-            decimals: Int = 0,
-            value: String,
-            isCustom: Bool = false,
-            isDisabled: Bool = false,
-            type: TokenType
-    ) {
+    convenience init(contract: Go23Wallet.Address = Constants.nullAddress,
+                     server: RPCServer,
+                     name: String = "",
+                     symbol: String = "",
+                     decimals: Int = 0,
+                     value: String,
+                     isCustom: Bool = false,
+                     isDisabled: Bool = false,
+                     type: TokenType) {
+
         self.init()
         self.primaryKey = TokenObject.generatePrimaryKey(fromContract: contract, server: server)
         self.contract = contract.eip55String
@@ -83,12 +83,12 @@ class TokenObject: Object {
         return EtherNumberFormatter.plain.string(from: valueBigInt, decimals: decimals).optionalDecimalValue
     }
 
-    var contractAddress: DerbyWallet.Address {
-        return DerbyWallet.Address(uncheckedAgainstNullAddress: contract)!
+    var contractAddress: Go23Wallet.Address {
+        return Go23Wallet.Address(uncheckedAgainstNullAddress: contract)!
     }
 
-    var valueBigInt: BigInt {
-        return BigInt(value) ?? BigInt()
+    var valueBigInt: BigUInt {
+        return BigUInt(value) ?? BigUInt()
     }
 
     override static func primaryKey() -> String? {
@@ -102,8 +102,8 @@ class TokenObject: Object {
     override func isEqual(_ object: Any?) -> Bool {
         guard let object = object as? TokenObject else { return false }
         //NOTE: to improve perfomance seems like we can use check for primary key instead of checking contracts
-        return object.contractAddress.sameContract(as: contractAddress)
-    } 
+        return object.contractAddress == contractAddress
+    }
 
     var server: RPCServer {
         return .init(chainID: chainId)

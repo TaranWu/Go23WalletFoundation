@@ -1,6 +1,6 @@
 //
 //  EventInstanceValue.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 13.01.2021.
 //
@@ -19,7 +19,7 @@ public struct EventInstanceValue {
     public var json: String
     public var _data: [String: AssetInternalValue]?
 
-    public init(contract: DerbyWallet.Address, tokenContract: DerbyWallet.Address, server: RPCServer, eventName: String, blockNumber: Int, logIndex: Int, filter: String, json: String) {
+    public init(contract: Go23Wallet.Address, tokenContract: Go23Wallet.Address, server: RPCServer, eventName: String, blockNumber: Int, logIndex: Int, filter: String, json: String) {
         self.primaryKey = EventInstance.generatePrimaryKey(fromContract: contract, tokenContract: tokenContract, server: server, eventName: eventName, blockNumber: blockNumber, logIndex: logIndex, filter: filter)
         self.contract = contract.eip55String
         self.tokenContract = tokenContract.eip55String

@@ -1,36 +1,38 @@
 //
 //  TokenGroupIdentifier.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Jerome Chan on 24/3/22.
 //
 
 import Foundation
 
-public struct Contract: Codable, Hashable {
-    let address: String
-    let chainId: Int
-
-    var key: String {
-        let returnKey = address + ":" + String(chainId)
-        return returnKey.trimmed.lowercased()
-    }
-}
-
-extension Contract: Equatable {
-    public static func == (lhs: Contract, rhs: Contract) -> Bool {
-        return lhs.key == rhs.key
-    }
-}
-
 public struct TokenEntry: Decodable {
     let contracts: [Contract]
     let group: String?
 }
 
+extension TokenEntry {
+    public struct Contract: Codable, Hashable {
+        let address: String
+        let chainId: Int
+
+        var key: String {
+            let returnKey = address + ":" + String(chainId)
+            return returnKey.trimmed.lowercased()
+        }
+    }
+}
+
+extension TokenEntry.Contract: Equatable {
+    public static func == (lhs: TokenEntry.Contract, rhs: TokenEntry.Contract) -> Bool {
+        return lhs.key == rhs.key
+    }
+}
+
 public class TokenJsonReader {
 
-    enum TokenJsonReaderError: Error {
+    enum error: Error {
         case duplicateKey(String)
         case unknownTokenGroup
         case fileDoesNotExist
@@ -50,21 +52,21 @@ public class TokenJsonReader {
     }
 
     private func readAndDecodeData(fileName: String) throws {
-        guard let bundlePath = Bundle.main.path(forResource: fileName, ofType: "json") else { throw TokenJsonReader.TokenJsonReaderError.fileDoesNotExist }
-        guard let jsonData = try String(contentsOfFile: bundlePath).data(using: .utf8) else { throw TokenJsonReader.TokenJsonReaderError.fileIsNotUtf8 }
+        guard let bundlePath = Bundle.main.path(forResource: fileName, ofType: "json") else { throw TokenJsonReader.error.fileDoesNotExist }
+        guard let jsonData = try String(contentsOfFile: bundlePath).data(using: .utf8) else { throw TokenJsonReader.error.fileIsNotUtf8 }
         do {
             decodedTokenEntries = try JSONDecoder().decode([TokenEntry].self, from: jsonData)
         } catch DecodingError.dataCorrupted {
-            throw TokenJsonReader.TokenJsonReaderError.fileCannotBeDecoded
+            throw TokenJsonReader.error.fileCannotBeDecoded
         } catch {
-            throw TokenJsonReader.TokenJsonReaderError.unknown(error)
+            throw TokenJsonReader.error.unknown(error)
         }
     }
 
     public func tokenGroupDictionary() throws -> TokenGroupDictionary {
         var returnedDictionary = TokenGroupDictionary()
         for entry in decodedTokenEntries {
-            guard let group = tokenGroup(fromString: entry.group) else { throw TokenJsonReader.TokenJsonReaderError.unknownTokenGroup }
+            guard let group = tokenGroup(fromString: entry.group) else { throw TokenJsonReader.error.unknownTokenGroup }
             guard group != .collectibles else {
                 continue
             }
@@ -116,6 +118,7 @@ public enum TokenGroup: String {
     case defi
     case governance
     case collectibles
+    case spam
 }
 
 public protocol TokenGroupIdentifiable {
@@ -126,6 +129,7 @@ public protocol TokenGroupIdentifiable {
 public protocol TokenGroupIdentifierProtocol {
     static func identifier(fromFileName: String) -> TokenGroupIdentifierProtocol?
     func identify(token: TokenGroupIdentifiable) -> TokenGroup
+    func hasContract(address: String, chainID: Int) -> Bool
 }
 
 public class TokenGroupIdentifier: TokenGroupIdentifierProtocol {
@@ -143,7 +147,9 @@ public class TokenGroupIdentifier: TokenGroupIdentifierProtocol {
     }
 
     private init(decodedTokenEntries: TokenGroupDictionary) {
-        self.decodedTokenEntries = decodedTokenEntries
+        self.decodedTokenEntries = decodedTokenEntries.filter { _, group in
+            return group != TokenGroup.spam
+        }
     }
 
     public func identify(token: TokenGroupIdentifiable) -> TokenGroup {
@@ -153,6 +159,9 @@ public class TokenGroupIdentifier: TokenGroupIdentifierProtocol {
         return decodedTokenEntries[token.tokenGroupKey] ?? .assets
     }
 
+    public func hasContract(address: String, chainID: Int) -> Bool {
+        return decodedTokenEntries["\(address):\(chainID)"] != nil
+    }
 }
 
 public protocol TokenGroupIdentifieble {

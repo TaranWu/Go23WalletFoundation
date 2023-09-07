@@ -1,8 +1,8 @@
 //
 //  BuyTokenService.swift
-//  DerbyWallet
+//  Go23Wallet
 //
-//  Created by Tatan.
+//  Created by Vladyslav Shepitko on 03.03.2021.
 //
 
 import Foundation

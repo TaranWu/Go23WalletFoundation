@@ -3,195 +3,372 @@
 import Foundation
 import Go23WalletCore
 import BigInt
-import PromiseKit
 import Combine
+import Go23Web3Swift
 
-public final class EventSourceForActivities {
-    private var wallet: Wallet
+final class EventSourceForActivities {
+    typealias EventForActivityPublisher = AnyPublisher<[EventActivityInstance], Never>
+
     private let config: Config
     private let tokensService: TokenProvidable
-    private let assetDefinitionStore: AssetDefinitionStore
     private let eventsDataStore: EventsActivityDataStoreProtocol
-    private var isFetching = false
-    private var rateLimitedUpdater: RateLimiter?
-    private let queue = DispatchQueue(label: "com.EventSourceForActivities.updateQueue")
-    private let enabledServers: [RPCServer]
     private var cancellable = Set<AnyCancellable>()
+    private let sessionsProvider: SessionsProvider
+    private let eventFetcher: TokenEventsForActivitiesTickersFetcher
+    private let tokenScriptChanges: TokenScriptChangedTokens
+    private var workers: [RPCServer: ChainTokenEventsForActivitiesWorker] = [:]
 
-    public init(wallet: Wallet, config: Config, tokensService: TokenProvidable, assetDefinitionStore: AssetDefinitionStore, eventsDataStore: EventsActivityDataStoreProtocol) {
-        self.wallet = wallet
+    init(wallet: Wallet,
+         config: Config,
+         tokensService: TokenProvidable,
+         assetDefinitionStore: AssetDefinitionStore,
+         eventsDataStore: EventsActivityDataStoreProtocol,
+         sessionsProvider: SessionsProvider) {
+
         self.config = config
         self.tokensService = tokensService
-        self.assetDefinitionStore = assetDefinitionStore
         self.eventsDataStore = eventsDataStore
-        self.enabledServers = config.enabledServers
+        self.sessionsProvider = sessionsProvider
+
+        self.eventFetcher = TokenEventsForActivitiesTickersFetcher(
+            eventsDataStore: eventsDataStore,
+            sessionsProvider: sessionsProvider,
+            eventFetcher: EventForActivitiesFetcher(sessionsProvider: sessionsProvider))
+
+        self.tokenScriptChanges = TokenScriptChangedTokens(
+            tokensService: tokensService,
+            sessionsProvider: sessionsProvider,
+            assetDefinitionStore: assetDefinitionStore)
     }
 
-    public func start() {
+    func start() {
         guard !config.development.isAutoFetchingDisabled else { return }
 
-        subscribeForTokenChanges()
-        subscribeForTokenScriptFileChanges()
-    }
-
-    private func subscribeForTokenChanges() {
-        tokensService.tokensPublisher(servers: enabledServers)
-            .receive(on: queue)
-            .sink { [weak self] _ in self?.fetchEthereumEvents() }
-            .store(in: &cancellable)
-    }
-
-    private func subscribeForTokenScriptFileChanges() {
-        assetDefinitionStore.bodyChange
-            .receive(on: queue)
-            .compactMap { [tokensService] in tokensService.token(for: $0) }
-            .sink { [weak self] token in
+        sessionsProvider.sessions
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] sessions in
                 guard let strongSelf = self else { return }
 
-                for each in strongSelf.fetchMappedContractsAndServers(token: token) {
-                    strongSelf.fetchEvents(forTokenContract: each.contract, server: each.server)
-                }
+                let addedOrFetchedWorkers = strongSelf.addOrFetchWorker(sessions: sessions)
+                strongSelf.removeWorkers(except: addedOrFetchedWorkers)
             }.store(in: &cancellable)
     }
 
-    private func fetchMappedContractsAndServers(token: Token) -> [(contract: DerbyWallet.Address, server: RPCServer)] {
-        var values: [(contract: DerbyWallet.Address, server: RPCServer)] = []
-        let xmlHandler = XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore)
-        guard xmlHandler.hasAssetDefinition, let server = xmlHandler.server else { return [] }
-        switch server {
-        case .any:
-            values = enabledServers.map { (contract: token.contractAddress, server: $0) }
-        case .server(let server):
-            values = [(contract: token.contractAddress, server: server)]
+    func stop() {
+        cancellable.cancellAll()
+    }
+
+    private func addOrFetchWorker(sessions: ServerDictionary<WalletSession>) -> [RPCServer: ChainTokenEventsForActivitiesWorker] {
+        var addedOrFetchedWorkers: [RPCServer: ChainTokenEventsForActivitiesWorker] = [:]
+        for session in sessions {
+            if let worker = self.workers[session.key] {
+                addedOrFetchedWorkers[session.key] = worker
+            } else {
+                let worker = ChainTokenEventsForActivitiesWorker(
+                    tokensService: tokensService,
+                    session: session.value,
+                    eventsFetcher: eventFetcher,
+                    tokenScriptChanges: tokenScriptChanges)
+
+                worker.start()
+
+                addedOrFetchedWorkers[session.key] = worker
+                self.workers[session.key] = worker
+            }
         }
-        return values
+
+        return addedOrFetchedWorkers
     }
 
-    private func fetchEvents(forTokenContract contract: DerbyWallet.Address, server: RPCServer) {
-        guard let token = tokensService.token(for: contract, server: server) else { return }
-
-        when(resolved: fetchEvents(forToken: token))
-            .done { _ in }
-            .cauterize()
+    private func removeWorkers(except: [RPCServer: ChainTokenEventsForActivitiesWorker]) {
+        let providersToDelete = self.workers.keys.filter { k in !except.contains(where: { $0.key == k }) }
+        providersToDelete.forEach {
+            self.workers[$0]?.stop()
+            self.workers[$0] = nil
+        }
     }
 
-    private func getActivityCards(forToken token: Token) -> [TokenScriptCard] {
-        var cards: [TokenScriptCard] = []
+    class TokenScriptChangedTokens {
+        private let queue = DispatchQueue(label: "com.eventSource.tokenScriptChangedTokens")
+        private let tokensService: TokenProvidable
+        private let sessionsProvider: SessionsProvider
+        private let assetDefinitionStore: AssetDefinitionStore
 
-        let xmlHandler = XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore)
-        guard xmlHandler.hasAssetDefinition else { return [] }
-        cards = xmlHandler.activityCards
+        var tokenScriptChanged: AnyPublisher<[Token], Never> {
+            assetDefinitionStore.bodyChange
+                .receive(on: queue)
+                .compactMap { [tokensService] in tokensService.token(for: $0) }
+                .compactMap { [weak self] in self?.map(token: $0) }
+                .share()
+                .eraseToAnyPublisher()
+        }
 
-        return cards
+        init(tokensService: TokenProvidable,
+             sessionsProvider: SessionsProvider,
+             assetDefinitionStore: AssetDefinitionStore) {
+
+            self.assetDefinitionStore = assetDefinitionStore
+            self.sessionsProvider = sessionsProvider
+            self.tokensService = tokensService
+        }
+
+        private func map(token: Token) -> [Token] {
+            guard let session = sessionsProvider.session(for: token.server) else { return [] }
+
+            let xmlHandler = XMLHandler(token: token, assetDefinitionStore: assetDefinitionStore)
+            guard xmlHandler.hasAssetDefinition, let server = xmlHandler.server else { return [] }
+            switch server {
+            case .any:
+                let enabledServers = sessionsProvider.activeSessions.map { $0.key }
+                return enabledServers.compactMap { tokensService.token(for: token.contractAddress, server: $0) }
+            case .server(let server):
+                return [token]
+            }
+        }
     }
 
-    private func fetchEvents(forToken token: Token) -> [Promise<Void>] {
-        return getActivityCards(forToken: token)
-            .map { EventSourceForActivities.Functional.fetchEvents(tokenContract: token.contractAddress, server: token.server, card: $0, eventsDataStore: eventsDataStore, queue: queue, wallet: wallet) }
-    }
+    class ChainTokenEventsForActivitiesWorker {
+        private typealias FetchRequest = EventSource.ChainTokenEventsForTickersWorker.FetchRequest
+        private typealias RequestOrCancellation = EventSource.ChainTokenEventsForTickersWorker.RequestOrCancellation
 
-    private func fetchEthereumEvents() {
-        if rateLimitedUpdater == nil {
-            rateLimitedUpdater = RateLimiter(name: "Poll Ethereum events for Activities", limit: 60, autoRun: true) { [weak self] in
-                self?.queue.async {
-                    self?.fetchEthereumEventsImpl()
+        private let queue = DispatchQueue(label: "com.eventSource.chainTokenEventsForTickersWorker")
+        private let tokensService: TokenProvidable
+        private let session: WalletSession
+        private let eventsFetcher: TokenEventsForActivitiesTickersFetcher
+        private var workers: [Go23Wallet.Address: TokenEventsForActivitiesWorker] = [:]
+        private var cancellable: AnyCancellable?
+        private let tokenScriptChanges: TokenScriptChangedTokens
+
+        init(tokensService: TokenProvidable,
+             session: WalletSession,
+             eventsFetcher: TokenEventsForActivitiesTickersFetcher,
+             tokenScriptChanges: TokenScriptChangedTokens) {
+
+            self.tokenScriptChanges = tokenScriptChanges
+            self.eventsFetcher = eventsFetcher
+            self.session = session
+            self.tokensService = tokensService
+        }
+
+        private func deleteAllWorkers() {
+            workers.forEach { $0.value.cancel() }
+            workers.removeAll()
+        }
+
+        private func deleteWorker(contract: Go23Wallet.Address) {
+            workers[contract]?.cancel()
+            workers[contract] = nil
+        }
+
+        private func addOrFetchWorkers(requests: [EventSource.ChainTokenEventsForTickersWorker.FetchRequest]) -> [Go23Wallet.Address: TokenEventsForActivitiesWorker] {
+            var workers: [Go23Wallet.Address: TokenEventsForActivitiesWorker] = [:]
+
+            for request in requests {
+                if let worker = self.workers[request.token.contractAddress] {
+                    workers[request.token.contractAddress] = worker
+
+                    worker.send(request: request)
+                } else {
+                    let worker = TokenEventsForActivitiesWorker(
+                        request: request,
+                        eventsFetcher: eventsFetcher)
+
+                    workers[request.token.contractAddress] = worker
+                    self.workers[request.token.contractAddress] = worker
+
+                    worker.send(request: request)
                 }
             }
-        } else {
-            rateLimitedUpdater?.run()
+
+            return workers
+        }
+
+        private func buildFetchOrCancellationRequests(server: RPCServer) -> AnyPublisher<(requests: [FetchRequest], cancellations: [Go23Wallet.Address]), Never> {
+            let tokenScriptChanged = tokenScriptChanges.tokenScriptChanged
+                .receive(on: queue)
+                .map { $0.filter { $0.server == server } }
+                .map { $0.map { RequestOrCancellation.request(FetchRequest(token: $0, policy: .force)) } }
+
+            let tokensChangeset = tokensService.tokensChangesetPublisher(servers: [server])
+                .receive(on: queue)
+                .compactMap { changeset -> [RequestOrCancellation]? in
+                    switch changeset {
+                    case .initial(let tokens):
+                        return tokens.map { RequestOrCancellation.request(FetchRequest(token: $0, policy: .force)) }
+                    case .error:
+                        return nil
+                    case .update(let tokens, let deletionsIndices, let insertionsIndices, let modificationsIndices):
+                        let insertions = insertionsIndices.map { tokens[$0] }
+                            .map { RequestOrCancellation.request(FetchRequest(token: $0, policy: .force)) }
+
+                        let modifications = modificationsIndices.map { tokens[$0] }
+                            .filter { $0.shouldDisplay }
+                            .map { RequestOrCancellation.request(FetchRequest(token: $0, policy: .waitForCurrent)) }
+
+                        let wereHiddenByUser = modificationsIndices.map { tokens[$0] }
+                            .filter { !$0.shouldDisplay }
+                            .map { RequestOrCancellation.cancel(contract: $0.contractAddress) }
+
+                        let deletions = deletionsIndices.map { tokens[$0] }
+                            .map { RequestOrCancellation.cancel(contract: $0.contractAddress) }
+
+                        return insertions + modifications + deletions + wereHiddenByUser
+                    }
+                }
+
+            return Publishers.Merge(tokensChangeset, tokenScriptChanged)
+                .map { values -> (requests: [FetchRequest], cancellations: [Go23Wallet.Address]) in
+                    let cancellations = values.compactMap { value -> Go23Wallet.Address? in
+                        guard case .cancel(let contract) = value else { return nil }
+                        return contract
+                    }
+
+                    let requests = values.compactMap { value -> FetchRequest? in
+                        guard case .request(let request) = value else { return nil }
+                        return request
+                    }
+                    return (requests: requests, cancellations: cancellations)
+                }.eraseToAnyPublisher()
+        }
+
+        func start() {
+            cancellable = buildFetchOrCancellationRequests(server: session.server)
+                .sink(receiveCompletion: { [weak self] result in
+                    guard let strongSelf = self else { return }
+                    guard case .failure = result else { return }
+
+                    strongSelf.deleteAllWorkers()
+                }, receiveValue: { [weak self] data in
+                    guard let strongSelf = self else { return }
+
+                    let workers = strongSelf.addOrFetchWorkers(requests: data.requests)
+
+                    data.cancellations.forEach { strongSelf.deleteWorker(contract: $0) }
+                })
+        }
+
+        func stop() {
+            cancellable?.cancel()
+
+            deleteAllWorkers()
+        }
+
+        private class TokenEventsForActivitiesWorker {
+            private var request: FetchRequest
+            private let timer = CombineTimer(interval: 65)
+            private let subject = PassthroughSubject<FetchRequest, Never>()
+            private var cancellable: AnyCancellable?
+
+            var debouce: TimeInterval = 60
+
+            init(request: FetchRequest, eventsFetcher: TokenEventsForActivitiesTickersFetcher) {
+                self.request = request
+
+                let timedFetch = timer.publisher.map { _ in self.request }.share()
+
+                let waitForCurrent = Publishers.Merge(timedFetch, subject)
+                    .filter { $0.policy == .waitForCurrent }
+                    .debounce(for: .seconds(debouce), scheduler: RunLoop.main)
+
+                let force = Publishers.Merge(timedFetch, subject)
+                    .filter { $0.policy == .force }
+
+                cancellable = Publishers.Merge(waitForCurrent, force)
+                    .flatMap { [eventsFetcher] in eventsFetcher.fetchEvents(token: $0.token) }
+                    .sink { _ in }
+            }
+
+            func send(request: FetchRequest) {
+                self.request = request
+                subject.send(request)
+            }
+
+            func cancel() {
+                subject.send(completion: .finished)
+                cancellable?.cancel()
+            }
         }
     }
 
-    private func fetchEthereumEventsImpl() {
-        guard !isFetching else { return }
-        isFetching = true
+    class TokenEventsForActivitiesTickersFetcher {
+        private let eventsDataStore: EventsActivityDataStoreProtocol
+        private let eventFetcher: EventForActivitiesFetcher
+        private let sessionsProvider: SessionsProvider
 
-        let promises = tokensService.tokens(for: enabledServers).map { fetchEvents(forToken: $0) }.flatMap { $0 }
+        init(eventsDataStore: EventsActivityDataStoreProtocol,
+             sessionsProvider: SessionsProvider,
+             eventFetcher: EventForActivitiesFetcher) {
 
-        when(resolved: promises).done { [weak self] _ in
-            self?.isFetching = false
+            self.sessionsProvider = sessionsProvider
+            self.eventFetcher = eventFetcher
+            self.eventsDataStore = eventsDataStore
+        }
+
+        private func getActivityCards(token: Token) -> [TokenScriptCard] {
+            guard let session = sessionsProvider.session(for: token.server) else { return [] }
+            let xmlHandler = session.tokenAdaptor.xmlHandler(token: token)
+            guard xmlHandler.hasAssetDefinition else { return [] }
+            return xmlHandler.activityCards
+        }
+
+        func fetchEvents(token: Token) -> EventForActivityPublisher {
+            let publishers = getActivityCards(token: token)
+                .map { [eventFetcher] card -> EventForActivityPublisher in
+                    let eventOrigin = card.eventOrigin
+                    let oldEvent = eventsDataStore.getLastMatchingEventSortedByBlockNumber(
+                        for: eventOrigin.contract,
+                        tokenContract: token.contractAddress,
+                        server: token.server,
+                        eventName: eventOrigin.eventName)
+
+                    return eventFetcher.fetchEvents(token: token, card: card, oldEventBlockNumber: oldEvent?.blockNumber)
+                        .handleEvents(receiveOutput: { [eventsDataStore] in eventsDataStore.addOrUpdate(events: $0) })
+                        .replaceError(with: [])
+                        .eraseToAnyPublisher()
+                }
+
+            return Publishers.MergeMany(publishers)
+                .collect()
+                .map { $0.flatMap { $0 } }
+                .eraseToAnyPublisher()
         }
     }
 }
 
 extension EventSourceForActivities {
-    class Functional {}
+    class functional {}
 }
 
-extension EventSourceForActivities.Functional {
-    static func fetchEvents(tokenContract: DerbyWallet.Address, server: RPCServer, card: TokenScriptCard, eventsDataStore: EventsActivityDataStoreProtocol, queue: DispatchQueue, wallet: Wallet) -> Promise<Void> {
-
-        let eventOrigin = card.eventOrigin
-        let (filterName, filterValue) = eventOrigin.eventFilter
-        typealias Functional = EventSourceForActivities.Functional
-        let filterParam = eventOrigin.parameters
-            .filter { $0.isIndexed }
-            .map { Functional.formFilterFrom(fromParameter: $0, filterName: filterName, filterValue: filterValue, wallet: wallet) }
-
-        if filterParam.allSatisfy({ $0 == nil }) {
-            //TODO log to console as diagnostic
-            return .init(error: PMKError.cancelled)
-        }
-
-        let oldEvent = eventsDataStore
-        .getLastMatchingEventSortedByBlockNumber(for: eventOrigin.contract, tokenContract: tokenContract, server: server, eventName: eventOrigin.eventName)
-
-        let fromBlock: (Web3.EventFilter.Block, UInt64)
-        if let newestEvent = oldEvent {
-            let value = UInt64(newestEvent.blockNumber + 1)
-            fromBlock = (.blockNumber(value), value)
-        } else {
-            fromBlock = (.blockNumber(0), 0)
-        }
-        let parameterFilters = filterParam.map { $0?.filter }
-        let addresses = [Web3.EthereumAddress(address: eventOrigin.contract)]
-        let toBlock = server.makeMaximumToBlockForEvents(fromBlockNumber: fromBlock.1)
-        let eventFilter = Web3.EventFilter(fromBlock: fromBlock.0, toBlock: toBlock, addresses: addresses, parameterFilters: parameterFilters)
-
-        return getEventLogs(withServer: server, contract: eventOrigin.contract, eventName: eventOrigin.eventName, abiString: eventOrigin.eventAbiString, filter: eventFilter, queue: queue)
-        .then(on: queue, { events -> Promise<[EventActivityInstance]> in
-            let promises = events.compactMap { event -> Promise<EventActivityInstance?> in
-                guard let blockNumber = event.eventLog?.blockNumber else {
-                    return .value(nil)
-                }
-
-                return GetBlockTimestamp()
-                    .getBlockTimestamp(blockNumber, onServer: server)
-                    .map(on: queue, { date in
-                        Self.convertEventToDatabaseObject(event, date: date, filterParam: filterParam, eventOrigin: eventOrigin, tokenContract: tokenContract, server: server)
-                    }).recover(on: queue, { _ -> Promise<EventActivityInstance?> in
-                        return .value(nil)
-                    })
-            }
-
-            return when(resolved: promises).map(on: queue, { values -> [EventActivityInstance] in
-                values.compactMap { $0.optionalValue }.compactMap { $0 }
-            })
-        }).map(on: queue, { events -> Void in
-            eventsDataStore.addOrUpdate(events: events)
-        }).recover(on: queue, { err in
-            logError(err, rpcServer: server, address: tokenContract)
-        })
-    }
-
-    private static func convertEventToDatabaseObject(_ event: Web3.EventParserResultProtocol, date: Date, filterParam: [(filter: [Web3.EventFilterable], textEquivalent: String)?], eventOrigin: EventOrigin, tokenContract: DerbyWallet.Address, server: RPCServer) -> EventActivityInstance? {
+extension EventSourceForActivities.functional {
+    static func convertEventToDatabaseObject(_ event: EventParserResultProtocol, date: Date, filterParam: [(filter: [EventFilterable], textEquivalent: String)?], eventOrigin: EventOrigin, tokenContract: Go23Wallet.Address, server: RPCServer) -> EventActivityInstance? {
         guard let eventLog = event.eventLog else { return nil }
 
         let transactionId = eventLog.transactionHash.hexEncoded
-        let decodedResult = EventSource.Functional.convertToJsonCompatible(dictionary: event.decodedResult)
+        let decodedResult = EventSource.functional.convertToJsonCompatible(dictionary: event.decodedResult)
         guard let json = decodedResult.jsonString else { return nil }
         //TODO when TokenScript schema allows it, support more than 1 filter
         let filterTextEquivalent = filterParam.compactMap({ $0?.textEquivalent }).first
         let filterText = filterTextEquivalent ?? "\(eventOrigin.eventFilter.name)=\(eventOrigin.eventFilter.value)"
 
-        return EventActivityInstance(contract: eventOrigin.contract, tokenContract: tokenContract, server: server, date: date, eventName: eventOrigin.eventName, blockNumber: Int(eventLog.blockNumber), transactionId: transactionId, transactionIndex: Int(eventLog.transactionIndex), logIndex: Int(eventLog.logIndex), filter: filterText, json: json)
+        return EventActivityInstance(
+            contract: eventOrigin.contract,
+            tokenContract: tokenContract,
+            server: server,
+            date: date,
+            eventName: eventOrigin.eventName,
+            blockNumber: Int(eventLog.blockNumber),
+            transactionId: transactionId,
+            transactionIndex: Int(eventLog.transactionIndex),
+            logIndex: Int(eventLog.logIndex),
+            filter: filterText,
+            json: json)
     }
 
-    private static func formFilterFrom(fromParameter parameter: EventParameter, filterName: String, filterValue: String, wallet: Wallet) -> (filter: [Web3.EventFilterable], textEquivalent: String)? {
+    static func formFilterFrom(fromParameter parameter: EventParameter, filterName: String, filterValue: String, wallet: Wallet) -> (filter: [EventFilterable], textEquivalent: String)? {
         guard parameter.name == filterName else { return nil }
         guard let parameterType = SolidityType(rawValue: parameter.type) else { return nil }
         let optionalFilter: (filter: AssetAttributeValueUsableAsFunctionArguments, textEquivalent: String)?
-        if let implicitAttribute = EventSource.Functional.convertToImplicitAttribute(string: filterValue) {
+        if let implicitAttribute = EventSource.functional.convertToImplicitAttribute(string: filterValue) {
             switch implicitAttribute {
             case .tokenId:
                 optionalFilter = nil

@@ -2,6 +2,7 @@
 
 import Foundation
 import Combine
+import Go23WalletAddress
 
 //Use the wallet name which the user has set, otherwise fallback to ENS, if available
 public class GetWalletName {
@@ -11,7 +12,7 @@ public class GetWalletName {
         self.domainResolutionService = domainResolutionService
     }
 
-    public func assignedNameOrEns(for address: DerbyWallet.Address) -> AnyPublisher<String?, Never> {
+    public func assignedNameOrEns(for address: Go23Wallet.Address) -> AnyPublisher<String?, Never> {
         //TODO: pass ref
         if let walletName = FileWalletStorage().name(for: address) {
             return .just(walletName)

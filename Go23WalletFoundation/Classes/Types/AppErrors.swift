@@ -1,21 +1,21 @@
 //
 //  SwapTokenError.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 30.08.2022.
 //
 
 import Foundation
 
-public enum SwapTokenError: LocalizedError {
+public enum SwapTokenError: Error {
     case swapNotSupported
 }
 
-public enum BuyCryptoError: LocalizedError {
+public enum BuyCryptoError: Error {
     case buyNotSupported
 }
 
-public enum ActiveWalletError: LocalizedError {
+public enum ActiveWalletError: Error {
     case unavailableToResolveSwapActionProvider
     case unavailableToResolveBridgeActionProvider
     case bridgeNotSupported
@@ -23,16 +23,9 @@ public enum ActiveWalletError: LocalizedError {
     case operationForTokenNotFound
 }
 
-public enum WalletApiError: LocalizedError {
+public enum WalletApiError: Error {
     case connectionAddressNotFound
     case requestedWalletNonActive
     case requestedServerDisabled
     case cancelled
-}
-
-public struct RequestCanceledDueToWatchWalletError: Error {
-    public init() {}
-}
-public struct DelayWalletConnectResponseError: Error {
-    public init() {}
 }

@@ -1,6 +1,6 @@
 //
 //  MimeType+Extension.swift
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 06.10.2021.
 //
@@ -107,25 +107,25 @@ private let mimeTypes = [
     "avi": "video/x-msvideo"
 ]
 
-private func mimesType(_ ext: String?) -> String? {
+private func MimeType(_ ext: String?) -> String? {
     return ext.flatMap { mimeTypes[$0] }
 }
 
 extension NSURL {
     public var mimeType: String? {
-        return mimesType(pathExtension)
+        return MimeType(pathExtension)
     }
 }
 
 extension URL {
     public var mimeType: String? {
-        return mimesType(pathExtension)
+        return MimeType(pathExtension)
     }
 }
 
 extension NSString {
     public var mimeType: String? {
-        return mimesType(pathExtension)
+        return MimeType(pathExtension)
     }
 }
 

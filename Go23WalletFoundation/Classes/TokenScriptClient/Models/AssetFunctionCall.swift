@@ -1,6 +1,7 @@
 // Copyright © 2018 Stormbird PTE. LTD.
 
 import Foundation
+import Go23WalletAddress
 
 public struct AssetFunctionCall: Equatable, Hashable {
     public enum ArgumentReferences {
@@ -255,7 +256,7 @@ public struct AssetFunctionCall: Equatable, Hashable {
     }
 
     public let server: RPCServer
-    public let contract: DerbyWallet.Address
+    public let contract: Go23Wallet.Address
     public let functionName: String
     public let inputs: [Argument]
     public let output: ReturnType
@@ -276,7 +277,7 @@ public struct AssetFunctionCall: Equatable, Hashable {
         return lhs.contract == rhs.contract && lhs.functionName == rhs.functionName && lhs.inputs == rhs.inputs && lhs.output.type == rhs.output.type && lhs.argumentsDescription == rhs.argumentsDescription && lhs.server.chainID == rhs.server.chainID
     }
 
-    public init(server: RPCServer, contract: DerbyWallet.Address, functionName: String, inputs: [Argument], output: ReturnType, arguments: [AnyObject]) {
+    public init(server: RPCServer, contract: Go23Wallet.Address, functionName: String, inputs: [Argument], output: ReturnType, arguments: [AnyObject]) {
         self.server = server
         self.contract = contract
         self.functionName = functionName

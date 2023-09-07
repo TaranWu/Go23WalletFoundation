@@ -9,10 +9,16 @@
 import Foundation
 import Go23WalletOpenSea
 import BigInt
+import Go23WalletAddress
 
 public struct TokenSelection: Equatable, Hashable {
     public let tokenId: TokenId
-    public let value: Int
+    public let value: BigUInt
+
+    public init(tokenId: TokenId, value: BigUInt) {
+        self.tokenId = tokenId
+        self.value = value
+    }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
         return lhs.tokenId == rhs.tokenId
@@ -42,45 +48,47 @@ extension TokenHolder {
     }
 
     public var totalSelectedCount: Int {
-        var sum: Int = 0
+        var sum: BigUInt = 0
         for each in selections {
             sum += each.value
         }
 
-        return sum
+        return Int(sum)
     }
 
     public func selectedCount(tokenId: TokenId) -> Int? {
-        selections.first(where: { $0.tokenId == tokenId }).flatMap { $0.value }
+        selections.first(where: { $0.tokenId == tokenId }).flatMap { Int($0.value) }
     }
 
-    public func select(with strategy: TokenHolderSelectionStrategy) {
+    @discardableResult public func select(with strategy: TokenHolderSelectionStrategy) -> Self {
         switch strategy {
         case .allFor(let tokenId):
-            guard let token = token(tokenId: tokenId) else { return }
+            guard let token = token(tokenId: tokenId) else { return self }
             select(with: .token(tokenId: tokenId, amount: token.value ?? 0))
         case .all:
             selections = tokens.compactMap {
                 //TODO need to make sure the available `amount` is set previously  so we can use it here
                 if let value = $0.value {
-                    return TokenSelection(tokenId: $0.id, value: value)
+                    return TokenSelection(tokenId: $0.id, value: BigUInt(value))
                 } else {
                     return nil
                 }
             }
         case .token(let tokenId, let newAmount):
-            guard tokens.contains(where: { $0.id == tokenId }) else { return }
+            guard tokens.contains(where: { $0.id == tokenId }) else { return self }
             if let index = selections.firstIndex(where: { $0.tokenId == tokenId }) {
                 if newAmount > 0 {
-                    selections[index] = TokenSelection(tokenId: tokenId, value: newAmount)
+                    selections[index] = TokenSelection(tokenId: tokenId, value: BigUInt(newAmount))
                 } else {
                     selections.remove(at: index)
                 }
             } else {
-                guard newAmount > 0 else { return }
-                selections.append(TokenSelection(tokenId: tokenId, value: newAmount))
+                guard newAmount > 0 else { return self }
+                selections.append(TokenSelection(tokenId: tokenId, value: BigUInt(newAmount)))
             }
         }
+        
+        return self
     }
 
     public func unselect(with strategy: TokenHolderSelectionStrategy) {
@@ -92,7 +100,7 @@ extension TokenHolder {
             unselect(with: .token(tokenId: tokenId, amount: token.value ?? 0))
         case .token(let tokenId, let amount):
             if let index = selections.firstIndex(where: { $0.tokenId == tokenId }) {
-                selections[index] = TokenSelection(tokenId: tokenId, value: amount)
+                selections[index] = TokenSelection(tokenId: tokenId, value: BigUInt(amount))
             } else {
                 // no-op
             }
@@ -117,12 +125,15 @@ public class TokenHolder: Hashable {
     }
 
     public let tokens: [TokenScript.Token]
-    public let contractAddress: DerbyWallet.Address
+    public let contractAddress: Go23Wallet.Address
     public let hasAssetDefinition: Bool
 
     public private (set) var selections: [TokenSelection] = []
 
-    public init(tokens: [TokenScript.Token], contractAddress: DerbyWallet.Address, hasAssetDefinition: Bool) {
+    public init(tokens: [TokenScript.Token],
+                contractAddress: Go23Wallet.Address,
+                hasAssetDefinition: Bool) {
+
         self.tokens = tokens
         self.contractAddress = contractAddress
         self.hasAssetDefinition = hasAssetDefinition
@@ -227,15 +238,9 @@ public class TokenHolder: Hashable {
         return token(tokenId: tokenId)?.values.traitsValue
     }
 
-    public func imageUrl(tokenId: TokenId, rewriteGoogleContentSizeUrl size: GoogleContentSize = .s750) -> WebImageURL? {
-        token(tokenId: tokenId)
-            .flatMap { ($0.values.contractImageUrlUrlValue ?? $0.values.thumbnailUrlUrlValue ?? $0.values.imageUrlUrlValue) }
-            .flatMap { WebImageURL(url: $0, rewriteGoogleContentSizeUrl: size) }
-    }
-
     public func assetImageUrl(tokenId: TokenId, rewriteGoogleContentSizeUrl size: GoogleContentSize = .s750) -> WebImageURL? {
         token(tokenId: tokenId)
-            .flatMap { ($0.values.imageUrlUrlValue ?? $0.values.thumbnailUrlUrlValue ?? $0.values.contractImageUrlUrlValue) }
+            .flatMap { ($0.values.animationUrlUrlValue ?? $0.values.imageUrlUrlValue ?? $0.values.thumbnailUrlUrlValue ?? $0.values.contractImageUrlUrlValue) }
             .flatMap { WebImageURL(url: $0, rewriteGoogleContentSizeUrl: size) }
     }
 }

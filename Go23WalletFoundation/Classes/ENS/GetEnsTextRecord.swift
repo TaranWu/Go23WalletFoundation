@@ -1,5 +1,5 @@
 //
-//  DerbyWallet
+//  Go23Wallet
 //
 //  Created by Vladyslav Shepitko on 24.09.2021.
 //
@@ -10,19 +10,21 @@ import PromiseKit
 import Combine
 
 /// https://eips.ethereum.org/EIPS/eip-634
-final class GetEnsTextRecord: ENSDelegateImpl {
+final class GetEnsTextRecord {
     private let storage: EnsRecordsStorage
-    private lazy var ens = ENS(delegate: self, chainId: server.chainID)
+    private lazy var ens = ENS(delegate: ensDelegate, chainId: server.chainID)
     private let server: RPCServer
     private let ensReverseLookup: EnsReverseResolver
+    private let ensDelegate: ENSDelegateImpl
 
-    init(server: RPCServer, storage: EnsRecordsStorage) {
-        self.server = server
+    init(blockchainProvider: BlockchainProvider, storage: EnsRecordsStorage) {
+        self.ensDelegate = ENSDelegateImpl(blockchainProvider: blockchainProvider)
         self.storage = storage
-        ensReverseLookup = EnsReverseResolver(server: server, storage: storage)
+        self.server = blockchainProvider.server
+        ensReverseLookup = EnsReverseResolver(storage: storage, blockchainProvider: blockchainProvider)
     }
 
-    func getENSRecord(forAddress address: DerbyWallet.Address, record: EnsTextRecordKey) -> AnyPublisher<String, SmartContractError> {
+    func getENSRecord(forAddress address: Go23Wallet.Address, record: EnsTextRecordKey) -> AnyPublisher<String, SmartContractError> {
         ensReverseLookup.getENSNameFromResolver(for: address)
             .flatMap { ens in
                 self.getENSRecord(forName: ens, record: record)
@@ -59,7 +61,7 @@ extension GetEnsTextRecord {
         case eip155(url: Eip155URL, raw: String)
     }
 
-    func getEnsAvatar(for address: DerbyWallet.Address, ens: String?) -> AnyPublisher<Eip155URLOrWebImageURL, SmartContractError> {
+    func getEnsAvatar(for address: Go23Wallet.Address, ens: String?) -> AnyPublisher<Eip155URLOrWebImageURL, SmartContractError> {
         enum AnyError: Error {
             case blockieCreateFailure
         }
@@ -73,7 +75,7 @@ extension GetEnsTextRecord {
 
         return publisher.flatMap { _url -> AnyPublisher<Eip155URLOrWebImageURL, SmartContractError> in
             //NOTE: once open sea image url cached it will be here as `url`, so the next time we willn't decode it as eip155 and return it as it is
-            guard let result = Eip155URLCoder.decode(from: _url) else {
+            guard let result = Eip155UrlCoder.decode(from: _url) else {
                 guard let url = URL(string: _url) else {
                     return .fail(.embeded(AnyError.blockieCreateFailure))
                 }

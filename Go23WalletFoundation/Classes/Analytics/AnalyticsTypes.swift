@@ -107,6 +107,11 @@ public enum Analytics {
         case openSeaExpiredApiKey
         case rpcNodeRateLimited
         case rpcNodeInvalidApiKey
+        case lifiFetchSupportedTokensError
+        case lifiFetchSwapQuoteError
+        case lifiFetchSwapRouteError
+        case lifiFetchSupportedToolsError
+        case lifiFetchSupportedChainsError
     }
 
     public enum Properties: String {
@@ -133,7 +138,7 @@ public enum Analytics {
         case scheme
     }
 
-    public enum EmbeddedDeepLinkType: String, AnalyticsUserProperty {
+    public enum EmbeddedDeepLinkType: String {
         case eip681
         case walletConnect
         case others
@@ -149,6 +154,7 @@ public enum Analytics {
         case watchedWalletsCount
         case dynamicTypeSetting
         case hasEnsAvatar
+        case isAppPasscodeOrBiometricProtectionEnabled
     }
 
     public enum ScanQRCodeSource: String {
@@ -159,15 +165,16 @@ public enum Analytics {
         case addCustomTokenScreen
         case walletScreen
         case quickAction
+        case siriShortcut
     }
 
     public enum ScanQRCodeResultType: String {
-        case value
+        case addressOrEip681
         case walletConnect
-        case other
+        case string
         case url
         case privateKey
-        case seedPhase
+        case seedPhrase
         case json
         case address
     }
@@ -202,11 +209,24 @@ public enum Analytics {
         case unknown
     }
 
-    public enum SignMessageRequestSource: String {
+    public enum WalletConnectVersion: String {
+        case v1, v2
+    }
+
+    public enum SignMessageRequestSource: CustomStringConvertible {
+        public var description: String {
+            switch self {
+            case .tokenScript: return "tokenScript"
+            case .deepLink: return "deepLink"
+            case .dappBrowser: return "dappBrowser"
+            case .walletConnect(let version): return "walletConnect-\(version.rawValue)"
+            }
+        }
+
         case dappBrowser
         case deepLink
         case tokenScript
-        case walletConnect
+        case walletConnect(WalletConnectVersion)
     }
 
     public enum SignMessageRequestType: String {
@@ -235,6 +255,7 @@ public enum Analytics {
 
     public enum ShortcutType: String {
         case walletQrCode
+        case camera
     }
 
     public enum HelpUrl: String {

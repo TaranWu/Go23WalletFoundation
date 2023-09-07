@@ -2,13 +2,10 @@
 
 import Foundation
 import LocalAuthentication
+import Combine
+import Go23TrustKeystore
 
-public protocol KeystoreDelegate: AnyObject {
-    func didImport(wallet: Wallet, in keystore: Keystore)
-}
-
-public protocol Keystore {
-    var delegate: KeystoreDelegate? { get set }
+public protocol Keystore: AnyObject {
     var hasMigratedFromKeystoreFiles: Bool { get }
     var hasWallets: Bool { get }
     var isUserPresenceCheckPossible: Bool { get }
@@ -16,22 +13,47 @@ public protocol Keystore {
     var recentlyUsedWallet: Wallet? { get set }
     var currentWallet: Wallet? { get }
 
-    func createAccount(completion: @escaping (Result<Wallet, KeystoreError>) -> Void)
-    func importWallet(type: ImportType, completion: @escaping (Result<Wallet, KeystoreError>) -> Void)
-    func createAccount() -> Result<Wallet, KeystoreError>
-    func elevateSecurity(forAccount account: DerbyWallet.Address, prompt: String) -> Bool
-    func exportRawPrivateKeyForNonHdWalletForBackup(forAccount account: DerbyWallet.Address, prompt: String, newPassword: String, completion: @escaping (Result<String, KeystoreError>) -> Void)
-    func exportRawPrivateKeyFromHdWallet0thAddressForBackup(forAccount account: DerbyWallet.Address, prompt: String, newPassword: String, completion: @escaping (Result<String, KeystoreError>) -> Void)
-    func exportSeedPhraseOfHdWallet(forAccount account: DerbyWallet.Address, context: LAContext, prompt: String, completion: @escaping (Result<String, KeystoreError>) -> Void)
-    func verifySeedPhraseOfHdWallet(_ inputSeedPhrase: String, forAccount account: DerbyWallet.Address, prompt: String, context: LAContext, completion: @escaping (Result<Bool, KeystoreError>) -> Void)
-    func delete(wallet: Wallet) -> Result<Void, KeystoreError>
-    func isProtectedByUserPresence(account: DerbyWallet.Address) -> Bool
-    func signPersonalMessage(_ message: Data, for account: DerbyWallet.Address, prompt: String) -> Result<Data, KeystoreError>
-    func signTypedMessage(_ datas: [EthTypedData], for account: DerbyWallet.Address, prompt: String) -> Result<Data, KeystoreError>
-    func signMessage(_ message: Data, for account: DerbyWallet.Address, prompt: String) -> Result<Data, KeystoreError>
-    func signHash(_ hash: Data, for account: DerbyWallet.Address, prompt: String) -> Result<Data, KeystoreError>
-    func signTransaction(_ transaction: UnsignedTransaction, prompt: String) -> Result<Data, KeystoreError>
-    func signEip712TypedData(_ data: EIP712TypedData, for account: DerbyWallet.Address, prompt: String) -> Result<Data, KeystoreError>
-    func signMessageBulk(_ data: [Data], for account: DerbyWallet.Address, prompt: String) -> Result<[Data], KeystoreError>
-    func signMessageData(_ message: Data?, for account: DerbyWallet.Address, prompt: String) -> Result<Data, KeystoreError>
+    var didAddWallet: AnyPublisher<(wallet: Wallet, event: ImportWalletEvent), Never> { get }
+    var didRemoveWallet: AnyPublisher<Wallet, Never> { get }
+    var walletsPublisher: AnyPublisher<Set<Wallet>, Never> { get }
+
+    func createHDWallet(seedPhraseCount:HDWallet.SeedPhraseCount, passphrase: String) -> AnyPublisher<Wallet, KeystoreError>
+    func watchWallet(address: Go23Wallet.Address) -> AnyPublisher<Wallet, KeystoreError>
+    func importWallet(json: String, password: String) -> AnyPublisher<Wallet, KeystoreError>
+    func importWallet(mnemonic: [String], passphrase: String) -> AnyPublisher<Wallet, KeystoreError>
+    func importWallet(privateKey: Data) -> AnyPublisher<Wallet, KeystoreError>
+    func addHardwareWallet(address: Go23Wallet.Address) -> AnyPublisher<Wallet, KeystoreError>
+
+    func elevateSecurity(forAccount account: Go23Wallet.Address, prompt: String) -> Bool
+    func exportRawPrivateKeyForNonHdWalletForBackup(forAccount account: Go23Wallet.Address, prompt: String, newPassword: String) -> AnyPublisher<Result<String, KeystoreError>, Never>
+    func exportRawPrivateKeyFromHdWallet0thAddressForBackup(forAccount account: Go23Wallet.Address, prompt: String, newPassword: String) -> AnyPublisher<Result<String, KeystoreError>, Never>
+    func exportSeedPhraseOfHdWallet(forAccount account: Go23Wallet.Address, context: LAContext, prompt: String) -> AnyPublisher<Result<String, KeystoreError>, Never>
+    func verifySeedPhraseOfHdWallet(_ inputSeedPhrase: String, forAccount account: Go23Wallet.Address, prompt: String, context: LAContext) -> AnyPublisher<Result<Bool, KeystoreError>, Never>
+    func delete(wallet: Wallet)
+    func isProtectedByUserPresence(account: Go23Wallet.Address) -> Bool
+    func signPersonalMessage(_ message: Data, for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError>
+    func signTypedMessage(_ datas: [EthTypedData], for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError>
+    func signHash(_ hash: Data, for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError>
+    func signTransaction(_ transaction: UnsignedTransaction, prompt: String) async -> Result<Data, KeystoreError>
+    func signEip712TypedData(_ data: EIP712TypedData, for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError>
+    func signMessageBulk(_ data: [Data], for account: Go23Wallet.Address, prompt: String) async -> Result<[Data], KeystoreError>
+    func signMessageData(_ message: Data?, for account: Go23Wallet.Address, prompt: String) async -> Result<Data, KeystoreError>
+}
+
+extension Keystore {
+    public func createHDWallet() -> AnyPublisher<Wallet, KeystoreError> {
+        createHDWallet(seedPhraseCount: .word12, passphrase: "")
+    }
+
+    public func createWalletIfMissing() -> AnyPublisher<Void, Never> {
+        if !hasWallets {
+            return createHDWallet()
+                .handleEvents(receiveOutput: { self.recentlyUsedWallet = $0 })
+                .mapToVoid()
+                .replaceError(with: ())
+                .eraseToAnyPublisher()
+        } else {
+            return.just(())
+        }
+    }
 }
